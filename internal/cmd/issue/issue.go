@@ -1,0 +1,27 @@
+package issue
+
+import (
+	"github.com/spf13/cobra"
+
+	"github.com/enthus-appdev/atl-cli/internal/iostreams"
+)
+
+// NewCmdIssue creates the issue command group.
+func NewCmdIssue(ios *iostreams.IOStreams) *cobra.Command {
+	cmd := &cobra.Command{
+		Use:     "issue",
+		Aliases: []string{"i"},
+		Short:   "Work with Jira issues",
+		Long:    `Create, view, and manage Jira issues.`,
+	}
+
+	cmd.AddCommand(NewCmdView(ios))
+	cmd.AddCommand(NewCmdList(ios))
+	cmd.AddCommand(NewCmdCreate(ios))
+	cmd.AddCommand(NewCmdEdit(ios))
+	cmd.AddCommand(NewCmdTransition(ios))
+	cmd.AddCommand(NewCmdComment(ios))
+	cmd.AddCommand(NewCmdAssign(ios))
+
+	return cmd
+}

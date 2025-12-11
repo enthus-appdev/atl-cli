@@ -1,0 +1,33 @@
+# Build artifacts
+/build/
+/dist/
+
+# Test coverage
+coverage.out
+coverage.html
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Binary
+/atl
+/atl.exe
+
+# Config (local development)
+config.yaml
+.env
+
+# Go
+/vendor/
+
+# Air (hot reload)
+/tmp/
+bin/
