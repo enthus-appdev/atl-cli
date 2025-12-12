@@ -25,6 +25,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"os"
 	"strings"
 	"time"
 
@@ -129,8 +130,52 @@ func (c *Client) ConfluenceBaseURL() string {
 	return fmt.Sprintf("%s/ex/confluence/%s/wiki/api/v2", AtlassianAPIURL, c.cloudID)
 }
 
+// ensureValidToken checks if the access token is expired and refreshes it if needed.
+// This is called automatically before each request.
+func (c *Client) ensureValidToken(ctx context.Context) error {
+	if c.tokens == nil || !c.tokens.IsExpired() {
+		return nil
+	}
+
+	// Token is expired, try to refresh
+	clientID := os.Getenv("ATLASSIAN_CLIENT_ID")
+	clientSecret := os.Getenv("ATLASSIAN_CLIENT_SECRET")
+
+	if clientID == "" || clientSecret == "" {
+		if c.config != nil && c.config.OAuth != nil {
+			if clientID == "" {
+				clientID = c.config.OAuth.ClientID
+			}
+			if clientSecret == "" {
+				clientSecret = c.config.OAuth.ClientSecret
+			}
+		}
+	}
+
+	if clientID == "" || clientSecret == "" {
+		return fmt.Errorf("access token expired and cannot refresh: OAuth credentials not configured")
+	}
+
+	newTokens, err := auth.RefreshAccessToken(ctx, c.hostname, &auth.RefreshConfig{
+		ClientID:     clientID,
+		ClientSecret: clientSecret,
+	})
+	if err != nil {
+		return fmt.Errorf("failed to refresh expired token: %w", err)
+	}
+
+	c.tokens = newTokens
+	return nil
+}
+
 // Request makes an HTTP request to the API.
+// If the access token is expired, it will automatically attempt to refresh it.
 func (c *Client) Request(ctx context.Context, method, path string, body interface{}, result interface{}) error {
+	// Ensure we have a valid token before making the request
+	if err := c.ensureValidToken(ctx); err != nil {
+		return err
+	}
+
 	var bodyReader io.Reader
 	if body != nil {
 		jsonBody, err := json.Marshal(body)

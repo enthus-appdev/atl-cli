@@ -10,6 +10,7 @@
 package auth
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"time"
@@ -83,4 +84,53 @@ func DeleteToken(hostname string) error {
 		return fmt.Errorf("failed to delete tokens from keyring: %w", err)
 	}
 	return nil
+}
+
+// RefreshConfig holds the configuration needed to refresh tokens.
+type RefreshConfig struct {
+	ClientID     string
+	ClientSecret string
+}
+
+// RefreshAccessToken refreshes the access token for a given hostname using its stored refresh token.
+// It retrieves the current tokens, exchanges the refresh token for new tokens, and stores the result.
+// Returns the new TokenSet or an error if refresh fails.
+func RefreshAccessToken(ctx context.Context, hostname string, cfg *RefreshConfig) (*TokenSet, error) {
+	// Get current tokens
+	tokens, err := GetToken(hostname)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get current tokens: %w", err)
+	}
+	if tokens == nil {
+		return nil, fmt.Errorf("no tokens found for %s", hostname)
+	}
+	if tokens.RefreshToken == "" {
+		return nil, fmt.Errorf("no refresh token available for %s (re-login required)", hostname)
+	}
+
+	// Create OAuth flow for refresh
+	oauthConfig := &OAuthConfig{
+		ClientID:     cfg.ClientID,
+		ClientSecret: cfg.ClientSecret,
+		RedirectURI:  "http://localhost:8085/callback", // Not used for refresh
+		Scopes:       tokens.Scopes,
+	}
+
+	flow, err := NewOAuthFlow(oauthConfig)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create OAuth flow: %w", err)
+	}
+
+	// Refresh tokens
+	newTokens, err := flow.RefreshTokens(ctx, tokens.RefreshToken)
+	if err != nil {
+		return nil, fmt.Errorf("failed to refresh tokens: %w", err)
+	}
+
+	// Store new tokens
+	if err := StoreToken(hostname, newTokens); err != nil {
+		return nil, fmt.Errorf("failed to store refreshed tokens: %w", err)
+	}
+
+	return newTokens, nil
 }
