@@ -1,3 +1,23 @@
+// Package iostreams provides I/O stream abstractions for the Atlassian CLI.
+//
+// This package wraps stdin, stdout, and stderr to enable:
+//   - Easy testing by substituting real streams with buffers
+//   - Terminal detection for interactive features
+//   - Color output management respecting NO_COLOR environment variable
+//
+// Usage in commands:
+//
+//	func runMyCommand(opts *Options) error {
+//	    fmt.Fprintf(opts.IO.Out, "Hello, World!\n")
+//	    return nil
+//	}
+//
+// Usage in tests:
+//
+//	func TestMyCommand(t *testing.T) {
+//	    ios := iostreams.Test()
+//	    // Command output goes to io.Discard
+//	}
 package iostreams
 
 import (
@@ -9,6 +29,9 @@ import (
 
 // IOStreams provides access to standard input, output, and error streams.
 // It abstracts the I/O for easier testing and flexibility.
+//
+// The struct also tracks whether each stream is connected to a terminal (TTY),
+// which is useful for deciding whether to use interactive features or colors.
 type IOStreams struct {
 	In     io.Reader
 	Out    io.Writer

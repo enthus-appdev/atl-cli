@@ -1,3 +1,20 @@
+// Package api provides HTTP clients for Atlassian Cloud APIs.
+//
+// This package implements clients for:
+//   - Jira Cloud REST API v3
+//   - Confluence Cloud REST API v2
+//
+// All API calls use OAuth 2.0 Bearer token authentication. Tokens are
+// automatically retrieved from the system keyring based on the configured host.
+//
+// Example usage:
+//
+//	client, err := api.NewClientFromConfig()
+//	if err != nil {
+//	    return err
+//	}
+//	jira := api.NewJiraService(client)
+//	issue, err := jira.GetIssue(ctx, "TEST-123")
 package api
 
 import (
@@ -17,8 +34,10 @@ import (
 
 const (
 	// AtlassianAPIURL is the base URL for Atlassian cloud API requests.
+	// All Atlassian Cloud REST APIs are accessed through this gateway.
 	AtlassianAPIURL = "https://api.atlassian.com"
-	// DefaultTimeout for API requests.
+
+	// DefaultTimeout is the default HTTP client timeout for API requests.
 	DefaultTimeout = 30 * time.Second
 )
 

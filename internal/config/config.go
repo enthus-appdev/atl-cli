@@ -1,3 +1,14 @@
+// Package config provides configuration management for the Atlassian CLI.
+//
+// Configuration is stored in YAML format at ~/.config/atlassian/config.yaml
+// (following XDG Base Directory Specification). The location can be overridden
+// using the ATLASSIAN_CONFIG_DIR environment variable.
+//
+// The configuration includes:
+//   - OAuth credentials for authentication
+//   - Per-host settings (cloud ID, default project, etc.)
+//   - User preferences (editor, pager, output format)
+//   - Command aliases
 package config
 
 import (
@@ -10,6 +21,7 @@ import (
 )
 
 // Config represents the application configuration.
+// It holds all user settings, host configurations, and OAuth credentials.
 type Config struct {
 	Version             int                    `yaml:"version"`
 	CurrentHost         string                 `yaml:"current_host,omitempty"`
@@ -21,20 +33,23 @@ type Config struct {
 	OAuth               *OAuthConfig           `yaml:"oauth,omitempty"`
 }
 
-// OAuthConfig holds OAuth app credentials.
+// OAuthConfig holds OAuth 2.0 application credentials.
+// These are obtained by creating an OAuth app at https://developer.atlassian.com/console/myapps/
+// and are used to authenticate users via the OAuth 2.0 authorization code flow.
 type OAuthConfig struct {
-	ClientID     string `yaml:"client_id"`
-	ClientSecret string `yaml:"client_secret"`
+	ClientID     string `yaml:"client_id"`     // OAuth app client ID
+	ClientSecret string `yaml:"client_secret"` // OAuth app client secret
 }
 
-// HostConfig represents configuration for a specific Atlassian host.
+// HostConfig represents configuration for a specific Atlassian cloud instance.
+// Each host corresponds to a unique Atlassian site (e.g., mycompany.atlassian.net).
 type HostConfig struct {
-	Hostname       string `yaml:"hostname"`
-	CloudID        string `yaml:"cloud_id,omitempty"`
-	User           string `yaml:"user,omitempty"`
-	Protocol       string `yaml:"protocol,omitempty"`
-	OAuthAppID     string `yaml:"oauth_app_id,omitempty"`
-	DefaultProject string `yaml:"default_project,omitempty"`
+	Hostname       string `yaml:"hostname"`                  // The Atlassian site hostname (e.g., "mycompany.atlassian.net")
+	CloudID        string `yaml:"cloud_id,omitempty"`        // Unique cloud instance identifier from Atlassian API
+	User           string `yaml:"user,omitempty"`            // Authenticated user's email or display name
+	Protocol       string `yaml:"protocol,omitempty"`        // Protocol to use (defaults to "https")
+	OAuthAppID     string `yaml:"oauth_app_id,omitempty"`    // OAuth app ID used for this host
+	DefaultProject string `yaml:"default_project,omitempty"` // Default Jira project key for commands
 }
 
 var (

@@ -4,9 +4,16 @@ import (
 	"github.com/charmbracelet/lipgloss"
 )
 
-// Color styles for CLI output.
+// Color styles for CLI output using lipgloss.
+// These styles are used to add visual distinction to different types of information
+// in terminal output. Colors are chosen to be consistent with common conventions:
+//   - Green for success/done states
+//   - Blue for in-progress/info states
+//   - Yellow for warnings/medium priority
+//   - Red for errors/blocked/high priority
+//   - Gray for low priority/faint text
 var (
-	// StatusColors for issue/workflow statuses
+	// StatusColors for issue/workflow statuses (aligned with Jira status categories)
 	StatusToDo       = lipgloss.NewStyle().Foreground(lipgloss.Color("245"))  // Gray
 	StatusInProgress = lipgloss.NewStyle().Foreground(lipgloss.Color("33"))   // Blue
 	StatusDone       = lipgloss.NewStyle().Foreground(lipgloss.Color("35"))   // Green
@@ -33,7 +40,13 @@ var (
 	Link = lipgloss.NewStyle().Foreground(lipgloss.Color("33")).Underline(true)
 )
 
-// StyleStatus returns a styled string based on status category.
+// StyleStatus returns a styled string based on Jira status category.
+// The category comes from the Jira API's statusCategory.key field:
+//   - "new", "undefined" → Gray (To Do)
+//   - "indeterminate" → Blue (In Progress)
+//   - "done" → Green (Done)
+//
+// Unknown categories return the status unchanged.
 func StyleStatus(status string, category string) string {
 	switch category {
 	case "new", "undefined":
@@ -47,7 +60,15 @@ func StyleStatus(status string, category string) string {
 	}
 }
 
-// StylePriority returns a styled string based on priority.
+// StylePriority returns a styled string based on Jira priority name.
+// Priority colors follow severity conventions:
+//   - "Highest", "Blocker" → Red
+//   - "High", "Critical" → Orange
+//   - "Medium" → Yellow
+//   - "Low" → Blue
+//   - "Lowest", "Trivial" → Gray
+//
+// Unknown priorities return the priority unchanged.
 func StylePriority(priority string) string {
 	switch priority {
 	case "Highest", "Blocker":
