@@ -350,3 +350,84 @@ func (s *ConfluenceService) SearchPages(ctx context.Context, query string, limit
 
 	return &result, nil
 }
+
+// PageChild represents a child or descendant page.
+type PageChild struct {
+	ID            string `json:"id"`
+	Status        string `json:"status"`
+	Title         string `json:"title"`
+	ParentID      string `json:"parentId,omitempty"`
+	Depth         int    `json:"depth,omitempty"`
+	ChildPosition int    `json:"childPosition,omitempty"`
+	Type          string `json:"type"` // "page" or "folder"
+}
+
+// ChildrenResponse represents a paginated list of child pages.
+type ChildrenResponse struct {
+	Results []*PageChild     `json:"results"`
+	Links   *PaginationLinks `json:"_links,omitempty"`
+}
+
+// GetPageChildren gets immediate children of a page.
+func (s *ConfluenceService) GetPageChildren(ctx context.Context, pageID string, limit int, cursor string) (*ChildrenResponse, error) {
+	path := fmt.Sprintf("%s/pages/%s/children", s.baseURL(), pageID)
+
+	params := url.Values{}
+	if limit > 0 {
+		params.Set("limit", strconv.Itoa(limit))
+	}
+	if cursor != "" {
+		params.Set("cursor", cursor)
+	}
+
+	var result ChildrenResponse
+	if err := s.client.Get(ctx, path+"?"+params.Encode(), &result); err != nil {
+		return nil, err
+	}
+
+	return &result, nil
+}
+
+// GetPageDescendants gets all descendants of a page (children, grandchildren, etc.).
+func (s *ConfluenceService) GetPageDescendants(ctx context.Context, pageID string, limit int, cursor string) (*ChildrenResponse, error) {
+	path := fmt.Sprintf("%s/pages/%s/descendants", s.baseURL(), pageID)
+
+	params := url.Values{}
+	if limit > 0 {
+		params.Set("limit", strconv.Itoa(limit))
+	}
+	if cursor != "" {
+		params.Set("cursor", cursor)
+	}
+
+	var result ChildrenResponse
+	if err := s.client.Get(ctx, path+"?"+params.Encode(), &result); err != nil {
+		return nil, err
+	}
+
+	return &result, nil
+}
+
+// GetPageDescendantsAll gets all descendants by following pagination.
+func (s *ConfluenceService) GetPageDescendantsAll(ctx context.Context, pageID string) ([]*PageChild, error) {
+	var all []*PageChild
+	cursor := ""
+
+	for {
+		result, err := s.GetPageDescendants(ctx, pageID, 100, cursor)
+		if err != nil {
+			return nil, err
+		}
+		all = append(all, result.Results...)
+
+		if result.Links == nil || result.Links.Next == "" {
+			break
+		}
+		cursor = extractCursor(result.Links.Next)
+		if cursor == "" {
+			break
+		}
+	}
+
+	return all, nil
+}

@@ -153,6 +153,8 @@ func runSetup(opts *SetupOptions) error {
 		fmt.Fprintln(opts.IO.Out, "        "+output.Faint.Render("write:page:confluence"))
 		fmt.Fprintln(opts.IO.Out, "        "+output.Faint.Render("read:content:confluence"))
 		fmt.Fprintln(opts.IO.Out, "        "+output.Faint.Render("write:content:confluence"))
+		fmt.Fprintln(opts.IO.Out, "        "+output.Faint.Render("read:content.metadata:confluence"))
+		fmt.Fprintln(opts.IO.Out, "        "+output.Faint.Render("read:hierarchical-content:confluence"))
 		fmt.Fprintln(opts.IO.Out, "")
 
 		fmt.Fprint(opts.IO.Out, "  Press "+output.Bold.Render("Enter")+" when done: ")

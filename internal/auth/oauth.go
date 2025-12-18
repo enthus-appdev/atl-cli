@@ -39,6 +39,9 @@ func DefaultScopes() []string {
 		"write:page:confluence",
 		"read:content:confluence",
 		"write:content:confluence",
+		// Required for page children/descendants
+		"read:content.metadata:confluence",
+		"read:hierarchical-content:confluence",
 		// Token refresh
 		"offline_access",
 	}
