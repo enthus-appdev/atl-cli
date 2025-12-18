@@ -373,21 +373,60 @@ func (s *JiraService) TransitionIssue(ctx context.Context, key string, transitio
 	return s.client.Post(ctx, path, req, nil)
 }
 
+// CommentVisibility represents visibility restrictions for a comment.
+type CommentVisibility struct {
+	Type       string `json:"type"`                 // "role" or "group"
+	Value      string `json:"value"`                // role name or group name
+	Identifier string `json:"identifier,omitempty"` // group ID (for group type)
+}
+
 // AddCommentRequest represents a request to add a comment.
 type AddCommentRequest struct {
-	Body *ADF `json:"body"`
+	Body       *ADF               `json:"body"`
+	Visibility *CommentVisibility `json:"visibility,omitempty"`
+}
+
+// CommentOptions contains options for adding/editing comments.
+type CommentOptions struct {
+	Body           string
+	VisibilityType string // "role" or "group"
+	VisibilityName string // role name or group name
 }
 
 // AddComment adds a comment to an issue.
 func (s *JiraService) AddComment(ctx context.Context, key string, body string) (*Comment, error) {
+	return s.AddCommentWithOptions(ctx, key, &CommentOptions{Body: body})
+}
+
+// AddCommentWithOptions adds a comment with optional visibility restrictions.
+func (s *JiraService) AddCommentWithOptions(ctx context.Context, key string, opts *CommentOptions) (*Comment, error) {
 	path := fmt.Sprintf("%s/issue/%s/comment", s.client.JiraBaseURL(), key)
 
 	req := &AddCommentRequest{
-		Body: TextToADF(body),
+		Body: TextToADF(opts.Body),
+	}
+
+	if opts.VisibilityType != "" && opts.VisibilityName != "" {
+		req.Visibility = &CommentVisibility{
+			Type:  opts.VisibilityType,
+			Value: opts.VisibilityName,
+		}
 	}
 
 	var result Comment
 	if err := s.client.Post(ctx, path, req, &result); err != nil {
+		return nil, err
+	}
+
+	return &result, nil
+}
+
+// GetComment gets a single comment by ID.
+func (s *JiraService) GetComment(ctx context.Context, key string, commentID string) (*Comment, error) {
+	path := fmt.Sprintf("%s/issue/%s/comment/%s", s.client.JiraBaseURL(), key, commentID)
+
+	var result Comment
+	if err := s.client.Get(ctx, path, &result); err != nil {
 		return nil, err
 	}
 
@@ -404,6 +443,35 @@ func (s *JiraService) GetComments(ctx context.Context, key string) ([]*Comment, 
 	}
 
 	return result.Comments, nil
+}
+
+// UpdateComment updates an existing comment.
+func (s *JiraService) UpdateComment(ctx context.Context, key string, commentID string, opts *CommentOptions) (*Comment, error) {
+	path := fmt.Sprintf("%s/issue/%s/comment/%s", s.client.JiraBaseURL(), key, commentID)
+
+	req := &AddCommentRequest{
+		Body: TextToADF(opts.Body),
+	}
+
+	if opts.VisibilityType != "" && opts.VisibilityName != "" {
+		req.Visibility = &CommentVisibility{
+			Type:  opts.VisibilityType,
+			Value: opts.VisibilityName,
+		}
+	}
+
+	var result Comment
+	if err := s.client.Put(ctx, path, req, &result); err != nil {
+		return nil, err
+	}
+
+	return &result, nil
+}
+
+// DeleteComment deletes a comment.
+func (s *JiraService) DeleteComment(ctx context.Context, key string, commentID string) error {
+	path := fmt.Sprintf("%s/issue/%s/comment/%s", s.client.JiraBaseURL(), key, commentID)
+	return s.client.Delete(ctx, path)
 }
 
 // AssignIssue assigns an issue to a user.
