@@ -2,7 +2,9 @@
 //
 // This package implements clients for:
 //   - Jira Cloud REST API v3
-//   - Confluence Cloud REST API v2
+//   - Jira Agile REST API v1 (for sprints/boards)
+//   - Confluence Cloud REST API v2 (for most operations)
+//   - Confluence Cloud REST API v1 (for archive, move)
 //
 // All API calls use OAuth 2.0 Bearer token authentication. Tokens are
 // automatically retrieved from the system keyring based on the configured host.
@@ -125,8 +127,8 @@ func (c *Client) JiraBaseURL() string {
 	return fmt.Sprintf("%s/ex/jira/%s/rest/api/3", AtlassianAPIURL, c.cloudID)
 }
 
-// ConfluenceBaseURL returns the base URL for Confluence API v2 requests.
-// Note: Confluence v1 API has been deprecated and removed by Atlassian.
+// ConfluenceBaseURL returns the base URL for Confluence API requests.
+// Defaults to v2 API which is used for most operations.
 func (c *Client) ConfluenceBaseURL() string {
 	return c.ConfluenceBaseURLV2()
 }
@@ -142,7 +144,7 @@ func (c *Client) AgileBaseURL() string {
 }
 
 // ConfluenceBaseURLV1 returns the v1 API URL for Confluence.
-// Note: v1 is deprecated but some endpoints (like archive) only exist in v1.
+// Used for endpoints that don't exist in v2 (archive, move).
 func (c *Client) ConfluenceBaseURLV1() string {
 	return fmt.Sprintf("%s/ex/confluence/%s/wiki/rest/api", AtlassianAPIURL, c.cloudID)
 }

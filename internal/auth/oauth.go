@@ -24,47 +24,37 @@ const (
 )
 
 // DefaultScopes returns the default OAuth scopes.
-// Uses classic Jira scopes and granular Confluence scopes.
-// Confluence v1 API has been deprecated, so granular scopes are required.
+// Includes both classic and granular scopes as the CLI uses both v1 and v2 APIs:
+// - Confluence v2 API for most operations (pages, spaces, search)
+// - Confluence v1 API for some operations (archive, move)
+// - Jira v3 API with classic scopes
+// - Jira Agile v1 API with granular scopes
 func DefaultScopes() []string {
 	return []string{
-		// Jira scopes (classic)
+		// Jira scopes (classic) - for Jira REST API v3
 		"read:jira-work",
 		"write:jira-work",
 		"read:jira-user",
-		// Jira scopes (granular - needed for agile API)
+		// Jira scopes (granular) - needed for Agile API
 		"read:project:jira",
-		// Jira Software scopes (granular - no classic scopes exist for Jira Software)
+		// Jira Software scopes (granular) - for sprints/boards
 		"read:board-scope:jira-software",
 		"read:sprint:jira-software",
 		"write:sprint:jira-software",
-		// Confluence scopes (classic) - required for v1 API endpoints like archive
+		// Confluence scopes (classic) - for v1 API (archive, move)
 		"read:confluence-content.all",
 		"write:confluence-content",
-		// Confluence scopes (granular) - required for v2 API
+		// Confluence scopes (granular) - for v2 API (pages, spaces, search)
 		"read:space:confluence",
 		"read:page:confluence",
 		"write:page:confluence",
 		"read:content:confluence",
 		"write:content:confluence",
-		// Required for page children/descendants and archive
 		"read:content.metadata:confluence",
 		"read:hierarchical-content:confluence",
 		// Token refresh
 		"offline_access",
 	}
-}
-
-// ScopesV1 returns classic OAuth scopes (deprecated).
-// Kept for backwards compatibility but Confluence v1 API no longer works.
-func ScopesV1() []string {
-	return DefaultScopes() // Redirect to default since v1 API is gone
-}
-
-// ScopesV2 returns granular OAuth scopes for v2 APIs.
-// Same as DefaultScopes since v2 is now the only option.
-func ScopesV2() []string {
-	return DefaultScopes()
 }
 
 // OAuthConfig holds OAuth configuration.

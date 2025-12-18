@@ -292,7 +292,7 @@ If authentication fails, verify your OAuth app configuration at https://develope
    - Classic scopes: `read:confluence-content.all`, `write:confluence-content`
    - Granular scopes: `read:space:confluence`, `read:page:confluence`, `write:page:confluence`, `read:content:confluence`, `write:content:confluence`, `read:content.metadata:confluence`, `read:hierarchical-content:confluence`
 
-   > **Note:** Each product's scopes must be added under that specific product in the Developer Console. Jira Software has no classic scopes - only granular. Confluence classic scopes are needed for some v1 API endpoints like archive.
+   > **Note:** Each product's scopes must be added under that specific product in the Developer Console. Jira Software has no classic scopes - only granular. Both Confluence classic and granular scopes are needed as the CLI uses both API versions.
 
 ## Development
 

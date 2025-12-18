@@ -8,7 +8,8 @@ import (
 )
 
 // ConfluenceService handles Confluence API operations.
-// Always uses the v2 API as v1 has been deprecated and removed by Atlassian.
+// Uses v2 API for most operations, with v1 API for some endpoints
+// that don't exist in v2 (archive, move).
 type ConfluenceService struct {
 	client *Client
 }
