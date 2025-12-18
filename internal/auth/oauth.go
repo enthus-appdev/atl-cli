@@ -192,15 +192,18 @@ func (f *OAuthFlow) State() string {
 	return f.state
 }
 
-// StartCallbackServer starts a local HTTP server to receive the OAuth callback.
-// It returns the server, the port it's listening on, and any error.
-func StartCallbackServer(codeChan chan<- string, errChan chan<- error, expectedState string) (*http.Server, int, error) {
-	listener, err := net.Listen("tcp", "127.0.0.1:0")
-	if err != nil {
-		return nil, 0, fmt.Errorf("failed to start callback server: %w", err)
-	}
+// DefaultCallbackPort is the port used for the OAuth callback server.
+const DefaultCallbackPort = 8085
 
-	port := listener.Addr().(*net.TCPAddr).Port
+// StartCallbackServer starts a local HTTP server to receive the OAuth callback.
+// It listens on the default callback port (8085) which must match the OAuth app configuration.
+// Returns the server, the port it's listening on, and any error.
+func StartCallbackServer(codeChan chan<- string, errChan chan<- error, expectedState string) (*http.Server, int, error) {
+	port := DefaultCallbackPort
+	listener, err := net.Listen("tcp", fmt.Sprintf("127.0.0.1:%d", port))
+	if err != nil {
+		return nil, 0, fmt.Errorf("failed to start callback server on port %d: %w", port, err)
+	}
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("/callback", func(w http.ResponseWriter, r *http.Request) {

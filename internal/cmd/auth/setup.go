@@ -102,13 +102,14 @@ func runSetup(opts *SetupOptions) error {
 			return nil
 		}
 
-		// Open browser
-		auth.OpenBrowser("https://developer.atlassian.com/console/myapps/create?appType=OAuth2Integrate")
+		// Open browser to developer console
+		auth.OpenBrowser("https://developer.atlassian.com/console/myapps/")
 
 		fmt.Fprintln(opts.IO.Out, "")
 		fmt.Fprintln(opts.IO.Out, output.Bold.Render("  Step 1: Create the app"))
 		fmt.Fprintln(opts.IO.Out, "")
 		fmt.Fprintln(opts.IO.Out, "  In the browser:")
+		fmt.Fprintln(opts.IO.Out, "    • Click "+output.Bold.Render("Create")+" → "+output.Bold.Render("OAuth 2.0 integration"))
 		fmt.Fprintln(opts.IO.Out, "    • Name your app (e.g., \"atl CLI\")")
 		fmt.Fprintln(opts.IO.Out, "    • Agree to terms and click "+output.Bold.Render("Create"))
 		fmt.Fprintln(opts.IO.Out, "")

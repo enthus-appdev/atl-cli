@@ -83,7 +83,7 @@ func runLogin(opts *LoginOptions) error {
 	oauthConfig := &auth.OAuthConfig{
 		ClientID:     clientID,
 		ClientSecret: clientSecret,
-		RedirectURI:  "http://localhost:8085/callback",
+		RedirectURI:  fmt.Sprintf("http://localhost:%d/callback", auth.DefaultCallbackPort),
 		Scopes:       scopes,
 	}
 
@@ -92,24 +92,13 @@ func runLogin(opts *LoginOptions) error {
 		return fmt.Errorf("failed to initialize OAuth flow: %w", err)
 	}
 
-	// Start callback server
+	// Start callback server on fixed port
 	codeChan := make(chan string, 1)
 	errChan := make(chan error, 1)
 
-	server, port, err := auth.StartCallbackServer(codeChan, errChan, flow.State())
+	server, _, err := auth.StartCallbackServer(codeChan, errChan, flow.State())
 	if err != nil {
 		return fmt.Errorf("failed to start callback server: %w", err)
-	}
-
-	// Update redirect URI with actual port
-	oauthConfig.RedirectURI = fmt.Sprintf("http://localhost:%d/callback", port)
-	flow, _ = auth.NewOAuthFlow(oauthConfig)
-
-	// Restart server with correct state
-	server.Close()
-	server, _, err = auth.StartCallbackServer(codeChan, errChan, flow.State())
-	if err != nil {
-		return fmt.Errorf("failed to restart callback server: %w", err)
 	}
 
 	defer func() {

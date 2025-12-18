@@ -222,3 +222,182 @@ func contains(s, substr string) bool {
 	}
 	return false
 }
+
+// TestStoreAndGetToken tests file-based token storage and retrieval.
+func TestStoreAndGetToken(t *testing.T) {
+	// Use a unique hostname to avoid conflicts
+	hostname := "test-store-get.atlassian.net"
+
+	// Clean up before and after test
+	defer DeleteToken(hostname)
+	DeleteToken(hostname)
+
+	// Create test tokens
+	original := &TokenSet{
+		AccessToken:  "test-access-token",
+		RefreshToken: "test-refresh-token",
+		TokenType:    "Bearer",
+		ExpiresAt:    time.Now().Add(time.Hour).Truncate(time.Second),
+		Scopes:       []string{"read:jira-work", "write:jira-work"},
+	}
+
+	// Store tokens
+	if err := StoreToken(hostname, original); err != nil {
+		t.Fatalf("StoreToken() error = %v", err)
+	}
+
+	// Retrieve tokens
+	retrieved, err := GetToken(hostname)
+	if err != nil {
+		t.Fatalf("GetToken() error = %v", err)
+	}
+	if retrieved == nil {
+		t.Fatal("GetToken() returned nil")
+	}
+
+	// Verify fields
+	if retrieved.AccessToken != original.AccessToken {
+		t.Errorf("AccessToken = %q, want %q", retrieved.AccessToken, original.AccessToken)
+	}
+	if retrieved.RefreshToken != original.RefreshToken {
+		t.Errorf("RefreshToken = %q, want %q", retrieved.RefreshToken, original.RefreshToken)
+	}
+	if retrieved.TokenType != original.TokenType {
+		t.Errorf("TokenType = %q, want %q", retrieved.TokenType, original.TokenType)
+	}
+	if !retrieved.ExpiresAt.Equal(original.ExpiresAt) {
+		t.Errorf("ExpiresAt = %v, want %v", retrieved.ExpiresAt, original.ExpiresAt)
+	}
+	if len(retrieved.Scopes) != len(original.Scopes) {
+		t.Errorf("Scopes length = %d, want %d", len(retrieved.Scopes), len(original.Scopes))
+	}
+}
+
+// TestGetTokenNotExists tests GetToken for non-existent hostname.
+func TestGetTokenNotExists(t *testing.T) {
+	hostname := "nonexistent-host.atlassian.net"
+
+	// Ensure it doesn't exist
+	DeleteToken(hostname)
+
+	// Get should return nil, nil
+	tokens, err := GetToken(hostname)
+	if err != nil {
+		t.Fatalf("GetToken() error = %v", err)
+	}
+	if tokens != nil {
+		t.Errorf("GetToken() = %v, want nil", tokens)
+	}
+}
+
+// TestDeleteToken tests token deletion.
+func TestDeleteToken(t *testing.T) {
+	hostname := "test-delete.atlassian.net"
+
+	// Store a token first
+	tokens := &TokenSet{
+		AccessToken: "test-token",
+		ExpiresAt:   time.Now().Add(time.Hour),
+	}
+	if err := StoreToken(hostname, tokens); err != nil {
+		t.Fatalf("StoreToken() error = %v", err)
+	}
+
+	// Delete it
+	if err := DeleteToken(hostname); err != nil {
+		t.Fatalf("DeleteToken() error = %v", err)
+	}
+
+	// Verify it's gone
+	retrieved, err := GetToken(hostname)
+	if err != nil {
+		t.Fatalf("GetToken() error = %v", err)
+	}
+	if retrieved != nil {
+		t.Error("Token should be deleted")
+	}
+}
+
+// TestDeleteTokenNotExists tests deleting non-existent token.
+func TestDeleteTokenNotExists(t *testing.T) {
+	hostname := "nonexistent-delete.atlassian.net"
+
+	// Delete should succeed (no error) even if not exists
+	if err := DeleteToken(hostname); err != nil {
+		t.Errorf("DeleteToken() error = %v, want nil", err)
+	}
+}
+
+// TestListStoredHosts tests listing stored hosts.
+func TestListStoredHosts(t *testing.T) {
+	// Create test tokens for multiple hosts
+	hosts := []string{
+		"list-test-1.atlassian.net",
+		"list-test-2.atlassian.net",
+	}
+
+	// Clean up before and after
+	for _, h := range hosts {
+		defer DeleteToken(h)
+		DeleteToken(h)
+	}
+
+	// Store tokens for each host
+	for _, h := range hosts {
+		tokens := &TokenSet{
+			AccessToken: "test-token-" + h,
+			ExpiresAt:   time.Now().Add(time.Hour),
+		}
+		if err := StoreToken(h, tokens); err != nil {
+			t.Fatalf("StoreToken(%s) error = %v", h, err)
+		}
+	}
+
+	// List hosts
+	storedHosts, err := ListStoredHosts()
+	if err != nil {
+		t.Fatalf("ListStoredHosts() error = %v", err)
+	}
+
+	// Verify our test hosts are in the list
+	for _, expected := range hosts {
+		found := false
+		for _, stored := range storedHosts {
+			if stored == expected {
+				found = true
+				break
+			}
+		}
+		if !found {
+			t.Errorf("ListStoredHosts() missing %q", expected)
+		}
+	}
+}
+
+// TestTokenFilePathSanitization tests hostname sanitization for file paths.
+func TestTokenFilePathSanitization(t *testing.T) {
+	// Test that special characters are handled
+	hostname := "test:special/chars\\host.atlassian.net"
+
+	tokens := &TokenSet{
+		AccessToken: "test-token",
+		ExpiresAt:   time.Now().Add(time.Hour),
+	}
+
+	// Should not fail with special characters
+	if err := StoreToken(hostname, tokens); err != nil {
+		t.Fatalf("StoreToken() with special chars error = %v", err)
+	}
+
+	// Clean up
+	defer DeleteToken(hostname)
+
+	// Should be retrievable
+	retrieved, err := GetToken(hostname)
+	if err != nil {
+		t.Fatalf("GetToken() error = %v", err)
+	}
+	if retrieved == nil {
+		t.Error("GetToken() returned nil")
+	}
+}

@@ -2,10 +2,10 @@
 //
 // This package handles:
 //   - OAuth 2.0 authorization code flow with browser-based consent
-//   - Secure token storage using the system keyring
+//   - Secure token storage (file-based with restricted permissions)
 //   - Token expiration tracking
 //
-// Tokens are stored per-host in the system keyring, allowing users to
+// Tokens are stored per-host in ~/.config/atlassian/tokens/, allowing users to
 // authenticate with multiple Atlassian instances simultaneously.
 package auth
 
@@ -13,15 +13,19 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"os"
+	"path/filepath"
+	"strings"
 	"time"
-
-	"github.com/zalando/go-keyring"
 )
 
 const (
-	// KeyringService is the service name used for storing credentials in the system keyring.
-	// All tokens are stored under this service name with the hostname as the key.
+	// KeyringService was the service name used for keyring storage (deprecated).
+	// Now tokens are stored in files due to keyring size limitations.
 	KeyringService = "atlassian-cli"
+
+	// tokenDirName is the directory name for token storage within the config directory.
+	tokenDirName = "tokens"
 )
 
 // TokenSet represents OAuth 2.0 tokens for an Atlassian host.
@@ -43,47 +47,129 @@ func (t *TokenSet) IsExpired() bool {
 	return time.Now().Add(5 * time.Minute).After(t.ExpiresAt)
 }
 
-// StoreToken stores tokens in the system keyring.
+// tokenDir returns the directory path for token storage.
+// Creates the directory if it doesn't exist with secure permissions (0700).
+func tokenDir() (string, error) {
+	homeDir, err := os.UserHomeDir()
+	if err != nil {
+		return "", fmt.Errorf("failed to get home directory: %w", err)
+	}
+
+	dir := filepath.Join(homeDir, ".config", "atlassian", tokenDirName)
+	if err := os.MkdirAll(dir, 0700); err != nil {
+		return "", fmt.Errorf("failed to create token directory: %w", err)
+	}
+
+	return dir, nil
+}
+
+// tokenFilePath returns the file path for a hostname's tokens.
+// Hostname is sanitized to be filesystem-safe.
+func tokenFilePath(hostname string) (string, error) {
+	dir, err := tokenDir()
+	if err != nil {
+		return "", err
+	}
+
+	// Sanitize hostname for use as filename
+	safeHostname := strings.ReplaceAll(hostname, "/", "_")
+	safeHostname = strings.ReplaceAll(safeHostname, "\\", "_")
+	safeHostname = strings.ReplaceAll(safeHostname, ":", "_")
+
+	return filepath.Join(dir, safeHostname+".json"), nil
+}
+
+// StoreToken stores tokens in a secure file.
+// Tokens are stored in ~/.config/atlassian/tokens/<hostname>.json with 0600 permissions.
 func StoreToken(hostname string, tokens *TokenSet) error {
-	data, err := json.Marshal(tokens)
+	data, err := json.MarshalIndent(tokens, "", "  ")
 	if err != nil {
 		return fmt.Errorf("failed to serialize tokens: %w", err)
 	}
 
-	if err := keyring.Set(KeyringService, hostname, string(data)); err != nil {
-		return fmt.Errorf("failed to store tokens in keyring: %w", err)
+	filePath, err := tokenFilePath(hostname)
+	if err != nil {
+		return err
+	}
+
+	// Write with restricted permissions (owner read/write only)
+	if err := os.WriteFile(filePath, data, 0600); err != nil {
+		return fmt.Errorf("failed to write token file: %w", err)
 	}
 
 	return nil
 }
 
-// GetToken retrieves tokens from the system keyring.
+// GetToken retrieves tokens from file storage.
+// Returns nil, nil if no tokens exist for the hostname.
 func GetToken(hostname string) (*TokenSet, error) {
-	data, err := keyring.Get(KeyringService, hostname)
+	filePath, err := tokenFilePath(hostname)
 	if err != nil {
-		if err == keyring.ErrNotFound {
+		return nil, err
+	}
+
+	data, err := os.ReadFile(filePath)
+	if err != nil {
+		if os.IsNotExist(err) {
 			return nil, nil
 		}
-		return nil, fmt.Errorf("failed to retrieve tokens from keyring: %w", err)
+		return nil, fmt.Errorf("failed to read token file: %w", err)
 	}
 
 	var tokens TokenSet
-	if err := json.Unmarshal([]byte(data), &tokens); err != nil {
+	if err := json.Unmarshal(data, &tokens); err != nil {
 		return nil, fmt.Errorf("failed to parse stored tokens: %w", err)
 	}
 
 	return &tokens, nil
 }
 
-// DeleteToken removes tokens from the system keyring.
+// DeleteToken removes tokens from file storage.
+// Returns nil if no tokens exist for the hostname.
 func DeleteToken(hostname string) error {
-	if err := keyring.Delete(KeyringService, hostname); err != nil {
-		if err == keyring.ErrNotFound {
+	filePath, err := tokenFilePath(hostname)
+	if err != nil {
+		return err
+	}
+
+	if err := os.Remove(filePath); err != nil {
+		if os.IsNotExist(err) {
 			return nil
 		}
-		return fmt.Errorf("failed to delete tokens from keyring: %w", err)
+		return fmt.Errorf("failed to delete token file: %w", err)
 	}
 	return nil
+}
+
+// ListStoredHosts returns a list of hostnames that have stored tokens.
+func ListStoredHosts() ([]string, error) {
+	dir, err := tokenDir()
+	if err != nil {
+		return nil, err
+	}
+
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("failed to read token directory: %w", err)
+	}
+
+	var hosts []string
+	for _, entry := range entries {
+		if entry.IsDir() {
+			continue
+		}
+		name := entry.Name()
+		if strings.HasSuffix(name, ".json") {
+			// Reverse the sanitization (best effort)
+			hostname := strings.TrimSuffix(name, ".json")
+			hosts = append(hosts, hostname)
+		}
+	}
+
+	return hosts, nil
 }
 
 // RefreshConfig holds the configuration needed to refresh tokens.
