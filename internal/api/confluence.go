@@ -395,6 +395,47 @@ func (s *ConfluenceService) ArchivePages(ctx context.Context, pageIDs []string) 
 	return s.client.Post(ctx, path, body, nil)
 }
 
+// MovePosition represents the position for moving a page.
+type MovePosition string
+
+const (
+	// MovePositionBefore moves the page before the target (same parent as target).
+	MovePositionBefore MovePosition = "before"
+	// MovePositionAfter moves the page after the target (same parent as target).
+	MovePositionAfter MovePosition = "after"
+	// MovePositionAppend moves the page to be a child of the target.
+	MovePositionAppend MovePosition = "append"
+)
+
+// MovePage moves a page to a new location.
+// position can be: "before", "after", or "append"
+// - "before": move page under same parent as target, before target in list
+// - "after": move page under same parent as target, after target in list
+// - "append": move page to be a child of the target
+// Note: Uses v1 API as this endpoint doesn't exist in v2.
+func (s *ConfluenceService) MovePage(ctx context.Context, pageID string, position MovePosition, targetID string) error {
+	path := fmt.Sprintf("%s/content/%s/move/%s/%s", s.baseURLV1(), pageID, position, targetID)
+	return s.client.Put(ctx, path, nil, nil)
+}
+
+// MovePageToSpace moves a page to a different space (makes it a root page in that space).
+// spaceKey is the key of the destination space.
+func (s *ConfluenceService) MovePageToSpace(ctx context.Context, pageID string, spaceKey string) error {
+	// To move to a different space as a root page, we need to get the space's homepage
+	// and use "after" position, or use the space root
+	space, err := s.GetSpaceByKey(ctx, spaceKey)
+	if err != nil {
+		return fmt.Errorf("failed to get space: %w", err)
+	}
+
+	// Move as child of the space's homepage
+	if space.HomepageID != "" {
+		return s.MovePage(ctx, pageID, MovePositionAfter, space.HomepageID)
+	}
+
+	return fmt.Errorf("space %s has no homepage", spaceKey)
+}
+
 // SearchPages searches for pages by title (exact match).
 func (s *ConfluenceService) SearchPages(ctx context.Context, query string, limit int) (*PagesResponse, error) {
 	path := fmt.Sprintf("%s/pages", s.baseURL())
