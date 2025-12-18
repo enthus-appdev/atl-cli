@@ -103,18 +103,7 @@ func runCreate(opts *CreateOptions) error {
 		body = "<p>" + body + "</p>"
 	}
 
-	req := &api.CreatePageRequest{
-		SpaceID:  space.ID,
-		Status:   "current",
-		Title:    opts.Title,
-		ParentID: opts.ParentID,
-		Body: &api.CreatePageBody{
-			Representation: "storage",
-			Value:          body,
-		},
-	}
-
-	page, err := confluence.CreatePage(ctx, req)
+	page, err := confluence.CreatePage(ctx, space.ID, opts.Title, body, opts.ParentID)
 	if err != nil {
 		return fmt.Errorf("failed to create page: %w", err)
 	}

@@ -99,21 +99,7 @@ func runEdit(opts *EditOptions) error {
 		currentVersion = currentPage.Version.Number
 	}
 
-	req := &api.UpdatePageRequest{
-		ID:     opts.PageID,
-		Status: "current",
-		Title:  title,
-		Body: &api.CreatePageBody{
-			Representation: "storage",
-			Value:          body,
-		},
-		Version: &api.UpdateVersion{
-			Number:  currentVersion + 1,
-			Message: "Updated via atl CLI",
-		},
-	}
-
-	page, err := confluence.UpdatePage(ctx, opts.PageID, req)
+	page, err := confluence.UpdatePage(ctx, opts.PageID, title, body, currentVersion, "Updated via atl CLI")
 	if err != nil {
 		return fmt.Errorf("failed to update page: %w", err)
 	}

@@ -52,7 +52,6 @@ func NewCmdStatus(ios *iostreams.IOStreams) *cobra.Command {
 type AuthStatus struct {
 	Hostname      string `json:"hostname"`
 	CloudID       string `json:"cloud_id,omitempty"`
-	APIVersion    string `json:"api_version,omitempty"`
 	Authenticated bool   `json:"authenticated"`
 	TokenExpired  bool   `json:"token_expired,omitempty"`
 	ExpiresAt     string `json:"expires_at,omitempty"`
@@ -82,10 +81,9 @@ func runStatus(opts *StatusOptions) error {
 		}
 
 		status := AuthStatus{
-			Hostname:   hostname,
-			CloudID:    hostCfg.CloudID,
-			APIVersion: string(cfg.GetAPIVersion()),
-			Current:    hostname == cfg.CurrentHost,
+			Hostname: hostname,
+			CloudID:  hostCfg.CloudID,
+			Current:  hostname == cfg.CurrentHost,
 		}
 
 		tokens, err := auth.GetToken(hostname)
@@ -121,9 +119,6 @@ func runStatus(opts *StatusOptions) error {
 
 		if status.CloudID != "" {
 			fmt.Fprintf(opts.IO.Out, "  Cloud ID: %s\n", status.CloudID)
-		}
-		if status.APIVersion != "" {
-			fmt.Fprintf(opts.IO.Out, "  API Version: %s\n", status.APIVersion)
 		}
 
 		if status.Authenticated {

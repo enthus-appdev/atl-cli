@@ -237,15 +237,13 @@ func TestGetPagesInSpace(t *testing.T) {
 
 // TestCreatePageRequest tests the CreatePageRequest structure.
 func TestCreatePageRequest(t *testing.T) {
-	req := &CreatePageRequest{
+	req := CreatePageRequest{
 		SpaceID: "123456",
 		Status:  "current",
 		Title:   "New Page",
-		Body: &CreatePageBody{
-			Representation: "storage",
-			Value:          "<p>Page content</p>",
-		},
 	}
+	req.Body.Representation = "storage"
+	req.Body.Value = "<p>Page content</p>"
 
 	data, err := json.Marshal(req)
 	if err != nil {
@@ -273,19 +271,15 @@ func TestCreatePageRequest(t *testing.T) {
 
 // TestUpdatePageRequest tests the UpdatePageRequest structure.
 func TestUpdatePageRequest(t *testing.T) {
-	req := &UpdatePageRequest{
+	req := UpdatePageRequest{
 		ID:     "123456789",
 		Status: "current",
 		Title:  "Updated Page",
-		Body: &CreatePageBody{
-			Representation: "storage",
-			Value:          "<p>Updated content</p>",
-		},
-		Version: &UpdateVersion{
-			Number:  2,
-			Message: "Updated content",
-		},
 	}
+	req.Body.Representation = "storage"
+	req.Body.Value = "<p>Updated content</p>"
+	req.Version.Number = 2
+	req.Version.Message = "Updated content"
 
 	data, err := json.Marshal(req)
 	if err != nil {

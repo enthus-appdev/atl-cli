@@ -93,15 +93,24 @@ func runView(opts *ViewOptions) error {
 			return fmt.Errorf("failed to get page: %w", err)
 		}
 	} else {
-		// Search by space and title
-		result, err := confluence.SearchPages(ctx, opts.Space, opts.Title, 1)
+		// Search by title
+		result, err := confluence.SearchPages(ctx, opts.Title, 10)
 		if err != nil {
 			return fmt.Errorf("failed to search pages: %w", err)
 		}
 		if len(result.Results) == 0 {
-			return fmt.Errorf("page not found: %s / %s", opts.Space, opts.Title)
+			return fmt.Errorf("page not found: %s", opts.Title)
 		}
-		page = result.Results[0]
+		// Find first matching page (optionally in the specified space)
+		for _, p := range result.Results {
+			if opts.Space == "" || p.SpaceID == opts.Space {
+				page = p
+				break
+			}
+		}
+		if page == nil {
+			return fmt.Errorf("page not found: %s in space %s", opts.Title, opts.Space)
+		}
 		// Get full page content
 		page, err = confluence.GetPage(ctx, page.ID)
 		if err != nil {

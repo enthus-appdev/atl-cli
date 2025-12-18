@@ -30,7 +30,7 @@ import (
 	"time"
 
 	"github.com/enthus-appdev/atl-cli/internal/auth"
-	"github.com/enthus-appdev/atl-cli/internal/config"
+	"github.com/enthus-appdev/atl-cli/internal/config" // used for config.Config
 )
 
 const (
@@ -49,7 +49,6 @@ type Client struct {
 	cloudID    string
 	tokens     *auth.TokenSet
 	config     *config.Config
-	apiVersion config.APIVersion
 }
 
 // ClientOption configures the API client.
@@ -88,7 +87,6 @@ func NewClient(hostname string, opts ...ClientOption) (*Client, error) {
 		cloudID:    hostConfig.CloudID,
 		tokens:     tokens,
 		config:     cfg,
-		apiVersion: cfg.GetAPIVersion(),
 	}
 
 	for _, opt := range opts {
@@ -127,30 +125,15 @@ func (c *Client) JiraBaseURL() string {
 	return fmt.Sprintf("%s/ex/jira/%s/rest/api/3", AtlassianAPIURL, c.cloudID)
 }
 
-// ConfluenceBaseURL returns the base URL for Confluence API requests.
-// Returns v1 or v2 URL based on configured API version.
+// ConfluenceBaseURL returns the base URL for Confluence API v2 requests.
+// Note: Confluence v1 API has been deprecated and removed by Atlassian.
 func (c *Client) ConfluenceBaseURL() string {
-	if c.apiVersion == config.APIVersionV2 {
-		return c.ConfluenceBaseURLV2()
-	}
-	return c.ConfluenceBaseURLV1()
-}
-
-// ConfluenceBaseURLV1 returns the v1 API URL for Confluence.
-// Use with classic OAuth scopes.
-func (c *Client) ConfluenceBaseURLV1() string {
-	return fmt.Sprintf("%s/ex/confluence/%s/wiki/rest/api", AtlassianAPIURL, c.cloudID)
+	return c.ConfluenceBaseURLV2()
 }
 
 // ConfluenceBaseURLV2 returns the v2 API URL for Confluence.
-// Use with granular OAuth scopes.
 func (c *Client) ConfluenceBaseURLV2() string {
 	return fmt.Sprintf("%s/ex/confluence/%s/wiki/api/v2", AtlassianAPIURL, c.cloudID)
-}
-
-// APIVersion returns the configured API version.
-func (c *Client) APIVersion() config.APIVersion {
-	return c.apiVersion
 }
 
 // ensureValidToken checks if the access token is expired and refreshes it if needed.

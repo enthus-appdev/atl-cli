@@ -107,7 +107,7 @@ func runList(opts *ListOptions) error {
 		if !opts.JSON {
 			fmt.Fprint(opts.IO.Out, "Fetching all pages...")
 		}
-		pages, err = confluence.GetPagesInSpaceAll(ctx, space.ID)
+		pages, err = confluence.GetPagesAll(ctx, space.ID)
 		if err != nil {
 			return fmt.Errorf("failed to get pages: %w", err)
 		}
@@ -116,7 +116,7 @@ func runList(opts *ListOptions) error {
 		}
 	} else {
 		// Single page fetch
-		result, err := confluence.GetPagesInSpace(ctx, space.ID, opts.Limit, opts.Cursor)
+		result, err := confluence.GetPages(ctx, space.ID, opts.Limit, opts.Cursor)
 		if err != nil {
 			return fmt.Errorf("failed to get pages: %w", err)
 		}
