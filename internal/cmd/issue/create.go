@@ -52,8 +52,11 @@ func NewCmdCreate(ios *iostreams.IOStreams) *cobra.Command {
   # Create and open in browser
   atl issue create --project PROJ --type Task --summary "New feature" --web
 
-  # Create a subtask
-  atl issue create --project PROJ --type Sub-task --summary "Subtask" --parent PROJ-123
+  # Create a subtask (auto-discovers subtask type)
+  atl issue create --project PROJ --parent PROJ-123 --summary "Subtask"
+
+  # Or specify the subtask type explicitly
+  atl issue create --project PROJ --type "Sub-task" --parent PROJ-123 --summary "Subtask"
 
   # Create with custom fields by name (Story Points, etc.)
   atl issue create --project PROJ --type Story --summary "New story" --field "Story Points=5"
@@ -71,7 +74,8 @@ func NewCmdCreate(ios *iostreams.IOStreams) *cobra.Command {
 			if opts.Project == "" {
 				missing = append(missing, "--project")
 			}
-			if opts.IssueType == "" {
+			// --type is optional if --parent is provided (auto-discovers subtask type)
+			if opts.IssueType == "" && opts.Parent == "" {
 				missing = append(missing, "--type")
 			}
 			if opts.Summary == "" {
@@ -141,11 +145,24 @@ func runCreate(opts *CreateOptions) error {
 		}
 	}
 
+	// Auto-discover subtask type if --parent is provided but --type is not
+	issueTypeName := opts.IssueType
+	if opts.Parent != "" && opts.IssueType == "" {
+		subtaskType, err := jira.GetSubtaskType(ctx, opts.Project)
+		if err != nil {
+			return fmt.Errorf("failed to discover subtask type: %w", err)
+		}
+		if subtaskType == nil {
+			return fmt.Errorf("no subtask type found for project %s\n\nUse 'atl issue types --project %s' to list available types", opts.Project, opts.Project)
+		}
+		issueTypeName = subtaskType.Name
+	}
+
 	req := &api.CreateIssueRequest{
 		Fields: api.CreateIssueFields{
 			Project:   &api.ProjectID{Key: opts.Project},
 			Summary:   opts.Summary,
-			IssueType: &api.IssueTypeID{Name: opts.IssueType},
+			IssueType: &api.IssueTypeID{Name: issueTypeName},
 			Labels:    opts.Labels,
 		},
 	}

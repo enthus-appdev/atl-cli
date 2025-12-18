@@ -323,6 +323,49 @@ func (s *JiraService) CreateIssue(ctx context.Context, req *CreateIssueRequest) 
 	return &result, nil
 }
 
+// ProjectIssueType represents an issue type available in a project.
+type ProjectIssueType struct {
+	ID          string `json:"id"`
+	Name        string `json:"name"`
+	Description string `json:"description,omitempty"`
+	Subtask     bool   `json:"subtask"`
+	HierarchyLevel int `json:"hierarchyLevel,omitempty"`
+}
+
+// ProjectIssueTypesResponse represents the response from createmeta endpoint.
+type ProjectIssueTypesResponse struct {
+	IssueTypes []*ProjectIssueType `json:"issueTypes"`
+}
+
+// GetProjectIssueTypes gets the available issue types for a project.
+func (s *JiraService) GetProjectIssueTypes(ctx context.Context, projectKey string) ([]*ProjectIssueType, error) {
+	path := fmt.Sprintf("%s/issue/createmeta/%s/issuetypes", s.client.JiraBaseURL(), projectKey)
+
+	var result ProjectIssueTypesResponse
+	if err := s.client.Get(ctx, path, &result); err != nil {
+		return nil, err
+	}
+
+	return result.IssueTypes, nil
+}
+
+// GetSubtaskType finds the subtask issue type for a project.
+// Returns the first issue type where subtask=true.
+func (s *JiraService) GetSubtaskType(ctx context.Context, projectKey string) (*ProjectIssueType, error) {
+	types, err := s.GetProjectIssueTypes(ctx, projectKey)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, t := range types {
+		if t.Subtask {
+			return t, nil
+		}
+	}
+
+	return nil, nil
+}
+
 // UpdateIssueRequest represents a request to update an issue.
 type UpdateIssueRequest struct {
 	Fields map[string]interface{} `json:"fields,omitempty"`

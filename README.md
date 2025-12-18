@@ -113,6 +113,7 @@ atl issue create --project PROJ --type Bug --summary "Title"
 atl issue create --project PROJ --type Task --summary "Title" --description "Details"
 atl issue create --project PROJ --type Story --summary "Title" --field "Story Points=5"
 atl issue create --project PROJ --type Task --summary "Title" --field-file fields.json
+atl issue create --project PROJ --parent PROJ-123 --summary "Subtask"  # Auto-discovers subtask type
 
 atl issue edit <key> --summary "New summary"
 atl issue edit <key> --assignee @me
@@ -140,6 +141,8 @@ atl issue link <key> --list-types                    # List available link types
 atl issue weblink <key> --url "https://..." --title "Title"  # Add web link
 atl issue weblink <key> --list                       # List web links
 atl issue weblink <key> --delete 12345               # Delete web link by ID
+
+atl issue types --project PROJ           # List issue types (shows subtask types)
 
 atl issue fields                        # List all fields
 atl issue fields --custom               # List custom fields only
