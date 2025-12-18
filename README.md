@@ -234,17 +234,24 @@ default_output_format: text
 ## Shell Completion
 
 ```bash
-# Bash
-atl completion bash > /etc/bash_completion.d/atl
+# Bash (Linux)
+atl completion bash | sudo tee /etc/bash_completion.d/atl > /dev/null
+
+# Bash (macOS with Homebrew)
+atl completion bash > $(brew --prefix)/etc/bash_completion.d/atl
+
+# Bash (user-local alternative)
+mkdir -p ~/.local/share/bash-completion/completions
+atl completion bash > ~/.local/share/bash-completion/completions/atl
 
 # Zsh
-atl completion zsh > "${fpath[1]}/_atl"
+echo 'source <(atl completion zsh)' >> ~/.zshrc
 
 # Fish
 atl completion fish > ~/.config/fish/completions/atl.fish
 
 # PowerShell
-atl completion powershell > atl.ps1
+atl completion powershell >> $PROFILE
 ```
 
 ## Troubleshooting
