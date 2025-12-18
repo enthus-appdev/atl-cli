@@ -2,7 +2,9 @@ package issue
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"os"
 	"strconv"
 	"strings"
 
@@ -26,6 +28,7 @@ type CreateOptions struct {
 	Priority     string
 	Parent       string
 	CustomFields []string
+	FieldFile    string
 	Web          bool
 	JSON         bool
 }
@@ -58,6 +61,9 @@ func NewCmdCreate(ios *iostreams.IOStreams) *cobra.Command {
   # Or use field ID directly
   atl issue create --project PROJ --type Story --summary "New story" --field customfield_10016=5
 
+  # Use a JSON file for complex field values (like ADF rich text)
+  atl issue create --project PROJ --type Task --summary "Task" --field-file fields.json
+
   # Output as JSON
   atl issue create --project PROJ --type Bug --summary "Bug report" --json`,
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -87,6 +93,7 @@ func NewCmdCreate(ios *iostreams.IOStreams) *cobra.Command {
 	cmd.Flags().StringVar(&opts.Priority, "priority", "", "Priority level")
 	cmd.Flags().StringVar(&opts.Parent, "parent", "", "Parent issue key (for subtasks)")
 	cmd.Flags().StringSliceVarP(&opts.CustomFields, "field", "f", nil, "Custom field in key=value format (can be repeated)")
+	cmd.Flags().StringVar(&opts.FieldFile, "field-file", "", "JSON file with field values (for complex types like ADF)")
 	cmd.Flags().BoolVarP(&opts.Web, "web", "w", false, "Open created issue in browser")
 	cmd.Flags().BoolVarP(&opts.JSON, "json", "j", false, "Output as JSON")
 
@@ -159,9 +166,40 @@ func runCreate(opts *CreateOptions) error {
 		req.Fields.Parent = &api.ParentID{Key: opts.Parent}
 	}
 
-	// Parse custom fields
-	if len(opts.CustomFields) > 0 {
+	// Parse custom fields from file first (if provided)
+	if opts.FieldFile != "" {
+		data, err := os.ReadFile(opts.FieldFile)
+		if err != nil {
+			return fmt.Errorf("failed to read field file: %w", err)
+		}
+
+		var fileFields map[string]interface{}
+		if err := json.Unmarshal(data, &fileFields); err != nil {
+			return fmt.Errorf("failed to parse field file as JSON: %w", err)
+		}
+
 		req.Fields.CustomFields = make(map[string]interface{})
+		for key, value := range fileFields {
+			// Resolve field name to ID if needed
+			if !strings.HasPrefix(key, "customfield_") && !isSystemField(key) {
+				resolvedField, err := jira.GetFieldByName(ctx, key)
+				if err != nil {
+					return fmt.Errorf("failed to look up field '%s': %w", key, err)
+				}
+				if resolvedField == nil {
+					return fmt.Errorf("field not found: %s\n\nUse 'atl issue fields --search \"%s\"' to find available fields", key, key)
+				}
+				key = resolvedField.ID
+			}
+			req.Fields.CustomFields[key] = value
+		}
+	}
+
+	// Parse custom fields from command line (override file values)
+	if len(opts.CustomFields) > 0 {
+		if req.Fields.CustomFields == nil {
+			req.Fields.CustomFields = make(map[string]interface{})
+		}
 		for _, field := range opts.CustomFields {
 			parts := strings.SplitN(field, "=", 2)
 			if len(parts) != 2 {

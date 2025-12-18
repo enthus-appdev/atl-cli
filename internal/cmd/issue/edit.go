@@ -2,7 +2,9 @@ package issue
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"os"
 	"strconv"
 	"strings"
 
@@ -24,6 +26,7 @@ type EditOptions struct {
 	RemoveLabels []string
 	Priority     string
 	CustomFields []string
+	FieldFile    string
 	JSON         bool
 }
 
@@ -58,6 +61,9 @@ func NewCmdEdit(ios *iostreams.IOStreams) *cobra.Command {
   # Or use field ID directly
   atl issue edit PROJ-1234 --field customfield_10016=8
 
+  # Use a JSON file for complex field values (like ADF rich text)
+  atl issue edit PROJ-1234 --field-file fields.json
+
   # Output result as JSON
   atl issue edit PROJ-1234 --summary "New summary" --json`,
 		Args: cobra.ExactArgs(1),
@@ -74,6 +80,7 @@ func NewCmdEdit(ios *iostreams.IOStreams) *cobra.Command {
 	cmd.Flags().StringSliceVar(&opts.RemoveLabels, "remove-label", nil, "Labels to remove")
 	cmd.Flags().StringVar(&opts.Priority, "priority", "", "New priority")
 	cmd.Flags().StringSliceVarP(&opts.CustomFields, "field", "f", nil, "Custom field in key=value format (can be repeated)")
+	cmd.Flags().StringVar(&opts.FieldFile, "field-file", "", "JSON file with field values (for complex types like ADF)")
 	cmd.Flags().BoolVarP(&opts.JSON, "json", "j", false, "Output as JSON")
 
 	return cmd
@@ -92,7 +99,7 @@ func runEdit(opts *EditOptions) error {
 	// Check that at least one field is being edited
 	if opts.Summary == "" && opts.Description == "" && opts.Assignee == "" &&
 		len(opts.AddLabels) == 0 && len(opts.RemoveLabels) == 0 && opts.Priority == "" &&
-		len(opts.CustomFields) == 0 {
+		len(opts.CustomFields) == 0 && opts.FieldFile == "" {
 		return fmt.Errorf("at least one field must be specified to edit")
 	}
 
@@ -154,7 +161,36 @@ func runEdit(opts *EditOptions) error {
 		}
 	}
 
-	// Parse and add custom fields
+	// Parse custom fields from file first (if provided)
+	if opts.FieldFile != "" {
+		data, err := os.ReadFile(opts.FieldFile)
+		if err != nil {
+			return fmt.Errorf("failed to read field file: %w", err)
+		}
+
+		var fileFields map[string]interface{}
+		if err := json.Unmarshal(data, &fileFields); err != nil {
+			return fmt.Errorf("failed to parse field file as JSON: %w", err)
+		}
+
+		for key, value := range fileFields {
+			// Resolve field name to ID if needed
+			if !strings.HasPrefix(key, "customfield_") && !isSystemField(key) {
+				resolvedField, err := jira.GetFieldByName(ctx, key)
+				if err != nil {
+					return fmt.Errorf("failed to look up field '%s': %w", key, err)
+				}
+				if resolvedField == nil {
+					return fmt.Errorf("field not found: %s\n\nUse 'atl issue fields --search \"%s\"' to find available fields", key, key)
+				}
+				key = resolvedField.ID
+			}
+			req.Fields[key] = value
+			editOutput.FieldsUpdated = append(editOutput.FieldsUpdated, key)
+		}
+	}
+
+	// Parse and add custom fields from command line (override file values)
 	for _, field := range opts.CustomFields {
 		parts := strings.SplitN(field, "=", 2)
 		if len(parts) != 2 {

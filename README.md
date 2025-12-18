@@ -112,11 +112,13 @@ atl issue list --json                   # Output as JSON
 atl issue create --project PROJ --type Bug --summary "Title"
 atl issue create --project PROJ --type Task --summary "Title" --description "Details"
 atl issue create --project PROJ --type Story --summary "Title" --field "Story Points=5"
+atl issue create --project PROJ --type Task --summary "Title" --field-file fields.json
 
 atl issue edit <key> --summary "New summary"
 atl issue edit <key> --assignee @me
 atl issue edit <key> --add-label bug --remove-label wontfix
 atl issue edit <key> --field "Story Points=8"    # Set custom field by name
+atl issue edit <key> --field-file fields.json    # Complex fields from JSON file
 
 atl issue transition <key> "In Progress"
 atl issue transition <key> --list       # List available transitions
