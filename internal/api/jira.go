@@ -502,6 +502,157 @@ func (s *JiraService) CreateIssueLink(ctx context.Context, inwardKey, outwardKey
 	return s.client.Post(ctx, path, req, nil)
 }
 
+// Field represents a Jira field definition.
+type Field struct {
+	ID          string       `json:"id"`
+	Key         string       `json:"key"`
+	Name        string       `json:"name"`
+	Custom      bool         `json:"custom"`
+	Orderable   bool         `json:"orderable"`
+	Navigable   bool         `json:"navigable"`
+	Searchable  bool         `json:"searchable"`
+	Schema      *FieldSchema `json:"schema,omitempty"`
+	ClauseNames []string     `json:"clauseNames,omitempty"`
+}
+
+// FieldSchema describes the type of a field.
+type FieldSchema struct {
+	Type     string `json:"type"`
+	System   string `json:"system,omitempty"`
+	Custom   string `json:"custom,omitempty"`
+	CustomID int    `json:"customId,omitempty"`
+}
+
+// GetFields gets all field definitions.
+func (s *JiraService) GetFields(ctx context.Context) ([]*Field, error) {
+	path := fmt.Sprintf("%s/field", s.client.JiraBaseURL())
+
+	var fields []*Field
+	if err := s.client.Get(ctx, path, &fields); err != nil {
+		return nil, err
+	}
+
+	return fields, nil
+}
+
+// GetFieldByName finds a field by name and returns it.
+// Returns nil if not found.
+func (s *JiraService) GetFieldByName(ctx context.Context, name string) (*Field, error) {
+	fields, err := s.GetFields(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	nameLower := strings.ToLower(name)
+	for _, f := range fields {
+		if strings.ToLower(f.Name) == nameLower {
+			return f, nil
+		}
+	}
+
+	return nil, nil
+}
+
+// Sprint represents a Jira sprint.
+type Sprint struct {
+	ID            int    `json:"id"`
+	Name          string `json:"name"`
+	State         string `json:"state"` // future, active, closed
+	StartDate     string `json:"startDate,omitempty"`
+	EndDate       string `json:"endDate,omitempty"`
+	OriginBoardID int    `json:"originBoardId,omitempty"`
+	Goal          string `json:"goal,omitempty"`
+}
+
+// SprintsResponse represents a paginated list of sprints.
+type SprintsResponse struct {
+	MaxResults int       `json:"maxResults"`
+	StartAt    int       `json:"startAt"`
+	IsLast     bool      `json:"isLast"`
+	Values     []*Sprint `json:"values"`
+}
+
+// Board represents a Jira board.
+type Board struct {
+	ID       int    `json:"id"`
+	Name     string `json:"name"`
+	Type     string `json:"type"` // scrum, kanban
+	Location *BoardLocation `json:"location,omitempty"`
+}
+
+// BoardLocation represents the location of a board.
+type BoardLocation struct {
+	ProjectID  int    `json:"projectId"`
+	ProjectKey string `json:"projectKey"`
+	Name       string `json:"displayName"`
+}
+
+// BoardsResponse represents a paginated list of boards.
+type BoardsResponse struct {
+	MaxResults int      `json:"maxResults"`
+	StartAt    int      `json:"startAt"`
+	IsLast     bool     `json:"isLast"`
+	Values     []*Board `json:"values"`
+}
+
+// GetBoards gets all boards, optionally filtered by project.
+func (s *JiraService) GetBoards(ctx context.Context, projectKey string) ([]*Board, error) {
+	path := fmt.Sprintf("%s/board", s.client.AgileBaseURL())
+
+	params := url.Values{}
+	if projectKey != "" {
+		params.Set("projectKeyOrId", projectKey)
+	}
+	params.Set("maxResults", "100")
+
+	var result BoardsResponse
+	if err := s.client.Get(ctx, path+"?"+params.Encode(), &result); err != nil {
+		return nil, err
+	}
+
+	return result.Values, nil
+}
+
+// GetSprints gets sprints for a board.
+func (s *JiraService) GetSprints(ctx context.Context, boardID int, state string) ([]*Sprint, error) {
+	path := fmt.Sprintf("%s/board/%d/sprint", s.client.AgileBaseURL(), boardID)
+
+	params := url.Values{}
+	if state != "" {
+		params.Set("state", state)
+	}
+	params.Set("maxResults", "100")
+
+	var result SprintsResponse
+	if err := s.client.Get(ctx, path+"?"+params.Encode(), &result); err != nil {
+		return nil, err
+	}
+
+	return result.Values, nil
+}
+
+// MoveIssuesToSprint moves issues to a sprint.
+func (s *JiraService) MoveIssuesToSprint(ctx context.Context, sprintID int, issueKeys []string) error {
+	path := fmt.Sprintf("%s/sprint/%d/issue", s.client.AgileBaseURL(), sprintID)
+
+	body := map[string]interface{}{
+		"issues": issueKeys,
+	}
+
+	return s.client.Post(ctx, path, body, nil)
+}
+
+// RemoveIssuesFromSprint moves issues to the backlog (removes from sprint).
+func (s *JiraService) RemoveIssuesFromSprint(ctx context.Context, issueKeys []string) error {
+	path := fmt.Sprintf("%s/backlog/issue", s.client.AgileBaseURL())
+
+	body := map[string]interface{}{
+		"issues": issueKeys,
+	}
+
+	return s.client.Post(ctx, path, body, nil)
+}
+
 // TextToADF converts plain text to Atlassian Document Format.
 func TextToADF(text string) *ADF {
 	paragraphs := strings.Split(text, "\n\n")

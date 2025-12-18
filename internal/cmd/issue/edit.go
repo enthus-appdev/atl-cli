@@ -52,7 +52,10 @@ func NewCmdEdit(ios *iostreams.IOStreams) *cobra.Command {
   # Change priority
   atl issue edit PROJ-1234 --priority High
 
-  # Set custom fields (Story Points, etc.)
+  # Set custom fields by name (Story Points, etc.)
+  atl issue edit PROJ-1234 --field "Story Points=8"
+
+  # Or use field ID directly
   atl issue edit PROJ-1234 --field customfield_10016=8
 
   # Output result as JSON
@@ -158,6 +161,18 @@ func runEdit(opts *EditOptions) error {
 			return fmt.Errorf("invalid field format: %s (expected key=value)", field)
 		}
 		key, value := parts[0], parts[1]
+
+		// If key doesn't look like a field ID, try to resolve it by name
+		if !strings.HasPrefix(key, "customfield_") && !isSystemField(key) {
+			resolvedField, err := jira.GetFieldByName(ctx, key)
+			if err != nil {
+				return fmt.Errorf("failed to look up field '%s': %w", key, err)
+			}
+			if resolvedField == nil {
+				return fmt.Errorf("field not found: %s\n\nUse 'atl issue fields --search \"%s\"' to find available fields", key, key)
+			}
+			key = resolvedField.ID
+		}
 
 		// Try to parse value as number, otherwise use string
 		var fieldValue interface{}

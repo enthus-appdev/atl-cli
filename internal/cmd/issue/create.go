@@ -52,7 +52,10 @@ func NewCmdCreate(ios *iostreams.IOStreams) *cobra.Command {
   # Create a subtask
   atl issue create --project PROJ --type Sub-task --summary "Subtask" --parent PROJ-123
 
-  # Create with custom fields (Story Points, etc.)
+  # Create with custom fields by name (Story Points, etc.)
+  atl issue create --project PROJ --type Story --summary "New story" --field "Story Points=5"
+
+  # Or use field ID directly
   atl issue create --project PROJ --type Story --summary "New story" --field customfield_10016=5
 
   # Output as JSON
@@ -166,6 +169,18 @@ func runCreate(opts *CreateOptions) error {
 			}
 			key, value := parts[0], parts[1]
 
+			// If key doesn't look like a field ID, try to resolve it by name
+			if !strings.HasPrefix(key, "customfield_") && !isSystemField(key) {
+				resolvedField, err := jira.GetFieldByName(ctx, key)
+				if err != nil {
+					return fmt.Errorf("failed to look up field '%s': %w", key, err)
+				}
+				if resolvedField == nil {
+					return fmt.Errorf("field not found: %s\n\nUse 'atl issue fields --search \"%s\"' to find available fields", key, key)
+				}
+				key = resolvedField.ID
+			}
+
 			// Try to parse value as number, otherwise use string
 			if numVal, err := strconv.ParseFloat(value, 64); err == nil {
 				req.Fields.CustomFields[key] = numVal
@@ -203,4 +218,17 @@ func runCreate(opts *CreateOptions) error {
 	fmt.Fprintf(opts.IO.Out, "URL: %s\n", createOutput.URL)
 
 	return nil
+}
+
+// isSystemField checks if a field name is a known Jira system field.
+func isSystemField(name string) bool {
+	systemFields := map[string]bool{
+		"summary": true, "description": true, "issuetype": true,
+		"project": true, "reporter": true, "assignee": true,
+		"priority": true, "labels": true, "components": true,
+		"fixVersions": true, "versions": true, "duedate": true,
+		"environment": true, "resolution": true, "status": true,
+		"created": true, "updated": true, "parent": true,
+	}
+	return systemFields[strings.ToLower(name)]
 }

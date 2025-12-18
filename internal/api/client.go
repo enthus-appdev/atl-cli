@@ -136,6 +136,11 @@ func (c *Client) ConfluenceBaseURLV2() string {
 	return fmt.Sprintf("%s/ex/confluence/%s/wiki/api/v2", AtlassianAPIURL, c.cloudID)
 }
 
+// AgileBaseURL returns the base URL for Jira Agile (Software) API requests.
+func (c *Client) AgileBaseURL() string {
+	return fmt.Sprintf("%s/ex/jira/%s/rest/agile/1.0", AtlassianAPIURL, c.cloudID)
+}
+
 // ensureValidToken checks if the access token is expired and refreshes it if needed.
 // This is called automatically before each request.
 func (c *Client) ensureValidToken(ctx context.Context) error {
