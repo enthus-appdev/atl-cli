@@ -33,12 +33,23 @@ type Config struct {
 	OAuth               *OAuthConfig           `yaml:"oauth,omitempty"`
 }
 
+// APIVersion represents the Atlassian API version to use.
+type APIVersion string
+
+const (
+	// APIVersionV1 uses classic scopes and v1 APIs (Confluence REST API, Jira v3)
+	APIVersionV1 APIVersion = "v1"
+	// APIVersionV2 uses granular scopes and v2 APIs (Confluence v2, Jira v3)
+	APIVersionV2 APIVersion = "v2"
+)
+
 // OAuthConfig holds OAuth 2.0 application credentials.
 // These are obtained by creating an OAuth app at https://developer.atlassian.com/console/myapps/
 // and are used to authenticate users via the OAuth 2.0 authorization code flow.
 type OAuthConfig struct {
-	ClientID     string `yaml:"client_id"`     // OAuth app client ID
-	ClientSecret string `yaml:"client_secret"` // OAuth app client secret
+	ClientID     string     `yaml:"client_id"`              // OAuth app client ID
+	ClientSecret string     `yaml:"client_secret"`          // OAuth app client secret
+	APIVersion   APIVersion `yaml:"api_version,omitempty"`  // API version (v1 or v2)
 }
 
 // HostConfig represents configuration for a specific Atlassian cloud instance.
@@ -188,8 +199,24 @@ func (c *Config) Set(key, value string) error {
 		c.Editor = value
 	case "pager":
 		c.Pager = value
+	case "api_version":
+		if value != string(APIVersionV1) && value != string(APIVersionV2) {
+			return fmt.Errorf("invalid API version: %s (must be 'v1' or 'v2')", value)
+		}
+		if c.OAuth == nil {
+			c.OAuth = &OAuthConfig{}
+		}
+		c.OAuth.APIVersion = APIVersion(value)
 	default:
 		return fmt.Errorf("unknown configuration key: %s", key)
 	}
 	return nil
+}
+
+// GetAPIVersion returns the configured API version, defaulting to v1.
+func (c *Config) GetAPIVersion() APIVersion {
+	if c.OAuth != nil && c.OAuth.APIVersion != "" {
+		return c.OAuth.APIVersion
+	}
+	return APIVersionV1 // Default to v1 for backward compatibility
 }

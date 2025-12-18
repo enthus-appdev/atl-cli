@@ -23,15 +23,39 @@ const (
 	AtlassianAPIURL = "https://api.atlassian.com"
 )
 
-// DefaultScopes returns the default OAuth scopes for Atlassian.
-// Uses granular scopes for Confluence v2 API compatibility.
+// DefaultScopes returns the default OAuth scopes for API version 1 (classic scopes).
+// Classic scopes provide broader access and are recommended by Atlassian
+// when multiple permissions are needed.
 func DefaultScopes() []string {
+	return ScopesV1()
+}
+
+// ScopesV1 returns classic OAuth scopes for v1 APIs.
+// These work with Confluence REST API v1 and Jira REST API v3.
+func ScopesV1() []string {
 	return []string{
 		// Jira scopes (classic)
 		"read:jira-work",
 		"write:jira-work",
 		"read:jira-user",
-		// Confluence v2 API scopes (granular)
+		// Confluence scopes (classic) - used with v1 API
+		"read:confluence-content.all",
+		"write:confluence-content",
+		"read:confluence-space.summary",
+		// Token refresh
+		"offline_access",
+	}
+}
+
+// ScopesV2 returns granular OAuth scopes for v2 APIs.
+// These work with Confluence REST API v2 and Jira REST API v3.
+func ScopesV2() []string {
+	return []string{
+		// Jira scopes (classic - same for both versions)
+		"read:jira-work",
+		"write:jira-work",
+		"read:jira-user",
+		// Confluence scopes (granular) - required for v2 API
 		"read:space:confluence",
 		"read:page:confluence",
 		"write:page:confluence",

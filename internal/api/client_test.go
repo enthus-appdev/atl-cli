@@ -309,20 +309,34 @@ func TestClientDelete(t *testing.T) {
 
 // TestClientURLMethods tests the URL generation methods.
 func TestClientURLMethods(t *testing.T) {
-	client := &Client{
+	// Test with default (v1) API version
+	clientV1 := &Client{
 		cloudID: "test-cloud-id",
 	}
 
-	jiraURL := client.JiraBaseURL()
+	jiraURL := clientV1.JiraBaseURL()
 	expectedJira := "https://api.atlassian.com/ex/jira/test-cloud-id/rest/api/3"
 	if jiraURL != expectedJira {
 		t.Errorf("JiraBaseURL() = %q, want %q", jiraURL, expectedJira)
 	}
 
-	confluenceURL := client.ConfluenceBaseURL()
-	expectedConfluence := "https://api.atlassian.com/ex/confluence/test-cloud-id/wiki/api/v2"
-	if confluenceURL != expectedConfluence {
-		t.Errorf("ConfluenceBaseURL() = %q, want %q", confluenceURL, expectedConfluence)
+	// Default should be v1 (classic scopes)
+	confluenceURLV1 := clientV1.ConfluenceBaseURL()
+	expectedConfluenceV1 := "https://api.atlassian.com/ex/confluence/test-cloud-id/wiki/rest/api"
+	if confluenceURLV1 != expectedConfluenceV1 {
+		t.Errorf("ConfluenceBaseURL() with v1 = %q, want %q", confluenceURLV1, expectedConfluenceV1)
+	}
+
+	// Test with v2 API version
+	clientV2 := &Client{
+		cloudID:    "test-cloud-id",
+		apiVersion: "v2",
+	}
+
+	confluenceURLV2 := clientV2.ConfluenceBaseURL()
+	expectedConfluenceV2 := "https://api.atlassian.com/ex/confluence/test-cloud-id/wiki/api/v2"
+	if confluenceURLV2 != expectedConfluenceV2 {
+		t.Errorf("ConfluenceBaseURL() with v2 = %q, want %q", confluenceURLV2, expectedConfluenceV2)
 	}
 }
 

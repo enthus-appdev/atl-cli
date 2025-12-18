@@ -54,20 +54,23 @@ your system's keychain/credential manager.`,
 }
 
 func runLogin(opts *LoginOptions) error {
+	// Load config for OAuth credentials and API version
+	cfg, err := config.Load()
+	if err != nil {
+		return fmt.Errorf("failed to load config: %w", err)
+	}
+
 	// Get OAuth credentials: env vars take precedence, then config file
 	clientID := os.Getenv("ATLASSIAN_CLIENT_ID")
 	clientSecret := os.Getenv("ATLASSIAN_CLIENT_SECRET")
 
 	// If not in env, try config file
-	if clientID == "" || clientSecret == "" {
-		cfg, err := config.Load()
-		if err == nil && cfg.OAuth != nil {
-			if clientID == "" {
-				clientID = cfg.OAuth.ClientID
-			}
-			if clientSecret == "" {
-				clientSecret = cfg.OAuth.ClientSecret
-			}
+	if cfg.OAuth != nil {
+		if clientID == "" {
+			clientID = cfg.OAuth.ClientID
+		}
+		if clientSecret == "" {
+			clientSecret = cfg.OAuth.ClientSecret
 		}
 	}
 
@@ -75,7 +78,13 @@ func runLogin(opts *LoginOptions) error {
 		return fmt.Errorf("OAuth credentials not configured.\n\nRun 'atl auth setup' to configure your OAuth app credentials.\n\nAlternatively, set ATLASSIAN_CLIENT_ID and ATLASSIAN_CLIENT_SECRET environment variables.")
 	}
 
-	scopes := auth.DefaultScopes()
+	// Get scopes based on configured API version
+	var scopes []string
+	if cfg.GetAPIVersion() == config.APIVersionV2 {
+		scopes = auth.ScopesV2()
+	} else {
+		scopes = auth.ScopesV1()
+	}
 	if len(opts.Scopes) > 0 {
 		scopes = append(scopes, opts.Scopes...)
 	}
@@ -173,12 +182,7 @@ func runLogin(opts *LoginOptions) error {
 		return fmt.Errorf("failed to store tokens: %w", err)
 	}
 
-	// Update config
-	cfg, err := config.Load()
-	if err != nil {
-		return fmt.Errorf("failed to load config: %w", err)
-	}
-
+	// Update config with host info
 	cfg.SetHost(hostname, &config.HostConfig{
 		Hostname: hostname,
 		CloudID:  selectedResource.ID,
