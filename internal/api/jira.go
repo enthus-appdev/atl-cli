@@ -570,6 +570,89 @@ func (s *JiraService) CreateIssueLink(ctx context.Context, inwardKey, outwardKey
 	return s.client.Post(ctx, path, req, nil)
 }
 
+// RemoteLink represents a remote/web link on an issue.
+type RemoteLink struct {
+	ID           int               `json:"id"`
+	Self         string            `json:"self,omitempty"`
+	GlobalID     string            `json:"globalId,omitempty"`
+	Application  *RemoteLinkApp    `json:"application,omitempty"`
+	Relationship string            `json:"relationship,omitempty"`
+	Object       *RemoteLinkObject `json:"object"`
+}
+
+// RemoteLinkApp represents the application info for a remote link.
+type RemoteLinkApp struct {
+	Type string `json:"type,omitempty"`
+	Name string `json:"name,omitempty"`
+}
+
+// RemoteLinkObject represents the linked object details.
+type RemoteLinkObject struct {
+	URL     string           `json:"url"`
+	Title   string           `json:"title"`
+	Summary string           `json:"summary,omitempty"`
+	Icon    *RemoteLinkIcon  `json:"icon,omitempty"`
+	Status  *RemoteLinkStatus `json:"status,omitempty"`
+}
+
+// RemoteLinkIcon represents an icon for a remote link.
+type RemoteLinkIcon struct {
+	URL16x16 string `json:"url16x16,omitempty"`
+	Title    string `json:"title,omitempty"`
+}
+
+// RemoteLinkStatus represents the status of a remote link.
+type RemoteLinkStatus struct {
+	Resolved bool            `json:"resolved,omitempty"`
+	Icon     *RemoteLinkIcon `json:"icon,omitempty"`
+}
+
+// GetRemoteLinks gets all remote/web links for an issue.
+func (s *JiraService) GetRemoteLinks(ctx context.Context, issueKey string) ([]*RemoteLink, error) {
+	path := fmt.Sprintf("%s/issue/%s/remotelink", s.client.JiraBaseURL(), issueKey)
+
+	var links []*RemoteLink
+	if err := s.client.Get(ctx, path, &links); err != nil {
+		return nil, err
+	}
+
+	return links, nil
+}
+
+// CreateRemoteLinkRequest represents a request to create a remote link.
+type CreateRemoteLinkRequest struct {
+	GlobalID     string            `json:"globalId,omitempty"`
+	Application  *RemoteLinkApp    `json:"application,omitempty"`
+	Relationship string            `json:"relationship,omitempty"`
+	Object       *RemoteLinkObject `json:"object"`
+}
+
+// CreateRemoteLink creates a remote/web link on an issue.
+func (s *JiraService) CreateRemoteLink(ctx context.Context, issueKey, url, title, summary string) (*RemoteLink, error) {
+	path := fmt.Sprintf("%s/issue/%s/remotelink", s.client.JiraBaseURL(), issueKey)
+
+	req := &CreateRemoteLinkRequest{
+		Object: &RemoteLinkObject{
+			URL:     url,
+			Title:   title,
+			Summary: summary,
+		},
+	}
+
+	var result RemoteLink
+	if err := s.client.Post(ctx, path, req, &result); err != nil {
+		return nil, err
+	}
+
+	return &result, nil
+}
+
+// DeleteRemoteLink deletes a remote/web link from an issue.
+func (s *JiraService) DeleteRemoteLink(ctx context.Context, issueKey string, linkID int) error {
+	path := fmt.Sprintf("%s/issue/%s/remotelink/%d", s.client.JiraBaseURL(), issueKey, linkID)
+	return s.client.Delete(ctx, path)
+}
+
 // Field represents a Jira field definition.
 type Field struct {
 	ID          string       `json:"id"`

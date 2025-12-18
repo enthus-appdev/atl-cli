@@ -137,6 +137,10 @@ atl issue link <key> <target-key>                    # Link issues (default: Rel
 atl issue link <key> <target-key> --type Blocks      # Link with specific type
 atl issue link <key> --list-types                    # List available link types
 
+atl issue weblink <key> --url "https://..." --title "Title"  # Add web link
+atl issue weblink <key> --list                       # List web links
+atl issue weblink <key> --delete 12345               # Delete web link by ID
+
 atl issue fields                        # List all fields
 atl issue fields --custom               # List custom fields only
 atl issue fields --search "story"       # Search for fields by name
