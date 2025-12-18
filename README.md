@@ -203,6 +203,41 @@ atl completion fish > ~/.config/fish/completions/atl.fish
 atl completion powershell > atl.ps1
 ```
 
+## Troubleshooting
+
+### "Scope does not match" or 403 errors after updating
+
+When the CLI adds new features that require additional OAuth scopes (like sprint management), you may get permission errors even after adding the scopes to your OAuth app.
+
+**Solution:** Perform a full logout and login to refresh your token with the new scopes:
+
+```bash
+atl auth logout
+atl auth login
+```
+
+Simply running `atl auth login` again may not be sufficient as the existing token retains its original scopes.
+
+### Token expired errors
+
+The CLI automatically refreshes expired tokens. If you see persistent token errors:
+
+```bash
+atl auth status    # Check current auth state
+atl auth logout    # Clear stored tokens
+atl auth login     # Re-authenticate
+```
+
+### OAuth app configuration
+
+If authentication fails, verify your OAuth app configuration at https://developer.atlassian.com/console/myapps/:
+
+1. **Callback URL** must be exactly: `http://localhost:8085/callback`
+2. **Required scopes** for full functionality:
+   - Jira API: `read:jira-work`, `write:jira-work`, `read:jira-user`
+   - Jira Software API (for sprints): `read:board-scope:jira-software`, `read:sprint:jira-software`, `write:sprint:jira-software`
+   - Confluence API: `read:space:confluence`, `read:page:confluence`, `write:page:confluence`, `read:content:confluence`, `write:content:confluence`, `read:content.metadata:confluence`, `read:hierarchical-content:confluence`
+
 ## Development
 
 ```bash
