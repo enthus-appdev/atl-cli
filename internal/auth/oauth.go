@@ -32,7 +32,9 @@ func DefaultScopes() []string {
 		"read:jira-work",
 		"write:jira-work",
 		"read:jira-user",
-		// Jira Software scopes (for sprints/boards)
+		// Jira Software scopes (classic for agile API v1)
+		"manage:jira-software",
+		// Jira Software scopes (granular for future API v2+)
 		"read:board-scope:jira-software",
 		"read:sprint:jira-software",
 		"write:sprint:jira-software",

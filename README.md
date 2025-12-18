@@ -234,9 +234,9 @@ If authentication fails, verify your OAuth app configuration at https://develope
 
 1. **Callback URL** must be exactly: `http://localhost:8085/callback`
 2. **Required scopes** for full functionality:
-   - Jira API: `read:jira-work`, `write:jira-work`, `read:jira-user`
-   - Jira Software API (for sprints): `read:board-scope:jira-software`, `read:sprint:jira-software`, `write:sprint:jira-software`
-   - Confluence API: `read:space:confluence`, `read:page:confluence`, `write:page:confluence`, `read:content:confluence`, `write:content:confluence`, `read:content.metadata:confluence`, `read:hierarchical-content:confluence`
+   - Jira API (classic): `read:jira-work`, `write:jira-work`, `read:jira-user`
+   - Jira Software API (classic, for sprints): `manage:jira-software`
+   - Confluence API (granular): `read:space:confluence`, `read:page:confluence`, `write:page:confluence`, `read:content:confluence`, `write:content:confluence`, `read:content.metadata:confluence`, `read:hierarchical-content:confluence`
 
 ## Development
 
