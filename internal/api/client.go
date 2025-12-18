@@ -263,6 +263,44 @@ func (c *Client) Delete(ctx context.Context, path string) error {
 	return c.Request(ctx, http.MethodDelete, path, nil, nil)
 }
 
+// GetRaw makes a GET request and returns raw bytes (for file downloads).
+// Returns the content, content-type, and any error.
+func (c *Client) GetRaw(ctx context.Context, path string) ([]byte, string, error) {
+	if err := c.ensureValidToken(ctx); err != nil {
+		return nil, "", err
+	}
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, path, nil)
+	if err != nil {
+		return nil, "", fmt.Errorf("failed to create request: %w", err)
+	}
+
+	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", c.tokens.AccessToken))
+
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		return nil, "", fmt.Errorf("request failed: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		body, _ := io.ReadAll(resp.Body)
+		return nil, "", &APIError{
+			StatusCode: resp.StatusCode,
+			Status:     resp.Status,
+			Body:       string(body),
+		}
+	}
+
+	content, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, "", fmt.Errorf("failed to read response: %w", err)
+	}
+
+	contentType := resp.Header.Get("Content-Type")
+	return content, contentType, nil
+}
+
 // APIError represents an error response from the API.
 type APIError struct {
 	StatusCode int

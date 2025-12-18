@@ -29,21 +29,33 @@ type Issue struct {
 
 // IssueFields contains the fields of a Jira issue.
 type IssueFields struct {
-	Summary     string       `json:"summary"`
-	Description *ADF         `json:"description,omitempty"`
-	Status      *Status      `json:"status,omitempty"`
-	Priority    *Priority    `json:"priority,omitempty"`
-	IssueType   *IssueType   `json:"issuetype,omitempty"`
-	Assignee    *User        `json:"assignee,omitempty"`
-	Reporter    *User        `json:"reporter,omitempty"`
-	Project     *Project     `json:"project,omitempty"`
-	Labels      []string     `json:"labels,omitempty"`
-	Created     string       `json:"created,omitempty"`
-	Updated     string       `json:"updated,omitempty"`
-	Resolution  *Resolution  `json:"resolution,omitempty"`
-	Components  []*Component `json:"components,omitempty"`
-	Comment     *Comments    `json:"comment,omitempty"`
-	Parent      *Issue       `json:"parent,omitempty"`
+	Summary     string        `json:"summary"`
+	Description *ADF          `json:"description,omitempty"`
+	Status      *Status       `json:"status,omitempty"`
+	Priority    *Priority     `json:"priority,omitempty"`
+	IssueType   *IssueType    `json:"issuetype,omitempty"`
+	Assignee    *User         `json:"assignee,omitempty"`
+	Reporter    *User         `json:"reporter,omitempty"`
+	Project     *Project      `json:"project,omitempty"`
+	Labels      []string      `json:"labels,omitempty"`
+	Created     string        `json:"created,omitempty"`
+	Updated     string        `json:"updated,omitempty"`
+	Resolution  *Resolution   `json:"resolution,omitempty"`
+	Components  []*Component  `json:"components,omitempty"`
+	Comment     *Comments     `json:"comment,omitempty"`
+	Parent      *Issue        `json:"parent,omitempty"`
+	Attachment  []*Attachment `json:"attachment,omitempty"`
+}
+
+// Attachment represents an attachment on an issue.
+type Attachment struct {
+	ID       string `json:"id"`
+	Filename string `json:"filename"`
+	Author   *User  `json:"author,omitempty"`
+	Created  string `json:"created"`
+	Size     int64  `json:"size"`
+	MimeType string `json:"mimeType"`
+	Content  string `json:"content"` // URL to download the attachment
 }
 
 // ADF represents Atlassian Document Format content.
@@ -189,6 +201,25 @@ func (s *JiraService) GetIssue(ctx context.Context, key string) (*Issue, error) 
 	}
 
 	return &issue, nil
+}
+
+// GetAttachment gets attachment metadata by ID.
+func (s *JiraService) GetAttachment(ctx context.Context, attachmentID string) (*Attachment, error) {
+	path := fmt.Sprintf("%s/attachment/%s", s.client.JiraBaseURL(), attachmentID)
+
+	var attachment Attachment
+	if err := s.client.Get(ctx, path, &attachment); err != nil {
+		return nil, err
+	}
+
+	return &attachment, nil
+}
+
+// DownloadAttachment downloads an attachment and returns its content.
+func (s *JiraService) DownloadAttachment(ctx context.Context, attachmentID string) ([]byte, string, error) {
+	path := fmt.Sprintf("%s/attachment/content/%s", s.client.JiraBaseURL(), attachmentID)
+
+	return s.client.GetRaw(ctx, path)
 }
 
 // SearchOptions contains options for searching issues.

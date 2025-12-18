@@ -155,6 +155,11 @@ atl issue sprint <key> --list-sprints --board-id 1   # List sprints
 atl issue flag <key>                    # Flag issue (mark as blocked)
 atl issue flag <key> --unflag           # Remove flag
 atl issue flag <key> --status           # Check if flagged
+
+atl issue attachment <key> --list       # List attachments
+atl issue attachment <key> --download --id 12345  # Download specific file
+atl issue attachment <key> --download-all         # Download all attachments
+atl issue attachment <key> --download-all -o ./dir  # Download to directory
 ```
 
 ### Confluence
