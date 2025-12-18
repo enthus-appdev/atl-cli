@@ -332,6 +332,27 @@ func (s *ConfluenceService) DeletePage(ctx context.Context, pageID string) error
 	return s.client.Delete(ctx, path)
 }
 
+// ArchivePage archives a page.
+func (s *ConfluenceService) ArchivePage(ctx context.Context, pageID string) error {
+	path := fmt.Sprintf("%s/pages/%s/archive", s.baseURL(), pageID)
+	return s.client.Post(ctx, path, nil, nil)
+}
+
+// UnarchivePage restores an archived page.
+func (s *ConfluenceService) UnarchivePage(ctx context.Context, pageID string) error {
+	path := fmt.Sprintf("%s/pages/%s/unarchive", s.baseURL(), pageID)
+	return s.client.Post(ctx, path, nil, nil)
+}
+
+// ArchivePages archives multiple pages.
+func (s *ConfluenceService) ArchivePages(ctx context.Context, pageIDs []string) error {
+	path := fmt.Sprintf("%s/pages/archive", s.baseURL())
+	body := map[string]interface{}{
+		"pages": pageIDs,
+	}
+	return s.client.Post(ctx, path, body, nil)
+}
+
 // SearchPages searches for pages by title (exact match).
 func (s *ConfluenceService) SearchPages(ctx context.Context, query string, limit int) (*PagesResponse, error) {
 	path := fmt.Sprintf("%s/pages", s.baseURL())
