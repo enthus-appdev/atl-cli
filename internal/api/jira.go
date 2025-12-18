@@ -621,6 +621,110 @@ func (s *JiraService) GetFieldByName(ctx context.Context, name string) (*Field, 
 	return nil, nil
 }
 
+// GetFlaggedField finds the "Flagged" custom field.
+// Returns the field or nil if not found.
+func (s *JiraService) GetFlaggedField(ctx context.Context) (*Field, error) {
+	fields, err := s.GetFields(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, f := range fields {
+		// The Flagged field has untranslatedName or name "Flagged"
+		if f.Name == "Flagged" || strings.EqualFold(f.Name, "Flagged") {
+			return f, nil
+		}
+	}
+
+	return nil, nil
+}
+
+// FlagIssue flags an issue (adds the Impediment flag).
+func (s *JiraService) FlagIssue(ctx context.Context, issueKey string) error {
+	// First, find the Flagged field ID
+	field, err := s.GetFlaggedField(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to get Flagged field: %w", err)
+	}
+	if field == nil {
+		return fmt.Errorf("Flagged field not found. Make sure the Flagged field is available in your Jira instance")
+	}
+
+	path := fmt.Sprintf("%s/issue/%s", s.client.JiraBaseURL(), issueKey)
+
+	body := map[string]interface{}{
+		"fields": map[string]interface{}{
+			field.ID: []map[string]string{
+				{"value": "Impediment"},
+			},
+		},
+	}
+
+	return s.client.Put(ctx, path, body, nil)
+}
+
+// UnflagIssue removes the flag from an issue.
+func (s *JiraService) UnflagIssue(ctx context.Context, issueKey string) error {
+	// First, find the Flagged field ID
+	field, err := s.GetFlaggedField(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to get Flagged field: %w", err)
+	}
+	if field == nil {
+		return fmt.Errorf("Flagged field not found. Make sure the Flagged field is available in your Jira instance")
+	}
+
+	path := fmt.Sprintf("%s/issue/%s", s.client.JiraBaseURL(), issueKey)
+
+	body := map[string]interface{}{
+		"fields": map[string]interface{}{
+			field.ID: []map[string]string{},
+		},
+	}
+
+	return s.client.Put(ctx, path, body, nil)
+}
+
+// IsIssueFlagged checks if an issue is flagged.
+func (s *JiraService) IsIssueFlagged(ctx context.Context, issueKey string) (bool, error) {
+	// First, find the Flagged field ID
+	field, err := s.GetFlaggedField(ctx)
+	if err != nil {
+		return false, fmt.Errorf("failed to get Flagged field: %w", err)
+	}
+	if field == nil {
+		return false, nil // No flagged field means can't be flagged
+	}
+
+	// Get the issue with the flagged field
+	path := fmt.Sprintf("%s/issue/%s?fields=%s", s.client.JiraBaseURL(), issueKey, field.ID)
+
+	var result struct {
+		Fields map[string]interface{} `json:"fields"`
+	}
+
+	if err := s.client.Get(ctx, path, &result); err != nil {
+		return false, err
+	}
+
+	// Check if the field has a value
+	if result.Fields == nil {
+		return false, nil
+	}
+
+	flagValue := result.Fields[field.ID]
+	if flagValue == nil {
+		return false, nil
+	}
+
+	// The field value is an array of objects with "value" keys
+	if arr, ok := flagValue.([]interface{}); ok {
+		return len(arr) > 0, nil
+	}
+
+	return false, nil
+}
+
 // Sprint represents a Jira sprint.
 type Sprint struct {
 	ID            int    `json:"id"`
