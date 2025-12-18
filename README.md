@@ -4,18 +4,20 @@ A command-line tool for working with Jira, Confluence, and Tempo. Designed with 
 
 ## Installation
 
-### From Source (Recommended)
+### Using GitHub CLI (Recommended)
+
+```bash
+gh repo clone enthus-appdev/atl-cli
+cd atl-cli
+make install
+```
+
+### Using Git
 
 ```bash
 git clone git@github.com:enthus-appdev/atl-cli.git
 cd atl-cli
 make install
-```
-
-### Using Go Install
-
-```bash
-go install github.com/enthus-appdev/atl-cli/cmd/atl@latest
 ```
 
 ## Quick Start
