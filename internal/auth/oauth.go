@@ -38,14 +38,16 @@ func DefaultScopes() []string {
 		"read:board-scope:jira-software",
 		"read:sprint:jira-software",
 		"write:sprint:jira-software",
+		// Confluence scopes (classic) - required for v1 API endpoints like archive
+		"read:confluence-content.all",
+		"write:confluence-content",
 		// Confluence scopes (granular) - required for v2 API
-		// Note: Confluence v1 API has been deprecated and removed
 		"read:space:confluence",
 		"read:page:confluence",
 		"write:page:confluence",
 		"read:content:confluence",
 		"write:content:confluence",
-		// Required for page children/descendants
+		// Required for page children/descendants and archive
 		"read:content.metadata:confluence",
 		"read:hierarchical-content:confluence",
 		// Token refresh

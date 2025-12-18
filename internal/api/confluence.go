@@ -332,23 +332,65 @@ func (s *ConfluenceService) DeletePage(ctx context.Context, pageID string) error
 	return s.client.Delete(ctx, path)
 }
 
-// ArchivePage archives a page.
+// baseURLV1 returns the base URL for Confluence v1 API.
+// Some endpoints like archive only exist in v1.
+func (s *ConfluenceService) baseURLV1() string {
+	return s.client.ConfluenceBaseURLV1()
+}
+
+// ArchivePage archives a page using the v1 API.
+// Note: Archive endpoint only exists in v1 API.
 func (s *ConfluenceService) ArchivePage(ctx context.Context, pageID string) error {
-	path := fmt.Sprintf("%s/pages/%s/archive", s.baseURL(), pageID)
-	return s.client.Post(ctx, path, nil, nil)
+	path := fmt.Sprintf("%s/content/archive", s.baseURLV1())
+	body := map[string]interface{}{
+		"pages": []map[string]string{
+			{"id": pageID},
+		},
+	}
+	return s.client.Post(ctx, path, body, nil)
 }
 
 // UnarchivePage restores an archived page.
+// Note: There's no dedicated unarchive endpoint in the REST API.
+// This uses the update page endpoint to change status back to current.
 func (s *ConfluenceService) UnarchivePage(ctx context.Context, pageID string) error {
-	path := fmt.Sprintf("%s/pages/%s/unarchive", s.baseURL(), pageID)
-	return s.client.Post(ctx, path, nil, nil)
+	// First get the archived page to get its current version
+	path := fmt.Sprintf("%s/content/%s?status=archived", s.baseURLV1(), pageID)
+	var page struct {
+		ID      string `json:"id"`
+		Title   string `json:"title"`
+		Type    string `json:"type"`
+		Version struct {
+			Number int `json:"number"`
+		} `json:"version"`
+	}
+	if err := s.client.Get(ctx, path, &page); err != nil {
+		return fmt.Errorf("failed to get archived page: %w", err)
+	}
+
+	// Update the page status to current
+	updatePath := fmt.Sprintf("%s/content/%s", s.baseURLV1(), pageID)
+	updateBody := map[string]interface{}{
+		"id":     pageID,
+		"type":   page.Type,
+		"title":  page.Title,
+		"status": "current",
+		"version": map[string]int{
+			"number": page.Version.Number + 1,
+		},
+	}
+	return s.client.Put(ctx, updatePath, updateBody, nil)
 }
 
-// ArchivePages archives multiple pages.
+// ArchivePages archives multiple pages using the v1 API.
 func (s *ConfluenceService) ArchivePages(ctx context.Context, pageIDs []string) error {
-	path := fmt.Sprintf("%s/pages/archive", s.baseURL())
+	path := fmt.Sprintf("%s/content/archive", s.baseURLV1())
+	pages := make([]map[string]string, len(pageIDs))
+	for i, id := range pageIDs {
+		pages[i] = map[string]string{"id": id}
+	}
 	body := map[string]interface{}{
-		"pages": pageIDs,
+		"pages": pages,
 	}
 	return s.client.Post(ctx, path, body, nil)
 }
