@@ -111,19 +111,41 @@ atl issue list --json                   # Output as JSON
 
 atl issue create --project PROJ --type Bug --summary "Title"
 atl issue create --project PROJ --type Task --summary "Title" --description "Details"
+atl issue create --project PROJ --type Story --summary "Title" --field "Story Points=5"
 
 atl issue edit <key> --summary "New summary"
 atl issue edit <key> --assignee @me
 atl issue edit <key> --add-label bug --remove-label wontfix
+atl issue edit <key> --field "Story Points=8"    # Set custom field by name
 
 atl issue transition <key> "In Progress"
 atl issue transition <key> --list       # List available transitions
 
 atl issue comment <key> --body "Comment text"
 atl issue comment <key> --list          # List comments
+atl issue comment <key> --edit --comment-id 12345 --body "Updated text"
+atl issue comment <key> --delete --comment-id 12345
+atl issue comment <key> --reply-to 12345 --body "Reply text"
+atl issue comment <key> --body "Internal note" --visibility-type role --visibility-name Developers
 
 atl issue assign <key> --assignee @me
 atl issue assign <key> --assignee -     # Unassign
+
+atl issue link <key> <target-key>                    # Link issues (default: Relates)
+atl issue link <key> <target-key> --type Blocks      # Link with specific type
+atl issue link <key> --list-types                    # List available link types
+
+atl issue fields                        # List all fields
+atl issue fields --custom               # List custom fields only
+atl issue fields --search "story"       # Search for fields by name
+
+atl issue sprint <key> --sprint-id 123  # Move issue to sprint
+atl issue sprint <key> --backlog        # Move issue to backlog
+atl issue sprint <key> --list-sprints --board-id 1   # List sprints
+
+atl issue flag <key>                    # Flag issue (mark as blocked)
+atl issue flag <key> --unflag           # Remove flag
+atl issue flag <key> --status           # Check if flagged
 ```
 
 ### Confluence
@@ -144,6 +166,19 @@ atl confluence page create --space DOCS --title "New Page" --body "Content"
 
 atl confluence page edit <id> --title "Updated Title"
 atl confluence page edit <id> --body "New content"
+
+atl confluence page children <id>       # List child pages
+atl confluence page children <id> --descendants  # Include all descendants
+
+atl confluence page search "query"      # Search pages by title
+atl confluence page search "query" --space DOCS  # Search within space
+
+atl confluence page archive <id>        # Archive a page
+atl confluence page archive <id> --unarchive     # Restore archived page
+
+atl confluence page move <id> --target <parent-id>           # Move as child of target
+atl confluence page move <id> --target <sibling-id> --position before  # Move before sibling
+atl confluence page move <id> --space NEWSPACE               # Move to different space
 ```
 
 ### Configuration
@@ -245,9 +280,10 @@ If authentication fails, verify your OAuth app configuration at https://develope
    - `write:sprint:jira-software`
 
    **Confluence API** (under "Confluence API"):
+   - Classic scopes: `read:confluence-content.all`, `write:confluence-content`
    - Granular scopes: `read:space:confluence`, `read:page:confluence`, `write:page:confluence`, `read:content:confluence`, `write:content:confluence`, `read:content.metadata:confluence`, `read:hierarchical-content:confluence`
 
-   > **Note:** Each product's scopes must be added under that specific product in the Developer Console. Jira Software has no classic scopes - only granular.
+   > **Note:** Each product's scopes must be added under that specific product in the Developer Console. Jira Software has no classic scopes - only granular. Confluence classic scopes are needed for some v1 API endpoints like archive.
 
 ## Development
 
