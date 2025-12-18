@@ -3,6 +3,8 @@ package issue
 import (
 	"context"
 	"fmt"
+	"strconv"
+	"strings"
 
 	"github.com/spf13/cobra"
 
@@ -21,6 +23,7 @@ type EditOptions struct {
 	AddLabels    []string
 	RemoveLabels []string
 	Priority     string
+	CustomFields []string
 	JSON         bool
 }
 
@@ -49,6 +52,9 @@ func NewCmdEdit(ios *iostreams.IOStreams) *cobra.Command {
   # Change priority
   atl issue edit PROJ-1234 --priority High
 
+  # Set custom fields (Story Points, etc.)
+  atl issue edit PROJ-1234 --field customfield_10016=8
+
   # Output result as JSON
   atl issue edit PROJ-1234 --summary "New summary" --json`,
 		Args: cobra.ExactArgs(1),
@@ -64,6 +70,7 @@ func NewCmdEdit(ios *iostreams.IOStreams) *cobra.Command {
 	cmd.Flags().StringSliceVar(&opts.AddLabels, "add-label", nil, "Labels to add")
 	cmd.Flags().StringSliceVar(&opts.RemoveLabels, "remove-label", nil, "Labels to remove")
 	cmd.Flags().StringVar(&opts.Priority, "priority", "", "New priority")
+	cmd.Flags().StringSliceVarP(&opts.CustomFields, "field", "f", nil, "Custom field in key=value format (can be repeated)")
 	cmd.Flags().BoolVarP(&opts.JSON, "json", "j", false, "Output as JSON")
 
 	return cmd
@@ -81,7 +88,8 @@ type EditOutput struct {
 func runEdit(opts *EditOptions) error {
 	// Check that at least one field is being edited
 	if opts.Summary == "" && opts.Description == "" && opts.Assignee == "" &&
-		len(opts.AddLabels) == 0 && len(opts.RemoveLabels) == 0 && opts.Priority == "" {
+		len(opts.AddLabels) == 0 && len(opts.RemoveLabels) == 0 && opts.Priority == "" &&
+		len(opts.CustomFields) == 0 {
 		return fmt.Errorf("at least one field must be specified to edit")
 	}
 
@@ -141,6 +149,25 @@ func runEdit(opts *EditOptions) error {
 		if len(opts.AddLabels) == 0 {
 			editOutput.FieldsUpdated = append(editOutput.FieldsUpdated, "labels")
 		}
+	}
+
+	// Parse and add custom fields
+	for _, field := range opts.CustomFields {
+		parts := strings.SplitN(field, "=", 2)
+		if len(parts) != 2 {
+			return fmt.Errorf("invalid field format: %s (expected key=value)", field)
+		}
+		key, value := parts[0], parts[1]
+
+		// Try to parse value as number, otherwise use string
+		var fieldValue interface{}
+		if numVal, err := strconv.ParseFloat(value, 64); err == nil {
+			fieldValue = numVal
+		} else {
+			fieldValue = value
+		}
+		req.Fields[key] = fieldValue
+		editOutput.FieldsUpdated = append(editOutput.FieldsUpdated, key)
 	}
 
 	// Update the issue fields first

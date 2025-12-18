@@ -2,6 +2,7 @@ package api
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"net/url"
 	"strconv"
@@ -232,14 +233,50 @@ type CreateIssueRequest struct {
 
 // CreateIssueFields contains fields for creating an issue.
 type CreateIssueFields struct {
-	Project     *ProjectID   `json:"project"`
-	Summary     string       `json:"summary"`
-	Description *ADF         `json:"description,omitempty"`
-	IssueType   *IssueTypeID `json:"issuetype"`
-	Assignee    *AccountID   `json:"assignee,omitempty"`
-	Priority    *PriorityID  `json:"priority,omitempty"`
-	Labels      []string     `json:"labels,omitempty"`
-	Parent      *ParentID    `json:"parent,omitempty"`
+	Project      *ProjectID             `json:"project"`
+	Summary      string                 `json:"summary"`
+	Description  *ADF                   `json:"description,omitempty"`
+	IssueType    *IssueTypeID           `json:"issuetype"`
+	Assignee     *AccountID             `json:"assignee,omitempty"`
+	Priority     *PriorityID            `json:"priority,omitempty"`
+	Labels       []string               `json:"labels,omitempty"`
+	Parent       *ParentID              `json:"parent,omitempty"`
+	CustomFields map[string]interface{} `json:"-"` // Merged during marshaling
+}
+
+// MarshalJSON implements custom JSON marshaling to include custom fields.
+func (r *CreateIssueRequest) MarshalJSON() ([]byte, error) {
+	// Build the fields map with standard fields
+	fields := map[string]interface{}{
+		"project":   r.Fields.Project,
+		"summary":   r.Fields.Summary,
+		"issuetype": r.Fields.IssueType,
+	}
+
+	if r.Fields.Description != nil {
+		fields["description"] = r.Fields.Description
+	}
+	if r.Fields.Assignee != nil {
+		fields["assignee"] = r.Fields.Assignee
+	}
+	if r.Fields.Priority != nil {
+		fields["priority"] = r.Fields.Priority
+	}
+	if len(r.Fields.Labels) > 0 {
+		fields["labels"] = r.Fields.Labels
+	}
+	if r.Fields.Parent != nil {
+		fields["parent"] = r.Fields.Parent
+	}
+
+	// Merge custom fields
+	for k, v := range r.Fields.CustomFields {
+		fields[k] = v
+	}
+
+	return json.Marshal(map[string]interface{}{
+		"fields": fields,
+	})
 }
 
 // ProjectID is used when creating issues.
@@ -408,6 +445,61 @@ func (s *JiraService) SearchUsers(ctx context.Context, query string) ([]*User, e
 	}
 
 	return users, nil
+}
+
+// IssueLinkType represents a type of issue link.
+type IssueLinkType struct {
+	ID      string `json:"id"`
+	Name    string `json:"name"`
+	Inward  string `json:"inward"`
+	Outward string `json:"outward"`
+}
+
+// IssueLinkTypesResponse represents the response from getting link types.
+type IssueLinkTypesResponse struct {
+	IssueLinkTypes []*IssueLinkType `json:"issueLinkTypes"`
+}
+
+// GetIssueLinkTypes gets all available issue link types.
+func (s *JiraService) GetIssueLinkTypes(ctx context.Context) ([]*IssueLinkType, error) {
+	path := fmt.Sprintf("%s/issueLinkType", s.client.JiraBaseURL())
+
+	var result IssueLinkTypesResponse
+	if err := s.client.Get(ctx, path, &result); err != nil {
+		return nil, err
+	}
+
+	return result.IssueLinkTypes, nil
+}
+
+// CreateIssueLinkRequest represents a request to create an issue link.
+type CreateIssueLinkRequest struct {
+	Type         *IssueLinkTypeID `json:"type"`
+	InwardIssue  *IssueKeyID      `json:"inwardIssue"`
+	OutwardIssue *IssueKeyID      `json:"outwardIssue"`
+}
+
+// IssueLinkTypeID identifies a link type by name.
+type IssueLinkTypeID struct {
+	Name string `json:"name"`
+}
+
+// IssueKeyID identifies an issue by key.
+type IssueKeyID struct {
+	Key string `json:"key"`
+}
+
+// CreateIssueLink creates a link between two issues.
+func (s *JiraService) CreateIssueLink(ctx context.Context, inwardKey, outwardKey, linkTypeName string) error {
+	path := fmt.Sprintf("%s/issueLink", s.client.JiraBaseURL())
+
+	req := &CreateIssueLinkRequest{
+		Type:         &IssueLinkTypeID{Name: linkTypeName},
+		InwardIssue:  &IssueKeyID{Key: inwardKey},
+		OutwardIssue: &IssueKeyID{Key: outwardKey},
+	}
+
+	return s.client.Post(ctx, path, req, nil)
 }
 
 // TextToADF converts plain text to Atlassian Document Format.

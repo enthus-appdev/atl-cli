@@ -3,6 +3,8 @@ package issue
 import (
 	"context"
 	"fmt"
+	"strconv"
+	"strings"
 
 	"github.com/spf13/cobra"
 
@@ -14,17 +16,18 @@ import (
 
 // CreateOptions holds the options for the create command.
 type CreateOptions struct {
-	IO          *iostreams.IOStreams
-	Project     string
-	IssueType   string
-	Summary     string
-	Description string
-	Assignee    string
-	Labels      []string
-	Priority    string
-	Parent      string
-	Web         bool
-	JSON        bool
+	IO           *iostreams.IOStreams
+	Project      string
+	IssueType    string
+	Summary      string
+	Description  string
+	Assignee     string
+	Labels       []string
+	Priority     string
+	Parent       string
+	CustomFields []string
+	Web          bool
+	JSON         bool
 }
 
 // NewCmdCreate creates the create command.
@@ -48,6 +51,9 @@ func NewCmdCreate(ios *iostreams.IOStreams) *cobra.Command {
 
   # Create a subtask
   atl issue create --project PROJ --type Sub-task --summary "Subtask" --parent PROJ-123
+
+  # Create with custom fields (Story Points, etc.)
+  atl issue create --project PROJ --type Story --summary "New story" --field customfield_10016=5
 
   # Output as JSON
   atl issue create --project PROJ --type Bug --summary "Bug report" --json`,
@@ -77,6 +83,7 @@ func NewCmdCreate(ios *iostreams.IOStreams) *cobra.Command {
 	cmd.Flags().StringSliceVarP(&opts.Labels, "label", "l", nil, "Labels to add")
 	cmd.Flags().StringVar(&opts.Priority, "priority", "", "Priority level")
 	cmd.Flags().StringVar(&opts.Parent, "parent", "", "Parent issue key (for subtasks)")
+	cmd.Flags().StringSliceVarP(&opts.CustomFields, "field", "f", nil, "Custom field in key=value format (can be repeated)")
 	cmd.Flags().BoolVarP(&opts.Web, "web", "w", false, "Open created issue in browser")
 	cmd.Flags().BoolVarP(&opts.JSON, "json", "j", false, "Output as JSON")
 
@@ -147,6 +154,25 @@ func runCreate(opts *CreateOptions) error {
 
 	if opts.Parent != "" {
 		req.Fields.Parent = &api.ParentID{Key: opts.Parent}
+	}
+
+	// Parse custom fields
+	if len(opts.CustomFields) > 0 {
+		req.Fields.CustomFields = make(map[string]interface{})
+		for _, field := range opts.CustomFields {
+			parts := strings.SplitN(field, "=", 2)
+			if len(parts) != 2 {
+				return fmt.Errorf("invalid field format: %s (expected key=value)", field)
+			}
+			key, value := parts[0], parts[1]
+
+			// Try to parse value as number, otherwise use string
+			if numVal, err := strconv.ParseFloat(value, 64); err == nil {
+				req.Fields.CustomFields[key] = numVal
+			} else {
+				req.Fields.CustomFields[key] = value
+			}
+		}
 	}
 
 	result, err := jira.CreateIssue(ctx, req)
