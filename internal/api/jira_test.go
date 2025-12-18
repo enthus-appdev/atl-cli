@@ -306,17 +306,17 @@ func TestJiraServiceSearch(t *testing.T) {
 // TestSearchOptions tests the SearchOptions struct.
 func TestSearchOptions(t *testing.T) {
 	opts := SearchOptions{
-		JQL:        "project = TEST",
-		StartAt:    10,
-		MaxResults: 25,
-		Fields:     []string{"summary", "status"},
+		JQL:           "project = TEST",
+		MaxResults:    25,
+		Fields:        []string{"summary", "status"},
+		NextPageToken: "token123",
 	}
 
 	if opts.JQL != "project = TEST" {
 		t.Errorf("SearchOptions.JQL = %q, want %q", opts.JQL, "project = TEST")
 	}
-	if opts.StartAt != 10 {
-		t.Errorf("SearchOptions.StartAt = %d, want 10", opts.StartAt)
+	if opts.NextPageToken != "token123" {
+		t.Errorf("SearchOptions.NextPageToken = %q, want %q", opts.NextPageToken, "token123")
 	}
 	if opts.MaxResults != 25 {
 		t.Errorf("SearchOptions.MaxResults = %d, want 25", opts.MaxResults)

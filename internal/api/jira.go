@@ -159,11 +159,14 @@ type Transition struct {
 }
 
 // SearchResult represents the result of a JQL search.
+// Note: The new /search/jql endpoint uses nextPageToken for pagination instead of startAt.
 type SearchResult struct {
-	Issues     []*Issue `json:"issues"`
-	StartAt    int      `json:"startAt"`
-	MaxResults int      `json:"maxResults"`
-	Total      int      `json:"total"`
+	Issues        []*Issue `json:"issues"`
+	Total         int      `json:"total"`
+	MaxResults    int      `json:"maxResults"`
+	StartAt       int      `json:"startAt"`       // Deprecated: use NextPageToken
+	NextPageToken string   `json:"nextPageToken"` // Token for fetching the next page
+	IsLast        bool     `json:"isLast"`        // True if this is the last page
 }
 
 // TransitionsResponse represents available transitions for an issue.
@@ -189,23 +192,24 @@ func (s *JiraService) GetIssue(ctx context.Context, key string) (*Issue, error) 
 
 // SearchOptions contains options for searching issues.
 type SearchOptions struct {
-	JQL        string
-	StartAt    int
-	MaxResults int
-	Fields     []string
+	JQL           string
+	MaxResults    int
+	Fields        []string
+	NextPageToken string // Token for pagination (replaces startAt)
 }
 
 // Search searches for issues using JQL.
+// Uses the new /search/jql endpoint which replaces the deprecated /search endpoint.
 func (s *JiraService) Search(ctx context.Context, opts SearchOptions) (*SearchResult, error) {
-	path := fmt.Sprintf("%s/search", s.client.JiraBaseURL())
+	path := fmt.Sprintf("%s/search/jql", s.client.JiraBaseURL())
 
 	params := url.Values{}
 	params.Set("jql", opts.JQL)
-	if opts.StartAt > 0 {
-		params.Set("startAt", strconv.Itoa(opts.StartAt))
-	}
 	if opts.MaxResults > 0 {
 		params.Set("maxResults", strconv.Itoa(opts.MaxResults))
+	}
+	if opts.NextPageToken != "" {
+		params.Set("nextPageToken", opts.NextPageToken)
 	}
 	if len(opts.Fields) > 0 {
 		params.Set("fields", strings.Join(opts.Fields, ","))
