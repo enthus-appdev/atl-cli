@@ -234,9 +234,20 @@ If authentication fails, verify your OAuth app configuration at https://develope
 
 1. **Callback URL** must be exactly: `http://localhost:8085/callback`
 2. **Required scopes** for full functionality:
-   - Jira API (classic): `read:jira-work`, `write:jira-work`, `read:jira-user`
-   - Jira Software API (classic, for sprints): `manage:jira-software`
-   - Confluence API (granular): `read:space:confluence`, `read:page:confluence`, `write:page:confluence`, `read:content:confluence`, `write:content:confluence`, `read:content.metadata:confluence`, `read:hierarchical-content:confluence`
+
+   **Jira API** (under "Jira API" in Developer Console):
+   - Classic scopes: `read:jira-work`, `write:jira-work`, `read:jira-user`
+   - Granular scopes: `read:project:jira`
+
+   **Jira Software API** (under "Jira Software API" - granular only, no classic scopes exist):
+   - `read:board-scope:jira-software`
+   - `read:sprint:jira-software`
+   - `write:sprint:jira-software`
+
+   **Confluence API** (under "Confluence API"):
+   - Granular scopes: `read:space:confluence`, `read:page:confluence`, `write:page:confluence`, `read:content:confluence`, `write:content:confluence`, `read:content.metadata:confluence`, `read:hierarchical-content:confluence`
+
+   > **Note:** Each product's scopes must be added under that specific product in the Developer Console. Jira Software has no classic scopes - only granular.
 
 ## Development
 
