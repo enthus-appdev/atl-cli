@@ -24,14 +24,20 @@ const (
 )
 
 // DefaultScopes returns the default OAuth scopes for Atlassian.
+// Uses granular scopes for Confluence v2 API compatibility.
 func DefaultScopes() []string {
 	return []string{
+		// Jira scopes (classic)
 		"read:jira-work",
 		"write:jira-work",
 		"read:jira-user",
-		"read:confluence-content.all",
-		"write:confluence-content",
-		"read:confluence-space.summary",
+		// Confluence v2 API scopes (granular)
+		"read:space:confluence",
+		"read:page:confluence",
+		"write:page:confluence",
+		"read:content:confluence",
+		"write:content:confluence",
+		// Token refresh
 		"offline_access",
 	}
 }
