@@ -3,10 +3,10 @@
 # Atlassian CLI (atl) installer
 #
 # Usage:
-#   curl -fsSL https://raw.githubusercontent.com/enthus-appdev/atlassian-cli/main/install.sh | bash
+#   gh api repos/enthus-appdev/atl-cli/contents/install.sh -q '.content' | base64 -d | bash
 #
-# Or download and run:
-#   chmod +x install.sh && ./install.sh
+# Or clone and run:
+#   gh repo clone enthus-appdev/atl-cli && cd atl-cli && ./install.sh
 #
 
 set -e
@@ -132,10 +132,18 @@ install_from_source() {
     local tmp_dir
     tmp_dir=$(mktemp -d)
 
-    git clone --depth 1 "https://github.com/${REPO}.git" "$tmp_dir" 2>/dev/null || {
-        echo -e "${RED}Failed to clone repository${NC}"
-        exit 1
-    }
+    # Try gh clone first (works for private repos), fall back to SSH
+    if command -v gh &> /dev/null; then
+        gh repo clone "${REPO}" "$tmp_dir" -- --depth 1 2>/dev/null || {
+            echo -e "${RED}Failed to clone repository${NC}"
+            exit 1
+        }
+    else
+        git clone --depth 1 "git@github.com:${REPO}.git" "$tmp_dir" 2>/dev/null || {
+            echo -e "${RED}Failed to clone repository. Install gh CLI or set up SSH keys.${NC}"
+            exit 1
+        }
+    fi
 
     cd "$tmp_dir"
     go build -o "${BINARY_NAME}" ./cmd/atl
