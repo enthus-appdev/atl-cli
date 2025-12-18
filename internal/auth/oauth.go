@@ -32,6 +32,10 @@ func DefaultScopes() []string {
 		"read:jira-work",
 		"write:jira-work",
 		"read:jira-user",
+		// Jira Software scopes (for sprints/boards)
+		"read:board-scope:jira-software",
+		"read:sprint:jira-software",
+		"write:sprint:jira-software",
 		// Confluence scopes (granular) - required for v2 API
 		// Note: Confluence v1 API has been deprecated and removed
 		"read:space:confluence",
