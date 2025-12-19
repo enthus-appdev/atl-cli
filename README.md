@@ -162,10 +162,10 @@ atl issue attachment <key> --download-all -o ./dir  # Download to directory
 atl board list                          # List all boards
 atl board list --project PROJ           # List boards for a project
 
-atl board rank NX-123 --before NX-456   # Rank issue before another
-atl board rank NX-123 --after NX-456    # Rank issue after another
-atl board rank NX-1 NX-2 NX-3 --before NX-4  # Rank multiple issues in order
-atl board rank NX-123 --top --board-id 42    # Move to top of backlog
+atl board rank PROJ-123 --before PROJ-456   # Rank issue before another
+atl board rank PROJ-123 --after PROJ-456    # Rank issue after another
+atl board rank PROJ-1 PROJ-2 PROJ-3 --before PROJ-4  # Rank multiple issues in order
+atl board rank PROJ-123 --top --board-id 42    # Move to top of backlog
 ```
 
 ### Confluence

@@ -29,16 +29,16 @@ func NewCmdAdd(ios *iostreams.IOStreams) *cobra.Command {
 		Short: "Log time to an issue",
 		Long:  `Add a worklog entry to a Jira issue via Tempo.`,
 		Example: `  # Log 2 hours to an issue
-  atl worklog add NX-1234 --time 2h
+  atl worklog add PROJ-1234 --time 2h
 
   # Log time for a specific date
-  atl worklog add NX-1234 --time 1h30m --date 2024-01-15
+  atl worklog add PROJ-1234 --time 1h30m --date 2024-01-15
 
   # Log time with description
-  atl worklog add NX-1234 --time 2h --description "Implemented feature X"
+  atl worklog add PROJ-1234 --time 2h --description "Implemented feature X"
 
   # Log time with start time
-  atl worklog add NX-1234 --time 2h --start 09:00`,
+  atl worklog add PROJ-1234 --time 2h --start 09:00`,
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			opts.IssueKey = args[0]

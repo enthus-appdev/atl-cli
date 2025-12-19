@@ -37,7 +37,7 @@ func NewCmdList(ios *iostreams.IOStreams) *cobra.Command {
   atl worklog list --from 2024-01-01 --to 2024-01-31
 
   # List worklogs for a specific issue
-  atl worklog list --issue NX-1234
+  atl worklog list --issue PROJ-1234
 
   # List this week's worklogs
   atl worklog list --from monday`,

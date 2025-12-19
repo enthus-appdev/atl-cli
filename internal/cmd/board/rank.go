@@ -37,19 +37,19 @@ Issues can be ranked before or after a target issue, or moved to the top
 of the backlog. When ranking multiple issues, they will be placed in the
 order specified.`,
 		Example: `  # Rank an issue before another
-  atl board rank NX-123 --before NX-456
+  atl board rank PROJ-123 --before PROJ-456
 
   # Rank an issue after another
-  atl board rank NX-123 --after NX-456
+  atl board rank PROJ-123 --after PROJ-456
 
   # Rank multiple issues in order before a target
-  atl board rank NX-123 NX-124 NX-125 --before NX-456
+  atl board rank PROJ-123 PROJ-124 PROJ-125 --before PROJ-456
 
   # Move issues to top of backlog (requires board ID)
-  atl board rank NX-123 NX-124 --top --board-id 42
+  atl board rank PROJ-123 PROJ-124 --top --board-id 42
 
   # Output as JSON
-  atl board rank NX-123 --before NX-456 --json`,
+  atl board rank PROJ-123 --before PROJ-456 --json`,
 		Args: cobra.MinimumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			opts.IssueKeys = args

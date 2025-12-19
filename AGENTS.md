@@ -18,9 +18,9 @@ atl auth login                          # Authenticate (opens browser)
 ### View Issues
 
 ```bash
-atl issue view NX-1234                  # View issue details
-atl issue view NX-1234 --json           # View as JSON (for parsing)
-atl issue view NX-1234 --web            # Open in browser
+atl issue view PROJ-1234                  # View issue details
+atl issue view PROJ-1234 --json           # View as JSON (for parsing)
+atl issue view PROJ-1234 --web            # Open in browser
 ```
 
 ### List Issues
@@ -37,57 +37,57 @@ atl issue list --jql "sprint in openSprints() AND assignee = currentUser()"
 ```bash
 atl issue create --project NX --type Bug --summary "Title"
 atl issue create --project NX --type Task --summary "Title" --description "Details"
-atl issue create --project NX --parent NX-123 --summary "Subtask"
+atl issue create --project NX --parent PROJ-123 --summary "Subtask"
 ```
 
 ### Edit Issues
 
 ```bash
-atl issue edit NX-1234 --summary "New summary"
-atl issue edit NX-1234 --assignee @me
-atl issue edit NX-1234 --add-label bug --remove-label wontfix
-atl issue edit NX-1234 --field "Story Points=8"
+atl issue edit PROJ-1234 --summary "New summary"
+atl issue edit PROJ-1234 --assignee @me
+atl issue edit PROJ-1234 --add-label bug --remove-label wontfix
+atl issue edit PROJ-1234 --field "Story Points=8"
 ```
 
 ### Transitions and Workflow
 
 ```bash
-atl issue transition NX-1234 "In Progress"
-atl issue transition NX-1234 --list     # List available transitions
+atl issue transition PROJ-1234 "In Progress"
+atl issue transition PROJ-1234 --list     # List available transitions
 ```
 
 ### Comments
 
 ```bash
-atl issue comment NX-1234 --body "Comment text"
-atl issue comment NX-1234 --list        # List comments
+atl issue comment PROJ-1234 --body "Comment text"
+atl issue comment PROJ-1234 --list        # List comments
 ```
 
 ### Issue Links
 
 ```bash
-atl issue link NX-1234 NX-5678                    # Link issues (default: Relates)
-atl issue link NX-1234 NX-5678 --type Blocks      # Link with specific type
+atl issue link PROJ-1234 PROJ-5678                    # Link issues (default: Relates)
+atl issue link PROJ-1234 PROJ-5678 --type Blocks      # Link with specific type
 ```
 
 ### Web Links
 
 ```bash
-atl issue weblink NX-1234 --url "https://..." --title "Title"
+atl issue weblink PROJ-1234 --url "https://..." --title "Title"
 ```
 
 ### Sprint Management
 
 ```bash
-atl issue sprint NX-1234 --sprint-id 123          # Move to sprint
-atl issue sprint NX-1234 --backlog                # Move to backlog
+atl issue sprint PROJ-1234 --sprint-id 123          # Move to sprint
+atl issue sprint PROJ-1234 --backlog                # Move to backlog
 ```
 
 ### Attachments
 
 ```bash
-atl issue attachment NX-1234 --list               # List attachments
-atl issue attachment NX-1234 --download <id>      # Download attachment
+atl issue attachment PROJ-1234 --list               # List attachments
+atl issue attachment PROJ-1234 --download <id>      # Download attachment
 ```
 
 ## Jira Boards
@@ -95,9 +95,9 @@ atl issue attachment NX-1234 --download <id>      # Download attachment
 ```bash
 atl board list                                    # List all boards
 atl board list --project NX                       # List boards for project
-atl board rank NX-123 --before NX-456             # Rank issue before another
-atl board rank NX-123 --after NX-456              # Rank issue after another
-atl board rank NX-123 --top --board-id 42         # Move to top of backlog
+atl board rank PROJ-123 --before PROJ-456             # Rank issue before another
+atl board rank PROJ-123 --after PROJ-456              # Rank issue after another
+atl board rank PROJ-123 --top --board-id 42         # Move to top of backlog
 ```
 
 ## Confluence
@@ -151,7 +151,7 @@ preformatted text
 {noformat}
 
 [Link text|https://example.com]
-[NX-1234]                           # Auto-links to issue
+[PROJ-1234]                           # Auto-links to issue
 
 ||Header 1||Header 2||
 |Cell 1|Cell 2|
@@ -196,7 +196,7 @@ Use `--json` flag for structured output suitable for parsing:
 
 ```bash
 # Get issue data as JSON
-atl issue view NX-1234 --json | jq '.status'
+atl issue view PROJ-1234 --json | jq '.status'
 
 # List issues and extract keys
 atl issue list --assignee @me --json | jq '.[].key'
@@ -214,12 +214,12 @@ atl confluence page view 12345 --json | jq '.body'
 atl issue list --jql "summary ~ 'login bug'" --json
 
 # View details
-atl issue view NX-1234
+atl issue view PROJ-1234
 
 # Update it
-atl issue edit NX-1234 --assignee @me
-atl issue transition NX-1234 "In Progress"
-atl issue comment NX-1234 --body "Starting work on this"
+atl issue edit PROJ-1234 --assignee @me
+atl issue transition PROJ-1234 "In Progress"
+atl issue comment PROJ-1234 --body "Starting work on this"
 ```
 
 ### Create a Linked Issue
@@ -229,7 +229,7 @@ atl issue comment NX-1234 --body "Starting work on this"
 atl issue create --project NX --type Task --summary "Implement feature X"
 
 # Link it to a parent story
-atl issue link NX-1235 NX-1000 --type "is part of"
+atl issue link PROJ-1235 PROJ-1000 --type "is part of"
 ```
 
 ### Update Confluence Documentation
