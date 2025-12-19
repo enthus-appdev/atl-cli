@@ -37,8 +37,10 @@ func DefaultScopes() []string {
 		"read:jira-user",
 		// Jira scopes (granular) - needed for Agile API
 		"read:project:jira",
-		// Jira Software scopes (granular) - for sprints/boards
+		// Jira Software scopes (granular) - for sprints/boards/ranking
 		"read:board-scope:jira-software",
+		"read:issue:jira-software",
+		"write:issue:jira-software",
 		"read:sprint:jira-software",
 		"write:sprint:jira-software",
 		// Confluence scopes (classic) - for v1 API (archive, move)
