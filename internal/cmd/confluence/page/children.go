@@ -18,6 +18,7 @@ type ChildrenOptions struct {
 	Descendants bool
 	All         bool
 	JSON        bool
+	Type        string
 }
 
 // NewCmdChildren creates the children command.
@@ -39,6 +40,12 @@ all nested pages (grandchildren, etc.).`,
   # List all descendants (nested pages)
   atl confluence page children 123456 --descendants
 
+  # List only folders
+  atl confluence page children 123456 --type folder
+
+  # List only pages (no folders)
+  atl confluence page children 123456 --type page
+
   # Output as JSON
   atl confluence page children 123456 --json`,
 		Args: cobra.ExactArgs(1),
@@ -51,6 +58,7 @@ all nested pages (grandchildren, etc.).`,
 	cmd.Flags().BoolVarP(&opts.Descendants, "descendants", "d", false, "Include all descendants (not just immediate children)")
 	cmd.Flags().BoolVar(&opts.All, "all", false, "Fetch all pages (follow pagination)")
 	cmd.Flags().BoolVarP(&opts.JSON, "json", "j", false, "Output as JSON")
+	cmd.Flags().StringVarP(&opts.Type, "type", "t", "", "Filter by type: 'page' or 'folder'")
 
 	return cmd
 }
@@ -73,6 +81,11 @@ type ChildrenOutput struct {
 }
 
 func runChildren(opts *ChildrenOptions) error {
+	// Validate type filter
+	if opts.Type != "" && opts.Type != "page" && opts.Type != "folder" {
+		return fmt.Errorf("--type must be 'page' or 'folder', got '%s'", opts.Type)
+	}
+
 	client, err := api.NewClientFromConfig()
 	if err != nil {
 		return err
@@ -109,6 +122,17 @@ func runChildren(opts *ChildrenOptions) error {
 
 	if err != nil {
 		return fmt.Errorf("failed to get children: %w", err)
+	}
+
+	// Filter by type if specified
+	if opts.Type != "" {
+		filtered := make([]*api.PageChild, 0)
+		for _, child := range children {
+			if child.Type == opts.Type {
+				filtered = append(filtered, child)
+			}
+		}
+		children = filtered
 	}
 
 	childrenOutput := &ChildrenOutput{
