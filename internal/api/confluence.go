@@ -243,15 +243,26 @@ func (s *ConfluenceService) GetPagesAll(ctx context.Context, spaceID string) ([]
 }
 
 // GetPage gets a page by ID.
+// Requests both storage and atlas_doc_format to handle both old and new editor pages.
 func (s *ConfluenceService) GetPage(ctx context.Context, pageID string) (*Page, error) {
 	path := fmt.Sprintf("%s/pages/%s", s.baseURL(), pageID)
 
+	// Try to get storage format first
 	params := url.Values{}
 	params.Set("body-format", "storage")
 
 	var page Page
 	if err := s.client.Get(ctx, path+"?"+params.Encode(), &page); err != nil {
 		return nil, err
+	}
+
+	// If storage body is empty, try atlas_doc_format (new editor)
+	if page.Body == nil || page.Body.Storage == nil || page.Body.Storage.Value == "" {
+		params.Set("body-format", "atlas_doc_format")
+		var adfPage Page
+		if err := s.client.Get(ctx, path+"?"+params.Encode(), &adfPage); err == nil {
+			page.Body = adfPage.Body
+		}
 	}
 
 	return &page, nil
