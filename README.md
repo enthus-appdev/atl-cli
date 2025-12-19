@@ -303,6 +303,7 @@ If authentication fails, verify your OAuth app configuration at https://develope
 
    **Jira Software API** (under "Jira Software API" - granular only, no classic scopes exist):
    - `read:board-scope:jira-software`
+   - `write:board-scope:jira-software`
    - `read:issue:jira-software`
    - `write:issue:jira-software`
    - `read:sprint:jira-software`

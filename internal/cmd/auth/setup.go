@@ -150,6 +150,7 @@ func runSetup(opts *SetupOptions) error {
 		fmt.Fprintln(opts.IO.Out, "    • Click "+output.Bold.Render("Add")+" next to \"Jira Software API\" (for boards/sprints/ranking)")
 		fmt.Fprintln(opts.IO.Out, "    • In the "+output.Bold.Render("Granular Scopes")+" tab, enable:")
 		fmt.Fprintln(opts.IO.Out, "        "+output.Faint.Render("read:board-scope:jira-software"))
+		fmt.Fprintln(opts.IO.Out, "        "+output.Faint.Render("write:board-scope:jira-software"))
 		fmt.Fprintln(opts.IO.Out, "        "+output.Faint.Render("read:issue:jira-software"))
 		fmt.Fprintln(opts.IO.Out, "        "+output.Faint.Render("write:issue:jira-software"))
 		fmt.Fprintln(opts.IO.Out, "        "+output.Faint.Render("read:sprint:jira-software"))
