@@ -982,6 +982,87 @@ func (s *JiraService) RemoveIssuesFromSprint(ctx context.Context, issueKeys []st
 	return s.client.Post(ctx, path, body, nil)
 }
 
+// RankIssuesBefore ranks issues before a target issue.
+// The issues will be placed directly before rankBeforeIssue in the backlog/board order.
+func (s *JiraService) RankIssuesBefore(ctx context.Context, issueKeys []string, rankBeforeIssue string) error {
+	path := fmt.Sprintf("%s/issue/rank", s.client.AgileBaseURL())
+
+	body := map[string]interface{}{
+		"issues":          issueKeys,
+		"rankBeforeIssue": rankBeforeIssue,
+	}
+
+	return s.client.Put(ctx, path, body, nil)
+}
+
+// RankIssuesAfter ranks issues after a target issue.
+// The issues will be placed directly after rankAfterIssue in the backlog/board order.
+func (s *JiraService) RankIssuesAfter(ctx context.Context, issueKeys []string, rankAfterIssue string) error {
+	path := fmt.Sprintf("%s/issue/rank", s.client.AgileBaseURL())
+
+	body := map[string]interface{}{
+		"issues":         issueKeys,
+		"rankAfterIssue": rankAfterIssue,
+	}
+
+	return s.client.Put(ctx, path, body, nil)
+}
+
+// RankIssuesToTop ranks issues to the top of the backlog.
+func (s *JiraService) RankIssuesToTop(ctx context.Context, issueKeys []string, boardID int) error {
+	// Get the first issue on the board to rank before it
+	path := fmt.Sprintf("%s/board/%d/issue", s.client.AgileBaseURL(), boardID)
+
+	params := url.Values{}
+	params.Set("maxResults", "1")
+
+	var result struct {
+		Issues []struct {
+			Key string `json:"key"`
+		} `json:"issues"`
+	}
+
+	if err := s.client.Get(ctx, path+"?"+params.Encode(), &result); err != nil {
+		return err
+	}
+
+	if len(result.Issues) == 0 {
+		// No issues on board, nothing to rank against
+		return nil
+	}
+
+	// If the first issue is already one we're ranking, we're done
+	for _, key := range issueKeys {
+		if key == result.Issues[0].Key {
+			return nil
+		}
+	}
+
+	return s.RankIssuesBefore(ctx, issueKeys, result.Issues[0].Key)
+}
+
+// GetBoardIssues gets issues on a board.
+func (s *JiraService) GetBoardIssues(ctx context.Context, boardID int, maxResults int) ([]*Issue, error) {
+	path := fmt.Sprintf("%s/board/%d/issue", s.client.AgileBaseURL(), boardID)
+
+	params := url.Values{}
+	if maxResults > 0 {
+		params.Set("maxResults", fmt.Sprintf("%d", maxResults))
+	} else {
+		params.Set("maxResults", "50")
+	}
+
+	var result struct {
+		Issues []*Issue `json:"issues"`
+	}
+
+	if err := s.client.Get(ctx, path+"?"+params.Encode(), &result); err != nil {
+		return nil, err
+	}
+
+	return result.Issues, nil
+}
+
 // TextToADF converts plain text to Atlassian Document Format.
 func TextToADF(text string) *ADF {
 	paragraphs := strings.Split(text, "\n\n")

@@ -156,6 +156,18 @@ atl issue attachment <key> --download-all         # Download all attachments
 atl issue attachment <key> --download-all -o ./dir  # Download to directory
 ```
 
+### Boards
+
+```bash
+atl board list                          # List all boards
+atl board list --project PROJ           # List boards for a project
+
+atl board rank NX-123 --before NX-456   # Rank issue before another
+atl board rank NX-123 --after NX-456    # Rank issue after another
+atl board rank NX-1 NX-2 NX-3 --before NX-4  # Rank multiple issues in order
+atl board rank NX-123 --top --board-id 42    # Move to top of backlog
+```
+
 ### Confluence
 
 ```bash

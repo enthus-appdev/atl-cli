@@ -6,6 +6,7 @@ import (
 	"github.com/spf13/cobra"
 
 	authCmd "github.com/enthus-appdev/atl-cli/internal/cmd/auth"
+	boardCmd "github.com/enthus-appdev/atl-cli/internal/cmd/board"
 	confluenceCmd "github.com/enthus-appdev/atl-cli/internal/cmd/confluence"
 	configCmd "github.com/enthus-appdev/atl-cli/internal/cmd/config"
 	issueCmd "github.com/enthus-appdev/atl-cli/internal/cmd/issue"
@@ -60,6 +61,7 @@ Get started by running 'atl auth login' to authenticate with your Atlassian acco
 	// Add subcommands
 	cmd.AddCommand(authCmd.NewCmdAuth(ios))
 	cmd.AddCommand(issueCmd.NewCmdIssue(ios))
+	cmd.AddCommand(boardCmd.NewCmdBoard(ios))
 	cmd.AddCommand(confluenceCmd.NewCmdConfluence(ios))
 	cmd.AddCommand(worklogCmd.NewCmdWorklog(ios))
 	cmd.AddCommand(configCmd.NewCmdConfig(ios))
