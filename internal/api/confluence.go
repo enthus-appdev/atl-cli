@@ -390,23 +390,29 @@ func (s *ConfluenceService) UpdatePage(ctx context.Context, pageID, title, conte
 	return &page, nil
 }
 
-// DeletePage deletes a page or folder.
-// Tries page endpoint first, falls back to folder endpoint on 404.
-func (s *ConfluenceService) DeletePage(ctx context.Context, pageID string) error {
-	// Try deleting as a page first
-	pagePath := fmt.Sprintf("%s/pages/%s", s.baseURL(), pageID)
-	err := s.client.Delete(ctx, pagePath)
-	if err == nil {
-		return nil
+// DeleteContent deletes a page or folder.
+// contentType can be "page", "folder", or empty (auto-detects by trying page first).
+func (s *ConfluenceService) DeleteContent(ctx context.Context, id string, contentType string) error {
+	switch contentType {
+	case "folder":
+		path := fmt.Sprintf("%s/folders/%s", s.baseURL(), id)
+		return s.client.Delete(ctx, path)
+	case "page":
+		path := fmt.Sprintf("%s/pages/%s", s.baseURL(), id)
+		return s.client.Delete(ctx, path)
+	default:
+		// Auto-detect: try page first, fall back to folder on 404
+		pagePath := fmt.Sprintf("%s/pages/%s", s.baseURL(), id)
+		err := s.client.Delete(ctx, pagePath)
+		if err == nil {
+			return nil
+		}
+		if apiErr, ok := err.(*APIError); ok && apiErr.StatusCode == 404 {
+			folderPath := fmt.Sprintf("%s/folders/%s", s.baseURL(), id)
+			return s.client.Delete(ctx, folderPath)
+		}
+		return err
 	}
-
-	// If 404, try as a folder
-	if apiErr, ok := err.(*APIError); ok && apiErr.StatusCode == 404 {
-		folderPath := fmt.Sprintf("%s/folders/%s", s.baseURL(), pageID)
-		return s.client.Delete(ctx, folderPath)
-	}
-
-	return err
 }
 
 // PublishPage publishes a draft page by changing its status to current.

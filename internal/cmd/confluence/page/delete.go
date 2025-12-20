@@ -15,6 +15,7 @@ import (
 type DeleteOptions struct {
 	IO      *iostreams.IOStreams
 	PageIDs []string
+	Type    string
 	Force   bool
 	JSON    bool
 }
@@ -43,8 +44,8 @@ For a reversible option, consider using 'atl confluence page archive' instead.`,
   # Delete without confirmation prompt
   atl confluence page delete 123456 --force
 
-  # Delete a folder
-  atl confluence page delete 123456  # folders use the same command
+  # Delete a folder explicitly
+  atl confluence page delete 123456 --type folder
 
   # Output as JSON
   atl confluence page delete 123456 --force --json`,
@@ -55,6 +56,7 @@ For a reversible option, consider using 'atl confluence page archive' instead.`,
 		},
 	}
 
+	cmd.Flags().StringVarP(&opts.Type, "type", "t", "", "Content type: 'page' or 'folder' (auto-detects if not specified)")
 	cmd.Flags().BoolVarP(&opts.Force, "force", "f", false, "Skip confirmation prompt")
 	cmd.Flags().BoolVarP(&opts.JSON, "json", "j", false, "Output as JSON")
 
@@ -96,7 +98,7 @@ func runDelete(opts *DeleteOptions) error {
 	var failedPages []string
 
 	for _, pageID := range opts.PageIDs {
-		err := confluence.DeletePage(ctx, pageID)
+		err := confluence.DeleteContent(ctx, pageID, opts.Type)
 		if err != nil {
 			failedPages = append(failedPages, pageID)
 			if !opts.JSON {
