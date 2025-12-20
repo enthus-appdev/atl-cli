@@ -239,14 +239,19 @@ func (s *ConfluenceService) GetSpaceByKey(ctx context.Context, key string) (*Spa
 }
 
 // GetPages gets pages in a space.
-func (s *ConfluenceService) GetPages(ctx context.Context, spaceID string, limit int, cursor string) (*PagesResponse, error) {
+// status can be: "current", "draft", "archived", or empty for current.
+func (s *ConfluenceService) GetPages(ctx context.Context, spaceID string, limit int, cursor string, status string) (*PagesResponse, error) {
 	path := fmt.Sprintf("%s/spaces/%s/pages", s.baseURL(), spaceID)
 
 	params := url.Values{}
 	if limit > 0 {
 		params.Set("limit", strconv.Itoa(capLimit(limit, ConfluenceMaxLimit)))
 	}
-	params.Set("status", "current")
+	if status != "" {
+		params.Set("status", status)
+	} else {
+		params.Set("status", "current")
+	}
 	if cursor != "" {
 		params.Set("cursor", cursor)
 	}
@@ -260,12 +265,13 @@ func (s *ConfluenceService) GetPages(ctx context.Context, spaceID string, limit 
 }
 
 // GetPagesAll gets all pages in a space.
-func (s *ConfluenceService) GetPagesAll(ctx context.Context, spaceID string) ([]*Page, error) {
+// status can be "current", "draft", "archived", or empty for current.
+func (s *ConfluenceService) GetPagesAll(ctx context.Context, spaceID string, status string) ([]*Page, error) {
 	var allPages []*Page
 	cursor := ""
 
 	for {
-		result, err := s.GetPages(ctx, spaceID, 100, cursor)
+		result, err := s.GetPages(ctx, spaceID, 100, cursor, status)
 		if err != nil {
 			return nil, err
 		}
@@ -322,14 +328,19 @@ type CreatePageRequest struct {
 }
 
 // CreatePage creates a new page.
-func (s *ConfluenceService) CreatePage(ctx context.Context, spaceID, title, content string, parentID string) (*Page, error) {
+// status can be "current" or "draft". Empty defaults to "current".
+func (s *ConfluenceService) CreatePage(ctx context.Context, spaceID, title, content string, parentID string, status string) (*Page, error) {
 	path := fmt.Sprintf("%s/pages", s.baseURL())
+
+	if status == "" {
+		status = "current"
+	}
 
 	reqBody := CreatePageRequest{
 		SpaceID:  spaceID,
 		Title:    title,
 		ParentID: parentID,
-		Status:   "current",
+		Status:   status,
 	}
 	reqBody.Body.Representation = "storage"
 	reqBody.Body.Value = content
@@ -383,6 +394,42 @@ func (s *ConfluenceService) UpdatePage(ctx context.Context, pageID, title, conte
 func (s *ConfluenceService) DeletePage(ctx context.Context, pageID string) error {
 	path := fmt.Sprintf("%s/pages/%s", s.baseURL(), pageID)
 	return s.client.Delete(ctx, path)
+}
+
+// PublishPage publishes a draft page by changing its status to current.
+func (s *ConfluenceService) PublishPage(ctx context.Context, pageID string) (*Page, error) {
+	// First get the draft page
+	path := fmt.Sprintf("%s/pages/%s", s.baseURL(), pageID)
+	params := url.Values{}
+	params.Set("status", "draft")
+	params.Set("body-format", "storage")
+
+	var page Page
+	if err := s.client.Get(ctx, path+"?"+params.Encode(), &page); err != nil {
+		return nil, fmt.Errorf("failed to get draft page: %w", err)
+	}
+
+	// Update the page with status=current
+	reqBody := UpdatePageRequest{
+		ID:     pageID,
+		Status: "current",
+		Title:  page.Title,
+	}
+	reqBody.Version.Number = page.Version.Number + 1
+	reqBody.Version.Message = "Published via CLI"
+	reqBody.Body.Representation = "storage"
+	if page.Body != nil && page.Body.Storage != nil {
+		reqBody.Body.Value = page.Body.Storage.Value
+	} else {
+		reqBody.Body.Value = "<p></p>"
+	}
+
+	var result Page
+	if err := s.client.Put(ctx, path, reqBody, &result); err != nil {
+		return nil, fmt.Errorf("failed to publish page: %w", err)
+	}
+
+	return &result, nil
 }
 
 // baseURLV1 returns the base URL for Confluence v1 API.

@@ -15,6 +15,7 @@ import (
 type ListOptions struct {
 	IO     *iostreams.IOStreams
 	Space  string
+	Status string
 	Limit  int
 	Cursor string
 	All    bool
@@ -34,9 +35,17 @@ func NewCmdList(ios *iostreams.IOStreams) *cobra.Command {
 		Short:   "List pages in a space",
 		Long: `List Confluence pages in a specified space.
 
-The --space flag is required. Use 'atl confluence space list' to see available spaces.`,
+The --space flag is required. Use 'atl confluence space list' to see available spaces.
+
+Filter by status to see draft or archived pages.`,
 		Example: `  # List pages in a space
   atl confluence page list --space DOCS
+
+  # List draft pages
+  atl confluence page list --space DOCS --status draft
+
+  # List archived pages
+  atl confluence page list --space DOCS --status archived
 
   # List more pages
   atl confluence page list --space DOCS --limit 100
@@ -58,6 +67,7 @@ The --space flag is required. Use 'atl confluence space list' to see available s
 	}
 
 	cmd.Flags().StringVarP(&opts.Space, "space", "s", "", "Space key (required)")
+	cmd.Flags().StringVar(&opts.Status, "status", "", "Filter by status: current, draft, archived (default: current)")
 	cmd.Flags().IntVarP(&opts.Limit, "limit", "l", 25, "Maximum number of pages per page")
 	cmd.Flags().StringVar(&opts.Cursor, "cursor", "", "Pagination cursor for next page")
 	cmd.Flags().BoolVar(&opts.All, "all", false, "Fetch all pages (ignores --limit and --cursor)")
@@ -107,7 +117,7 @@ func runList(opts *ListOptions) error {
 		if !opts.JSON {
 			fmt.Fprint(opts.IO.Out, "Fetching all pages...")
 		}
-		pages, err = confluence.GetPagesAll(ctx, space.ID)
+		pages, err = confluence.GetPagesAll(ctx, space.ID, opts.Status)
 		if err != nil {
 			return fmt.Errorf("failed to get pages: %w", err)
 		}
@@ -116,7 +126,7 @@ func runList(opts *ListOptions) error {
 		}
 	} else {
 		// Single page fetch
-		result, err := confluence.GetPages(ctx, space.ID, opts.Limit, opts.Cursor)
+		result, err := confluence.GetPages(ctx, space.ID, opts.Limit, opts.Cursor, opts.Status)
 		if err != nil {
 			return fmt.Errorf("failed to get pages: %w", err)
 		}

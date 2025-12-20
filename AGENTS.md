@@ -115,12 +115,16 @@ atl confluence space list --json        # List as JSON
 atl confluence page view <id>           # View page by ID
 atl confluence page view --space DOCS --title "Title"
 atl confluence page list --space DOCS   # List pages in space
+atl confluence page list --space DOCS --status draft     # List draft pages
+atl confluence page list --space DOCS --status archived  # List archived pages
 atl confluence page search "query"      # Search pages
 atl confluence page children <id>       # List child pages
 atl confluence page create --space DOCS --title "New Page" --body "<p>Content</p>"
+atl confluence page create --space DOCS --title "Draft" --draft   # Create as draft
 atl confluence page edit <id> --body "<p>New content</p>"
 atl confluence page delete <id>         # Delete page (prompts for confirmation)
 atl confluence page delete <id> --force # Delete without confirmation
+atl confluence page publish <id>        # Publish a draft page
 atl confluence page move <id> --parent <parent-id>
 atl confluence page archive <id>        # Archive page
 atl confluence page archive <id> --unarchive

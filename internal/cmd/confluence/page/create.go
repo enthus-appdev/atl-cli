@@ -19,6 +19,7 @@ type CreateOptions struct {
 	Title    string
 	ParentID string
 	Body     string
+	Draft    bool
 	Web      bool
 	JSON     bool
 }
@@ -32,12 +33,18 @@ func NewCmdCreate(ios *iostreams.IOStreams) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "create",
 		Short: "Create a new Confluence page",
-		Long:  `Create a new page in a Confluence space.`,
+		Long: `Create a new page in a Confluence space.
+
+Use --draft to create a draft page that is not yet published.
+Draft pages can later be published using 'atl confluence page publish'.`,
 		Example: `  # Create a page
   atl confluence page create --space DOCS --title "New Page"
 
   # Create a page with content
   atl confluence page create --space DOCS --title "New Page" --body "Page content here"
+
+  # Create a draft page (not published)
+  atl confluence page create --space DOCS --title "Draft Page" --draft
 
   # Create a child page
   atl confluence page create --space DOCS --title "Child Page" --parent 123456
@@ -66,6 +73,7 @@ func NewCmdCreate(ios *iostreams.IOStreams) *cobra.Command {
 	cmd.Flags().StringVarP(&opts.Title, "title", "t", "", "Page title (required)")
 	cmd.Flags().StringVarP(&opts.ParentID, "parent", "p", "", "Parent page ID")
 	cmd.Flags().StringVarP(&opts.Body, "body", "b", "", "Page body content")
+	cmd.Flags().BoolVarP(&opts.Draft, "draft", "d", false, "Create as draft (not published)")
 	cmd.Flags().BoolVarP(&opts.Web, "web", "w", false, "Open created page in browser")
 	cmd.Flags().BoolVarP(&opts.JSON, "json", "j", false, "Output as JSON")
 
@@ -77,6 +85,7 @@ type PageCreateOutput struct {
 	ID      string `json:"id"`
 	Title   string `json:"title"`
 	SpaceID string `json:"space_id"`
+	Status  string `json:"status"`
 	URL     string `json:"url"`
 }
 
@@ -103,7 +112,12 @@ func runCreate(opts *CreateOptions) error {
 		body = "<p>" + body + "</p>"
 	}
 
-	page, err := confluence.CreatePage(ctx, space.ID, opts.Title, body, opts.ParentID)
+	status := ""
+	if opts.Draft {
+		status = "draft"
+	}
+
+	page, err := confluence.CreatePage(ctx, space.ID, opts.Title, body, opts.ParentID, status)
 	if err != nil {
 		return fmt.Errorf("failed to create page: %w", err)
 	}
@@ -121,6 +135,7 @@ func runCreate(opts *CreateOptions) error {
 		ID:      page.ID,
 		Title:   page.Title,
 		SpaceID: page.SpaceID,
+		Status:  page.Status,
 		URL:     url,
 	}
 
@@ -128,8 +143,13 @@ func runCreate(opts *CreateOptions) error {
 		return output.JSON(opts.IO.Out, createOutput)
 	}
 
-	fmt.Fprintf(opts.IO.Out, "Created page: %s\n", createOutput.Title)
+	if page.Status == "draft" {
+		fmt.Fprintf(opts.IO.Out, "Created draft page: %s\n", createOutput.Title)
+	} else {
+		fmt.Fprintf(opts.IO.Out, "Created page: %s\n", createOutput.Title)
+	}
 	fmt.Fprintf(opts.IO.Out, "ID: %s\n", createOutput.ID)
+	fmt.Fprintf(opts.IO.Out, "Status: %s\n", createOutput.Status)
 	fmt.Fprintf(opts.IO.Out, "URL: %s\n", createOutput.URL)
 
 	return nil
