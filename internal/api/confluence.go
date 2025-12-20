@@ -467,34 +467,51 @@ func (s *ConfluenceService) SearchPages(ctx context.Context, query string, limit
 	return &result, nil
 }
 
-// ConfluenceSearchResult represents a search result from CQL search.
-type ConfluenceSearchResult struct {
-	ID         string                     `json:"id"`
-	Type       string                     `json:"type"`
-	Status     string                     `json:"status"`
-	Title      string                     `json:"title"`
-	SpaceID    string                     `json:"spaceId,omitempty"`
-	ParentID   string                     `json:"parentId,omitempty"`
-	ParentType string                     `json:"parentType,omitempty"`
-	Excerpt    string                     `json:"excerpt,omitempty"`
-	Links      *ConfluenceSearchResultLink `json:"_links,omitempty"`
+// ConfluenceSearchResultV1 represents a search result from v1 CQL search.
+// The v1 API wraps content in a "content" field.
+type ConfluenceSearchResultV1 struct {
+	Content struct {
+		ID     string `json:"id"`
+		Type   string `json:"type"`
+		Status string `json:"status"`
+		Title  string `json:"title"`
+		Space  *struct {
+			Key string `json:"key"`
+		} `json:"space,omitempty"`
+	} `json:"content"`
+	Excerpt string `json:"excerpt,omitempty"`
+	URL     string `json:"url,omitempty"`
 }
 
-// ConfluenceSearchResultLink contains links for a search result.
-type ConfluenceSearchResultLink struct {
-	WebUI string `json:"webui,omitempty"`
+// ConfluenceSearchResponseV1 represents the v1 search response.
+type ConfluenceSearchResponseV1 struct {
+	Results []*ConfluenceSearchResultV1 `json:"results"`
+	Links   *PaginationLinks            `json:"_links,omitempty"`
+	Start   int                         `json:"start"`
+	Limit   int                         `json:"limit"`
+	Size    int                         `json:"size"`
+}
+
+// ConfluenceSearchResult represents a normalized search result.
+type ConfluenceSearchResult struct {
+	ID       string `json:"id"`
+	Type     string `json:"type"`
+	Status   string `json:"status"`
+	Title    string `json:"title"`
+	SpaceKey string `json:"spaceKey,omitempty"`
+	Excerpt  string `json:"excerpt,omitempty"`
 }
 
 // ConfluenceSearchResponse represents a paginated search response.
 type ConfluenceSearchResponse struct {
 	Results []*ConfluenceSearchResult `json:"results"`
-	Links   *PaginationLinks          `json:"_links,omitempty"`
 }
 
 // SearchWithCQL searches for content using CQL (Confluence Query Language).
 // Example CQL: "title ~ 'keyword'" or "space = 'SPACEKEY' AND title ~ 'keyword'"
+// Note: Search endpoint only exists in v1 API, not v2.
 func (s *ConfluenceService) SearchWithCQL(ctx context.Context, cql string, limit int, cursor string) (*ConfluenceSearchResponse, error) {
-	path := fmt.Sprintf("%s/search", s.baseURL())
+	path := fmt.Sprintf("%s/search", s.baseURLV1())
 
 	params := url.Values{}
 	params.Set("cql", cql)
@@ -502,15 +519,34 @@ func (s *ConfluenceService) SearchWithCQL(ctx context.Context, cql string, limit
 		params.Set("limit", strconv.Itoa(limit))
 	}
 	if cursor != "" {
-		params.Set("cursor", cursor)
+		params.Set("start", cursor)
 	}
 
-	var result ConfluenceSearchResponse
-	if err := s.client.Get(ctx, path+"?"+params.Encode(), &result); err != nil {
+	var v1Result ConfluenceSearchResponseV1
+	if err := s.client.Get(ctx, path+"?"+params.Encode(), &v1Result); err != nil {
 		return nil, err
 	}
 
-	return &result, nil
+	// Convert v1 response to normalized format
+	result := &ConfluenceSearchResponse{
+		Results: make([]*ConfluenceSearchResult, 0, len(v1Result.Results)),
+	}
+	for _, r := range v1Result.Results {
+		spaceKey := ""
+		if r.Content.Space != nil {
+			spaceKey = r.Content.Space.Key
+		}
+		result.Results = append(result.Results, &ConfluenceSearchResult{
+			ID:       r.Content.ID,
+			Type:     r.Content.Type,
+			Status:   r.Content.Status,
+			Title:    r.Content.Title,
+			SpaceKey: spaceKey,
+			Excerpt:  r.Excerpt,
+		})
+	}
+
+	return result, nil
 }
 
 // SearchByTitle searches for pages by title using CQL contains match.

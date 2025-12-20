@@ -64,12 +64,12 @@ By default, searches page titles. Use --cql for advanced searches.`,
 
 // SearchResultOutput represents a search result in the output.
 type SearchResultOutput struct {
-	ID      string `json:"id"`
-	Title   string `json:"title"`
-	SpaceID string `json:"space_id,omitempty"`
-	Type    string `json:"type"`
-	Status  string `json:"status"`
-	Excerpt string `json:"excerpt,omitempty"`
+	ID       string `json:"id"`
+	Title    string `json:"title"`
+	SpaceKey string `json:"space_key,omitempty"`
+	Type     string `json:"type"`
+	Status   string `json:"status"`
+	Excerpt  string `json:"excerpt,omitempty"`
 }
 
 // SearchOutput represents the output for search results.
@@ -114,12 +114,12 @@ func runSearch(opts *SearchOptions) error {
 
 	for _, r := range result.Results {
 		searchOutput.Results = append(searchOutput.Results, &SearchResultOutput{
-			ID:      r.ID,
-			Title:   r.Title,
-			SpaceID: r.SpaceID,
-			Type:    r.Type,
-			Status:  r.Status,
-			Excerpt: r.Excerpt,
+			ID:       r.ID,
+			Title:    r.Title,
+			SpaceKey: r.SpaceKey,
+			Type:     r.Type,
+			Status:   r.Status,
+			Excerpt:  r.Excerpt,
 		})
 	}
 
@@ -145,7 +145,7 @@ func runSearch(opts *SearchOptions) error {
 		rows = append(rows, []string{
 			r.ID,
 			title,
-			r.SpaceID,
+			r.SpaceKey,
 			r.Status,
 		})
 	}
