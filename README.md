@@ -80,6 +80,47 @@ atl confluence space list --json
 
 Plain text output is also structured for easy parsing by LLMs.
 
+## Markdown Formatting
+
+Issue descriptions and comments support **Markdown syntax**, which is automatically converted to Jira's Atlassian Document Format (ADF):
+
+```bash
+# Create issue with markdown description
+atl issue create --project PROJ --type Task --summary "Feature" --description "## Goals
+
+- Goal 1
+- Goal 2
+
+**Important**: See [docs](https://example.com) for details."
+
+# Add comment with markdown
+atl issue comment PROJ-1234 --body "## Summary
+
+Fixed the **critical** bug in \`main.go\`.
+
+\`\`\`go
+func main() {
+    fmt.Println(\"Hello\")
+}
+\`\`\`"
+```
+
+### Supported Markdown
+
+| Syntax | Example |
+|--------|---------|
+| Headings | `# H1` through `###### H6` |
+| Bold | `**bold**` or `__bold__` |
+| Italic | `*italic*` or `_italic_` |
+| Strikethrough | `~~deleted~~` |
+| Inline code | `` `code` `` |
+| Code blocks | ` ``` ` with optional language |
+| Links | `[text](url)` |
+| Bullet lists | `- item` or `* item` |
+| Numbered lists | `1. item` |
+| Blockquotes | `> quote` |
+| Horizontal rules | `---` or `***` |
+
 ## Commands
 
 ### Authentication
