@@ -45,9 +45,10 @@ func DefaultScopes() []string {
 		"write:issue:jira-software",
 		"read:sprint:jira-software",
 		"write:sprint:jira-software",
-		// Confluence scopes (classic) - for v1 API (archive, move)
+		// Confluence scopes (classic) - for v1 API (archive, move, search)
 		"read:confluence-content.all",
 		"write:confluence-content",
+		"search:confluence",
 		// Confluence scopes (granular) - for v2 API (pages, spaces, search)
 		"read:space:confluence",
 		"read:page:confluence",
