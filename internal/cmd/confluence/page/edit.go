@@ -17,6 +17,7 @@ type EditOptions struct {
 	PageID string
 	Title  string
 	Body   string
+	Append bool
 	JSON   bool
 }
 
@@ -29,15 +30,21 @@ func NewCmdEdit(ios *iostreams.IOStreams) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "edit <page-id>",
 		Short: "Edit a Confluence page",
-		Long:  `Edit the content of an existing Confluence page.`,
+		Long: `Edit the content of an existing Confluence page.
+
+By default, --body replaces the entire page content.
+Use --append to add content to the end of the existing page instead.`,
 		Example: `  # Edit page title
   atl confluence page edit 123456 --title "Updated Title"
 
-  # Edit page content
-  atl confluence page edit 123456 --body "New content here"
+  # Replace page content
+  atl confluence page edit 123456 --body "<p>New content here</p>"
+
+  # Append to existing content
+  atl confluence page edit 123456 --body "<p>Additional content</p>" --append
 
   # Edit both title and content
-  atl confluence page edit 123456 --title "New Title" --body "New content"
+  atl confluence page edit 123456 --title "New Title" --body "<p>New content</p>"
 
   # Output as JSON
   atl confluence page edit 123456 --title "New Title" --json`,
@@ -50,6 +57,7 @@ func NewCmdEdit(ios *iostreams.IOStreams) *cobra.Command {
 
 	cmd.Flags().StringVarP(&opts.Title, "title", "t", "", "New page title")
 	cmd.Flags().StringVarP(&opts.Body, "body", "b", "", "New page body content")
+	cmd.Flags().BoolVarP(&opts.Append, "append", "a", false, "Append to existing content instead of replacing")
 	cmd.Flags().BoolVarP(&opts.JSON, "json", "j", false, "Output as JSON")
 
 	return cmd
@@ -87,11 +95,23 @@ func runEdit(opts *EditOptions) error {
 		title = currentPage.Title
 	}
 
+	// Get existing body content
+	existingBody := ""
+	if currentPage.Body != nil && currentPage.Body.Storage != nil {
+		existingBody = currentPage.Body.Storage.Value
+	}
+
 	var body string
 	if opts.Body != "" {
-		body = "<p>" + opts.Body + "</p>"
-	} else if currentPage.Body != nil && currentPage.Body.Storage != nil {
-		body = currentPage.Body.Storage.Value
+		if opts.Append {
+			// Append new content to existing body
+			body = existingBody + opts.Body
+		} else {
+			// Replace with new content
+			body = opts.Body
+		}
+	} else {
+		body = existingBody
 	}
 
 	currentVersion := 1
