@@ -391,28 +391,18 @@ func (s *ConfluenceService) UpdatePage(ctx context.Context, pageID, title, conte
 }
 
 // DeleteContent deletes a page or folder.
-// contentType can be "page", "folder", or empty (auto-detects).
-// Uses v1 API as fallback since v2 folders endpoint doesn't work for legacy folders.
+// contentType can be "page", "folder", or empty (auto-detects by trying page then folder).
+// Note: v1 /content/{id} DELETE is deprecated (410 Gone), so we only use v2 endpoints.
 func (s *ConfluenceService) DeleteContent(ctx context.Context, id string, contentType string) error {
 	switch contentType {
 	case "folder":
-		// Try v2 first, fall back to v1
 		path := fmt.Sprintf("%s/folders/%s", s.baseURL(), id)
-		err := s.client.Delete(ctx, path)
-		if err == nil {
-			return nil
-		}
-		if apiErr, ok := err.(*APIError); ok && apiErr.StatusCode == 404 {
-			// Try v1 content endpoint for legacy folders
-			v1Path := fmt.Sprintf("%s/content/%s", s.baseURLV1(), id)
-			return s.client.Delete(ctx, v1Path)
-		}
-		return err
+		return s.client.Delete(ctx, path)
 	case "page":
 		path := fmt.Sprintf("%s/pages/%s", s.baseURL(), id)
 		return s.client.Delete(ctx, path)
 	default:
-		// Auto-detect: try v2 page, then v2 folder, then v1 content
+		// Auto-detect: try v2 page first, then v2 folder
 		pagePath := fmt.Sprintf("%s/pages/%s", s.baseURL(), id)
 		err := s.client.Delete(ctx, pagePath)
 		if err == nil {
@@ -420,16 +410,7 @@ func (s *ConfluenceService) DeleteContent(ctx context.Context, id string, conten
 		}
 		if apiErr, ok := err.(*APIError); ok && apiErr.StatusCode == 404 {
 			folderPath := fmt.Sprintf("%s/folders/%s", s.baseURL(), id)
-			err = s.client.Delete(ctx, folderPath)
-			if err == nil {
-				return nil
-			}
-			if apiErr, ok := err.(*APIError); ok && apiErr.StatusCode == 404 {
-				// Last resort: v1 content endpoint
-				v1Path := fmt.Sprintf("%s/content/%s", s.baseURLV1(), id)
-				return s.client.Delete(ctx, v1Path)
-			}
-			return err
+			return s.client.Delete(ctx, folderPath)
 		}
 		return err
 	}
@@ -473,8 +454,9 @@ func (s *ConfluenceService) PublishPage(ctx context.Context, pageID string) (*Pa
 
 // baseURLV1 returns the base URL for Confluence v1 API.
 //
-// V1 is required for: search (CQL), archive, unarchive, move.
-// These endpoints don't exist in v2 as of Dec 2024.
+// V1 is required for: search (CQL), archive, move.
+// Note: v1 /content/{id} DELETE and PUT are deprecated (410 Gone).
+// Unarchive has no API - must use web UI.
 // See ConfluenceService docs for full API version strategy.
 func (s *ConfluenceService) baseURLV1() string {
 	return s.client.ConfluenceBaseURLV1()
@@ -493,35 +475,12 @@ func (s *ConfluenceService) ArchivePage(ctx context.Context, pageID string) erro
 }
 
 // UnarchivePage restores an archived page.
-// Note: There's no dedicated unarchive endpoint in the REST API.
-// This uses the update page endpoint to change status back to current.
+// NOTE: Confluence Cloud has no REST API for unarchiving pages.
+// The v1 workaround using PUT /content/{id} was deprecated (410 Gone).
+// Users must restore archived pages via the Confluence web UI.
+// Feature request: https://jira.atlassian.com/browse/CONFCLOUD-75065
 func (s *ConfluenceService) UnarchivePage(ctx context.Context, pageID string) error {
-	// First get the archived page to get its current version
-	path := fmt.Sprintf("%s/content/%s?status=archived", s.baseURLV1(), pageID)
-	var page struct {
-		ID      string `json:"id"`
-		Title   string `json:"title"`
-		Type    string `json:"type"`
-		Version struct {
-			Number int `json:"number"`
-		} `json:"version"`
-	}
-	if err := s.client.Get(ctx, path, &page); err != nil {
-		return fmt.Errorf("failed to get archived page: %w", err)
-	}
-
-	// Update the page status to current
-	updatePath := fmt.Sprintf("%s/content/%s", s.baseURLV1(), pageID)
-	updateBody := map[string]interface{}{
-		"id":     pageID,
-		"type":   page.Type,
-		"title":  page.Title,
-		"status": "current",
-		"version": map[string]int{
-			"number": page.Version.Number + 1,
-		},
-	}
-	return s.client.Put(ctx, updatePath, updateBody, nil)
+	return fmt.Errorf("unarchive is not supported via API - Confluence has no REST endpoint for restoring archived pages. Please use the Confluence web UI to restore archived pages")
 }
 
 // ArchivePages archives multiple pages using the v1 API.
