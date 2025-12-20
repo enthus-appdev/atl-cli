@@ -33,8 +33,11 @@ func capLimit(limit, max int) int {
 //     Better performance, cleaner response format, and actively developed.
 //
 //   - v1 API (/wiki/rest/api): Required for operations not yet in v2:
+//
 //   - Search (CQL): No v2 equivalent exists (as of Dec 2024)
+//
 //   - Archive/Unarchive: Only available in v1
+//
 //   - Move page: Only available in v1
 //
 // When Atlassian adds these endpoints to v2, we should migrate.

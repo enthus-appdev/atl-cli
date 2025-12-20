@@ -60,27 +60,29 @@ type Attachment struct {
 
 // ADF represents Atlassian Document Format content.
 type ADF struct {
-	Type    string        `json:"type"`
-	Version int           `json:"version,omitempty"`
-	Content []ADFContent  `json:"content,omitempty"`
-	Text    string        `json:"text,omitempty"`
-	Attrs   *ADFAttrs     `json:"attrs,omitempty"`
-	Marks   []ADFMark     `json:"marks,omitempty"`
+	Type    string       `json:"type"`
+	Version int          `json:"version,omitempty"`
+	Content []ADFContent `json:"content,omitempty"`
+	Text    string       `json:"text,omitempty"`
+	Attrs   *ADFAttrs    `json:"attrs,omitempty"`
+	Marks   []ADFMark    `json:"marks,omitempty"`
 }
 
 // ADFContent represents content within an ADF document.
 type ADFContent struct {
-	Type    string        `json:"type"`
-	Content []ADFContent  `json:"content,omitempty"`
-	Text    string        `json:"text,omitempty"`
-	Attrs   *ADFAttrs     `json:"attrs,omitempty"`
-	Marks   []ADFMark     `json:"marks,omitempty"`
+	Type    string       `json:"type"`
+	Content []ADFContent `json:"content,omitempty"`
+	Text    string       `json:"text,omitempty"`
+	Attrs   *ADFAttrs    `json:"attrs,omitempty"`
+	Marks   []ADFMark    `json:"marks,omitempty"`
 }
 
 // ADFAttrs represents attributes in ADF.
 type ADFAttrs struct {
-	Level int    `json:"level,omitempty"`
-	URL   string `json:"url,omitempty"`
+	Level    int    `json:"level,omitempty"`
+	URL      string `json:"url,omitempty"`
+	Href     string `json:"href,omitempty"`
+	Language string `json:"language,omitempty"`
 }
 
 // ADFMark represents text marks in ADF.
@@ -120,10 +122,10 @@ type IssueType struct {
 
 // User represents a Jira user.
 type User struct {
-	AccountID    string `json:"accountId"`
-	DisplayName  string `json:"displayName"`
-	EmailAddress string `json:"emailAddress,omitempty"`
-	Active       bool   `json:"active"`
+	AccountID    string            `json:"accountId"`
+	DisplayName  string            `json:"displayName"`
+	EmailAddress string            `json:"emailAddress,omitempty"`
+	Active       bool              `json:"active"`
 	AvatarUrls   map[string]string `json:"avatarUrls,omitempty"`
 }
 
@@ -356,11 +358,11 @@ func (s *JiraService) CreateIssue(ctx context.Context, req *CreateIssueRequest) 
 
 // ProjectIssueType represents an issue type available in a project.
 type ProjectIssueType struct {
-	ID          string `json:"id"`
-	Name        string `json:"name"`
-	Description string `json:"description,omitempty"`
-	Subtask     bool   `json:"subtask"`
-	HierarchyLevel int `json:"hierarchyLevel,omitempty"`
+	ID             string `json:"id"`
+	Name           string `json:"name"`
+	Description    string `json:"description,omitempty"`
+	Subtask        bool   `json:"subtask"`
+	HierarchyLevel int    `json:"hierarchyLevel,omitempty"`
 }
 
 // ProjectIssueTypesResponse represents the response from createmeta endpoint.
@@ -662,10 +664,10 @@ type RemoteLinkApp struct {
 
 // RemoteLinkObject represents the linked object details.
 type RemoteLinkObject struct {
-	URL     string           `json:"url"`
-	Title   string           `json:"title"`
-	Summary string           `json:"summary,omitempty"`
-	Icon    *RemoteLinkIcon  `json:"icon,omitempty"`
+	URL     string            `json:"url"`
+	Title   string            `json:"title"`
+	Summary string            `json:"summary,omitempty"`
+	Icon    *RemoteLinkIcon   `json:"icon,omitempty"`
 	Status  *RemoteLinkStatus `json:"status,omitempty"`
 }
 
@@ -903,9 +905,9 @@ type SprintsResponse struct {
 
 // Board represents a Jira board.
 type Board struct {
-	ID       int    `json:"id"`
-	Name     string `json:"name"`
-	Type     string `json:"type"` // scrum, kanban
+	ID       int            `json:"id"`
+	Name     string         `json:"name"`
+	Type     string         `json:"type"` // scrum, kanban
 	Location *BoardLocation `json:"location,omitempty"`
 }
 
@@ -1063,28 +1065,12 @@ func (s *JiraService) GetBoardIssues(ctx context.Context, boardID int, maxResult
 	return result.Issues, nil
 }
 
-// TextToADF converts plain text to Atlassian Document Format.
+// TextToADF converts plain text or markdown to Atlassian Document Format.
+// Supports markdown syntax including: headings (#), bold (**), italic (*),
+// inline code (`), code blocks (```), links, bullet lists (-/*), ordered lists,
+// blockquotes (>), and horizontal rules (---).
 func TextToADF(text string) *ADF {
-	paragraphs := strings.Split(text, "\n\n")
-	content := make([]ADFContent, 0, len(paragraphs))
-
-	for _, para := range paragraphs {
-		if para == "" {
-			continue
-		}
-		content = append(content, ADFContent{
-			Type: "paragraph",
-			Content: []ADFContent{
-				{Type: "text", Text: para},
-			},
-		})
-	}
-
-	return &ADF{
-		Type:    "doc",
-		Version: 1,
-		Content: content,
-	}
+	return MarkdownToADF(text)
 }
 
 // ADFToText converts Atlassian Document Format to plain text.
