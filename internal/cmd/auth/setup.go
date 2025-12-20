@@ -161,7 +161,6 @@ func runSetup(opts *SetupOptions) error {
 		fmt.Fprintln(opts.IO.Out, "    • In the "+output.Bold.Render("Classic Scopes")+" tab, enable:")
 		fmt.Fprintln(opts.IO.Out, "        "+output.Faint.Render("read:confluence-content.all"))
 		fmt.Fprintln(opts.IO.Out, "        "+output.Faint.Render("write:confluence-content"))
-		fmt.Fprintln(opts.IO.Out, "        "+output.Faint.Render("search:confluence"))
 		fmt.Fprintln(opts.IO.Out, "    • In the "+output.Bold.Render("Granular Scopes")+" tab, enable:")
 		fmt.Fprintln(opts.IO.Out, "        "+output.Faint.Render("read:space:confluence"))
 		fmt.Fprintln(opts.IO.Out, "        "+output.Faint.Render("read:page:confluence"))
@@ -169,6 +168,7 @@ func runSetup(opts *SetupOptions) error {
 		fmt.Fprintln(opts.IO.Out, "        "+output.Faint.Render("read:content:confluence"))
 		fmt.Fprintln(opts.IO.Out, "        "+output.Faint.Render("write:content:confluence"))
 		fmt.Fprintln(opts.IO.Out, "        "+output.Faint.Render("read:content.metadata:confluence"))
+		fmt.Fprintln(opts.IO.Out, "        "+output.Faint.Render("read:content-details:confluence"))
 		fmt.Fprintln(opts.IO.Out, "        "+output.Faint.Render("read:hierarchical-content:confluence"))
 		fmt.Fprintln(opts.IO.Out, "")
 
