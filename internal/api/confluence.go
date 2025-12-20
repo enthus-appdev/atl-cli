@@ -7,6 +7,22 @@ import (
 	"strconv"
 )
 
+const (
+	// ConfluenceMaxLimit is the maximum allowed limit for Confluence API pagination.
+	// The API returns 400 if you exceed this.
+	ConfluenceMaxLimit = 250
+)
+
+// capLimit ensures the limit doesn't exceed the API maximum.
+// Returns the capped limit and logs a debug message if capping occurred.
+func capLimit(limit, max int) int {
+	if limit > max {
+		debugLog("Limit %d exceeds max %d, capping", limit, max)
+		return max
+	}
+	return limit
+}
+
 // ConfluenceService handles Confluence API operations.
 //
 // # API Version Strategy
@@ -142,7 +158,7 @@ func (s *ConfluenceService) GetSpaces(ctx context.Context, limit int, cursor str
 
 	params := url.Values{}
 	if limit > 0 {
-		params.Set("limit", strconv.Itoa(limit))
+		params.Set("limit", strconv.Itoa(capLimit(limit, ConfluenceMaxLimit)))
 	}
 	params.Set("status", "current")
 	if cursor != "" {
@@ -228,7 +244,7 @@ func (s *ConfluenceService) GetPages(ctx context.Context, spaceID string, limit 
 
 	params := url.Values{}
 	if limit > 0 {
-		params.Set("limit", strconv.Itoa(limit))
+		params.Set("limit", strconv.Itoa(capLimit(limit, ConfluenceMaxLimit)))
 	}
 	params.Set("status", "current")
 	if cursor != "" {
@@ -483,7 +499,7 @@ func (s *ConfluenceService) SearchPages(ctx context.Context, query string, limit
 	params := url.Values{}
 	params.Set("title", query)
 	if limit > 0 {
-		params.Set("limit", strconv.Itoa(limit))
+		params.Set("limit", strconv.Itoa(capLimit(limit, ConfluenceMaxLimit)))
 	}
 	params.Set("status", "current")
 
@@ -550,7 +566,7 @@ func (s *ConfluenceService) SearchWithCQL(ctx context.Context, cql string, limit
 	params := url.Values{}
 	params.Set("cql", cql)
 	if limit > 0 {
-		params.Set("limit", strconv.Itoa(limit))
+		params.Set("limit", strconv.Itoa(capLimit(limit, ConfluenceMaxLimit)))
 	}
 	if cursor != "" {
 		params.Set("start", cursor)
@@ -618,7 +634,7 @@ func (s *ConfluenceService) GetPageChildren(ctx context.Context, pageID string, 
 
 	params := url.Values{}
 	if limit > 0 {
-		params.Set("limit", strconv.Itoa(limit))
+		params.Set("limit", strconv.Itoa(capLimit(limit, ConfluenceMaxLimit)))
 	}
 	if cursor != "" {
 		params.Set("cursor", cursor)
@@ -638,7 +654,7 @@ func (s *ConfluenceService) GetPageDescendants(ctx context.Context, pageID strin
 
 	params := url.Values{}
 	if limit > 0 {
-		params.Set("limit", strconv.Itoa(limit))
+		params.Set("limit", strconv.Itoa(capLimit(limit, ConfluenceMaxLimit)))
 	}
 	if cursor != "" {
 		params.Set("cursor", cursor)

@@ -42,6 +42,11 @@ const (
 
 	// DefaultTimeout is the default HTTP client timeout for API requests.
 	DefaultTimeout = 30 * time.Second
+
+	// Retry configuration for transient failures
+	maxRetries     = 3
+	initialBackoff = 500 * time.Millisecond
+	maxBackoff     = 10 * time.Second
 )
 
 // isDebug returns true if debug logging is enabled via ATL_DEBUG=1 environment variable.
@@ -54,6 +59,22 @@ func debugLog(format string, args ...interface{}) {
 	if isDebug() {
 		fmt.Fprintf(os.Stderr, "[DEBUG] "+format+"\n", args...)
 	}
+}
+
+// isRetryableStatus returns true if the HTTP status code indicates a transient error.
+// Retryable: 429 (rate limit), 500, 502, 503, 504 (server errors).
+func isRetryableStatus(statusCode int) bool {
+	return statusCode == 429 || statusCode >= 500
+}
+
+// calculateBackoff returns the backoff duration for the given attempt (0-indexed).
+// Uses exponential backoff: 500ms, 1s, 2s, capped at maxBackoff.
+func calculateBackoff(attempt int) time.Duration {
+	backoff := initialBackoff * (1 << attempt) // 2^attempt * initialBackoff
+	if backoff > maxBackoff {
+		backoff = maxBackoff
+	}
+	return backoff
 }
 
 // Client is an HTTP client for Atlassian APIs.
@@ -201,49 +222,90 @@ func (c *Client) ensureValidToken(ctx context.Context) error {
 
 // Request makes an HTTP request to the API.
 // If the access token is expired, it will automatically attempt to refresh it.
+// Automatically retries on transient failures (429, 5xx) with exponential backoff.
 func (c *Client) Request(ctx context.Context, method, path string, body interface{}, result interface{}) error {
 	// Ensure we have a valid token before making the request
 	if err := c.ensureValidToken(ctx); err != nil {
 		return err
 	}
 
-	var bodyReader io.Reader
+	// Marshal body once so we can retry with the same content
+	var bodyBytes []byte
 	if body != nil {
-		jsonBody, err := json.Marshal(body)
+		var err error
+		bodyBytes, err = json.Marshal(body)
 		if err != nil {
 			return fmt.Errorf("failed to marshal request body: %w", err)
 		}
-		bodyReader = bytes.NewReader(jsonBody)
 	}
 
-	req, err := http.NewRequestWithContext(ctx, method, path, bodyReader)
-	if err != nil {
-		return fmt.Errorf("failed to create request: %w", err)
-	}
+	var lastErr error
+	for attempt := 0; attempt <= maxRetries; attempt++ {
+		if attempt > 0 {
+			backoff := calculateBackoff(attempt - 1)
+			debugLog("Retry %d/%d after %v", attempt, maxRetries, backoff)
+			select {
+			case <-ctx.Done():
+				return ctx.Err()
+			case <-time.After(backoff):
+			}
+		}
 
-	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", c.tokens.AccessToken))
-	req.Header.Set("Accept", "application/json")
-	if body != nil {
-		req.Header.Set("Content-Type", "application/json")
-	}
+		var bodyReader io.Reader
+		if bodyBytes != nil {
+			bodyReader = bytes.NewReader(bodyBytes)
+		}
 
-	debugLog("%s %s", method, path)
+		req, err := http.NewRequestWithContext(ctx, method, path, bodyReader)
+		if err != nil {
+			return fmt.Errorf("failed to create request: %w", err)
+		}
 
-	resp, err := c.httpClient.Do(req)
-	if err != nil {
-		debugLog("Request failed: %v", err)
-		return fmt.Errorf("request failed: %w", err)
-	}
-	defer resp.Body.Close()
+		req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", c.tokens.AccessToken))
+		req.Header.Set("Accept", "application/json")
+		if body != nil {
+			req.Header.Set("Content-Type", "application/json")
+		}
 
-	respBody, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return fmt.Errorf("failed to read response: %w", err)
-	}
+		debugLog("%s %s", method, path)
 
-	debugLog("Response: %d %s (%d bytes)", resp.StatusCode, resp.Status, len(respBody))
+		resp, err := c.httpClient.Do(req)
+		if err != nil {
+			debugLog("Request failed: %v", err)
+			lastErr = fmt.Errorf("request failed: %w", err)
+			continue // Retry on network errors
+		}
 
-	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		respBody, err := io.ReadAll(resp.Body)
+		resp.Body.Close()
+		if err != nil {
+			return fmt.Errorf("failed to read response: %w", err)
+		}
+
+		debugLog("Response: %d %s (%d bytes)", resp.StatusCode, resp.Status, len(respBody))
+
+		if resp.StatusCode >= 200 && resp.StatusCode < 300 {
+			// Success
+			if result != nil && len(respBody) > 0 {
+				if err := json.Unmarshal(respBody, result); err != nil {
+					return fmt.Errorf("failed to parse response: %w", err)
+				}
+			}
+			return nil
+		}
+
+		// Check if error is retryable
+		if isRetryableStatus(resp.StatusCode) && attempt < maxRetries {
+			debugLog("Retryable error %d, will retry", resp.StatusCode)
+			lastErr = &APIError{
+				StatusCode: resp.StatusCode,
+				Status:     resp.Status,
+				Body:       string(respBody),
+			}
+			continue
+		}
+
+		// Non-retryable error or max retries exceeded
 		debugLog("Error body: %s", string(respBody))
 		return &APIError{
 			StatusCode: resp.StatusCode,
@@ -252,13 +314,8 @@ func (c *Client) Request(ctx context.Context, method, path string, body interfac
 		}
 	}
 
-	if result != nil && len(respBody) > 0 {
-		if err := json.Unmarshal(respBody, result); err != nil {
-			return fmt.Errorf("failed to parse response: %w", err)
-		}
-	}
-
-	return nil
+	// All retries exhausted
+	return fmt.Errorf("max retries exceeded: %w", lastErr)
 }
 
 // Get makes a GET request.
