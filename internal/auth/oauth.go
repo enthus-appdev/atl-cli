@@ -62,6 +62,9 @@ func DefaultScopes() []string {
 		"read:content.metadata:confluence",
 		"read:content-details:confluence",
 		"read:hierarchical-content:confluence",
+		// Confluence template scopes (v1 API)
+		"read:template:confluence",
+		"write:template:confluence",
 		// Token refresh
 		"offline_access",
 	}
