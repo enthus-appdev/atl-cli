@@ -125,9 +125,16 @@ atl confluence page edit <id> --body "<p>New content</p>"
 atl confluence page delete <id>         # Delete page (prompts for confirmation)
 atl confluence page delete <id> --force # Delete without confirmation
 atl confluence page publish <id>        # Publish a draft page
-atl confluence page move <id> --parent <parent-id>
-atl confluence page archive <id>        # Archive page
-atl confluence page archive <id> --unarchive
+atl confluence page move <id> --target <parent-id>
+atl confluence page archive <id>        # Archive page (unarchive not supported via API)
+```
+
+### Templates
+
+```bash
+atl confluence template view <id>       # View template
+atl confluence template create --space DOCS --name "Name" --body "<html>"
+atl confluence template update <id> --body "<html>"
 ```
 
 ## Formatting Guidelines

@@ -736,3 +736,140 @@ func (s *ConfluenceService) GetPageDescendantsAll(ctx context.Context, pageID st
 
 	return all, nil
 }
+
+// Template represents a Confluence content template.
+type Template struct {
+	TemplateID   string        `json:"templateId"`
+	Name         string        `json:"name"`
+	Description  string        `json:"description,omitempty"`
+	TemplateType string        `json:"templateType"` // "page" or "blogpost"
+	Body         *TemplateBody `json:"body,omitempty"`
+	Space        *SpaceRef     `json:"space,omitempty"`
+	Labels       []Label       `json:"labels,omitempty"`
+}
+
+// TemplateBody represents the body of a template.
+type TemplateBody struct {
+	Storage *BodyContent `json:"storage,omitempty"`
+	View    *BodyContent `json:"view,omitempty"`
+}
+
+// SpaceRef is a reference to a space in template responses.
+type SpaceRef struct {
+	Key string `json:"key"`
+}
+
+// Label represents a label on content.
+type Label struct {
+	Name   string `json:"name"`
+	Prefix string `json:"prefix,omitempty"`
+}
+
+// CreateTemplateRequest represents a request to create a template.
+type CreateTemplateRequest struct {
+	Name         string `json:"name"`
+	TemplateType string `json:"templateType"` // "page"
+	Description  string `json:"description,omitempty"`
+	Body         struct {
+		Storage struct {
+			Value          string `json:"value"`
+			Representation string `json:"representation"`
+		} `json:"storage"`
+	} `json:"body"`
+	Space *struct {
+		Key string `json:"key"`
+	} `json:"space,omitempty"`
+}
+
+// UpdateTemplateRequest represents a request to update a template.
+type UpdateTemplateRequest struct {
+	TemplateID   string `json:"templateId"`
+	Name         string `json:"name"`
+	TemplateType string `json:"templateType"`
+	Description  string `json:"description,omitempty"`
+	Body         struct {
+		Storage struct {
+			Value          string `json:"value"`
+			Representation string `json:"representation"`
+		} `json:"storage"`
+	} `json:"body"`
+	Space *struct {
+		Key string `json:"key"`
+	} `json:"space,omitempty"`
+}
+
+// GetTemplate gets a template by ID.
+// Uses v1 API as templates are not available in v2.
+func (s *ConfluenceService) GetTemplate(ctx context.Context, templateID string) (*Template, error) {
+	path := fmt.Sprintf("%s/template/%s", s.baseURLV1(), templateID)
+
+	var template Template
+	if err := s.client.Get(ctx, path, &template); err != nil {
+		return nil, err
+	}
+
+	return &template, nil
+}
+
+// CreateTemplate creates a new content template.
+// If spaceKey is empty, creates a global template (requires Confluence Administrator permission).
+// If spaceKey is provided, creates a space template (requires Space Admin permission).
+// Uses v1 API as templates are not available in v2.
+func (s *ConfluenceService) CreateTemplate(ctx context.Context, name, body, description, spaceKey string) (*Template, error) {
+	path := fmt.Sprintf("%s/template", s.baseURLV1())
+
+	reqBody := CreateTemplateRequest{
+		Name:         name,
+		TemplateType: "page",
+		Description:  description,
+	}
+	reqBody.Body.Storage.Value = body
+	reqBody.Body.Storage.Representation = "storage"
+
+	if spaceKey != "" {
+		reqBody.Space = &struct {
+			Key string `json:"key"`
+		}{Key: spaceKey}
+	}
+
+	var template Template
+	if err := s.client.Post(ctx, path, reqBody, &template); err != nil {
+		return nil, err
+	}
+
+	return &template, nil
+}
+
+// UpdateTemplate updates an existing content template.
+// Uses v1 API as templates are not available in v2.
+func (s *ConfluenceService) UpdateTemplate(ctx context.Context, templateID, name, body, description string) (*Template, error) {
+	// First get the existing template to preserve space info
+	existing, err := s.GetTemplate(ctx, templateID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get existing template: %w", err)
+	}
+
+	path := fmt.Sprintf("%s/template", s.baseURLV1())
+
+	reqBody := UpdateTemplateRequest{
+		TemplateID:   templateID,
+		Name:         name,
+		TemplateType: existing.TemplateType,
+		Description:  description,
+	}
+	reqBody.Body.Storage.Value = body
+	reqBody.Body.Storage.Representation = "storage"
+
+	if existing.Space != nil {
+		reqBody.Space = &struct {
+			Key string `json:"key"`
+		}{Key: existing.Space.Key}
+	}
+
+	var template Template
+	if err := s.client.Put(ctx, path, reqBody, &template); err != nil {
+		return nil, err
+	}
+
+	return &template, nil
+}
