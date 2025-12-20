@@ -119,6 +119,8 @@ atl confluence page search "query"      # Search pages
 atl confluence page children <id>       # List child pages
 atl confluence page create --space DOCS --title "New Page" --body "<p>Content</p>"
 atl confluence page edit <id> --body "<p>New content</p>"
+atl confluence page delete <id>         # Delete page (prompts for confirmation)
+atl confluence page delete <id> --force # Delete without confirmation
 atl confluence page move <id> --parent <parent-id>
 atl confluence page archive <id>        # Archive page
 atl confluence page archive <id> --unarchive
