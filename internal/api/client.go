@@ -44,6 +44,18 @@ const (
 	DefaultTimeout = 30 * time.Second
 )
 
+// isDebug returns true if debug logging is enabled via ATL_DEBUG=1 environment variable.
+func isDebug() bool {
+	return os.Getenv("ATL_DEBUG") == "1"
+}
+
+// debugLog prints debug information to stderr if ATL_DEBUG=1 is set.
+func debugLog(format string, args ...interface{}) {
+	if isDebug() {
+		fmt.Fprintf(os.Stderr, "[DEBUG] "+format+"\n", args...)
+	}
+}
+
 // Client is an HTTP client for Atlassian APIs.
 type Client struct {
 	httpClient *http.Client
@@ -215,8 +227,11 @@ func (c *Client) Request(ctx context.Context, method, path string, body interfac
 		req.Header.Set("Content-Type", "application/json")
 	}
 
+	debugLog("%s %s", method, path)
+
 	resp, err := c.httpClient.Do(req)
 	if err != nil {
+		debugLog("Request failed: %v", err)
 		return fmt.Errorf("request failed: %w", err)
 	}
 	defer resp.Body.Close()
@@ -226,7 +241,10 @@ func (c *Client) Request(ctx context.Context, method, path string, body interfac
 		return fmt.Errorf("failed to read response: %w", err)
 	}
 
+	debugLog("Response: %d %s (%d bytes)", resp.StatusCode, resp.Status, len(respBody))
+
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		debugLog("Error body: %s", string(respBody))
 		return &APIError{
 			StatusCode: resp.StatusCode,
 			Status:     resp.Status,

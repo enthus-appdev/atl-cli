@@ -8,8 +8,33 @@ import (
 )
 
 // ConfluenceService handles Confluence API operations.
-// Uses v2 API for most operations, with v1 API for some endpoints
-// that don't exist in v2 (archive, move).
+//
+// # API Version Strategy
+//
+// This service uses a mix of Confluence REST API v1 and v2:
+//
+//   - v2 API (/wiki/api/v2): Used for most operations (pages, spaces, children).
+//     Better performance, cleaner response format, and actively developed.
+//
+//   - v1 API (/wiki/rest/api): Required for operations not yet in v2:
+//   - Search (CQL): No v2 equivalent exists (as of Dec 2024)
+//   - Archive/Unarchive: Only available in v1
+//   - Move page: Only available in v1
+//
+// When Atlassian adds these endpoints to v2, we should migrate.
+// Track progress: https://developer.atlassian.com/cloud/confluence/rest/v2/intro/
+//
+// # Required OAuth Scopes
+//
+// Classic scopes (for v1 operations):
+//   - read:confluence-content.all
+//   - write:confluence-content
+//   - search:confluence (required for CQL search)
+//
+// Granular scopes (for v2 operations):
+//   - read:page:confluence, write:page:confluence
+//   - read:space:confluence
+//   - read:content:confluence, write:content:confluence
 type ConfluenceService struct {
 	client *Client
 }
@@ -345,7 +370,10 @@ func (s *ConfluenceService) DeletePage(ctx context.Context, pageID string) error
 }
 
 // baseURLV1 returns the base URL for Confluence v1 API.
-// Some endpoints like archive only exist in v1.
+//
+// V1 is required for: search (CQL), archive, unarchive, move.
+// These endpoints don't exist in v2 as of Dec 2024.
+// See ConfluenceService docs for full API version strategy.
 func (s *ConfluenceService) baseURLV1() string {
 	return s.client.ConfluenceBaseURLV1()
 }
@@ -508,8 +536,14 @@ type ConfluenceSearchResponse struct {
 }
 
 // SearchWithCQL searches for content using CQL (Confluence Query Language).
-// Example CQL: "title ~ 'keyword'" or "space = 'SPACEKEY' AND title ~ 'keyword'"
-// Note: Search endpoint only exists in v1 API, not v2.
+//
+// Example CQL queries:
+//   - "title ~ 'keyword'" - search by title
+//   - "space = 'SPACEKEY' AND title ~ 'keyword'" - search in specific space
+//   - "type = page AND text ~ 'content'" - full-text search
+//
+// Uses v1 API because search endpoint doesn't exist in v2 (as of Dec 2024).
+// Requires OAuth scope: search:confluence (classic scope).
 func (s *ConfluenceService) SearchWithCQL(ctx context.Context, cql string, limit int, cursor string) (*ConfluenceSearchResponse, error) {
 	path := fmt.Sprintf("%s/search", s.baseURLV1())
 

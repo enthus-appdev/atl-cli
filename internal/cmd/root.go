@@ -43,7 +43,10 @@ It provides commands for:
   - Confluence: Read and edit pages
   - Tempo: Log and manage worklogs
 
-Get started by running 'atl auth login' to authenticate with your Atlassian account.`,
+Get started by running 'atl auth login' to authenticate with your Atlassian account.
+
+Environment variables:
+  ATL_DEBUG=1    Enable debug logging (shows API requests/responses)`,
 		SilenceUsage:  true,
 		SilenceErrors: true,
 		Version:       buildInfo.Version,
