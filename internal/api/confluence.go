@@ -390,10 +390,23 @@ func (s *ConfluenceService) UpdatePage(ctx context.Context, pageID, title, conte
 	return &page, nil
 }
 
-// DeletePage deletes a page.
+// DeletePage deletes a page or folder.
+// Tries page endpoint first, falls back to folder endpoint on 404.
 func (s *ConfluenceService) DeletePage(ctx context.Context, pageID string) error {
-	path := fmt.Sprintf("%s/pages/%s", s.baseURL(), pageID)
-	return s.client.Delete(ctx, path)
+	// Try deleting as a page first
+	pagePath := fmt.Sprintf("%s/pages/%s", s.baseURL(), pageID)
+	err := s.client.Delete(ctx, pagePath)
+	if err == nil {
+		return nil
+	}
+
+	// If 404, try as a folder
+	if apiErr, ok := err.(*APIError); ok && apiErr.StatusCode == 404 {
+		folderPath := fmt.Sprintf("%s/folders/%s", s.baseURL(), pageID)
+		return s.client.Delete(ctx, folderPath)
+	}
+
+	return err
 }
 
 // PublishPage publishes a draft page by changing its status to current.
