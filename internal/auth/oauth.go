@@ -53,6 +53,7 @@ func DefaultScopes() []string {
 		"read:space:confluence",
 		"read:page:confluence",
 		"write:page:confluence",
+		"delete:page:confluence",
 		"read:content:confluence",
 		"write:content:confluence",
 		"read:content.metadata:confluence",
