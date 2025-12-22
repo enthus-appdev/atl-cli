@@ -33,7 +33,7 @@ jobs:
           cache: true
 
       - name: Set up golangci-lint cache
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: ~/.cache/golangci-lint
           key: golangci-${{ hashFiles('.golangci.yml') }}-${{ hashFiles('go.sum') }}
