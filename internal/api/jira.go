@@ -1216,8 +1216,9 @@ func convertAttrs(attrs *ADFAttrs) map[string]interface{} {
 
 	result := make(map[string]interface{})
 
+	// Note: All numeric values must be float64 for jira-cli/adf library compatibility
 	if attrs.Level > 0 {
-		result["level"] = attrs.Level
+		result["level"] = float64(attrs.Level)
 	}
 	if attrs.URL != "" {
 		result["url"] = attrs.URL
@@ -1241,10 +1242,10 @@ func convertAttrs(attrs *ADFAttrs) map[string]interface{} {
 		result["alt"] = attrs.Alt
 	}
 	if attrs.Width > 0 {
-		result["width"] = attrs.Width
+		result["width"] = float64(attrs.Width)
 	}
 	if attrs.Height > 0 {
-		result["height"] = attrs.Height
+		result["height"] = float64(attrs.Height)
 	}
 	// Panel attributes
 	if attrs.PanelType != "" {
@@ -1260,13 +1261,17 @@ func convertAttrs(attrs *ADFAttrs) map[string]interface{} {
 	}
 	// Table cell attributes
 	if attrs.Colspan > 0 {
-		result["colspan"] = attrs.Colspan
+		result["colspan"] = float64(attrs.Colspan)
 	}
 	if attrs.Rowspan > 0 {
-		result["rowspan"] = attrs.Rowspan
+		result["rowspan"] = float64(attrs.Rowspan)
 	}
 	if len(attrs.Colwidth) > 0 {
-		result["colwidth"] = attrs.Colwidth
+		floatWidths := make([]float64, len(attrs.Colwidth))
+		for i, w := range attrs.Colwidth {
+			floatWidths[i] = float64(w)
+		}
+		result["colwidth"] = floatWidths
 	}
 
 	if len(result) == 0 {
