@@ -71,7 +71,7 @@ jobs:
         run: go test -v -race -coverprofile=coverage.out ./...
 
       - name: Upload coverage artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: coverage
           path: coverage.out
@@ -145,7 +145,7 @@ jobs:
           go build -ldflags "${LDFLAGS}" -o "build/${BINARY_NAME}" ./cmd/atl
 
       - name: Upload build artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: atl-${{ matrix.goos }}-${{ matrix.goarch }}
           path: build/
