@@ -6,8 +6,22 @@ import (
 )
 
 // MarkdownToADF converts markdown text to Atlassian Document Format.
-// Supports: headings, bold, italic, code (inline and block), links,
-// bullet lists, numbered lists, blockquotes, and horizontal rules.
+// Supports:
+//   - Headings: # h1, ## h2, etc.
+//   - Bold: **text** or __text__
+//   - Italic: *text* or _text_
+//   - Strikethrough: ~~text~~
+//   - Inline code: `code`
+//   - Code blocks: ```language\ncode\n```
+//   - Links: [text](url)
+//   - Bullet lists: - item or * item
+//   - Numbered lists: 1. item
+//   - Blockquotes: > text
+//   - Horizontal rules: --- or *** or ___
+//   - Tables: | col | col | (GFM-style)
+//   - Panels: :::info, :::warning, :::error, :::note, :::success
+//   - Expand: +++Title\ncontent\n+++
+//   - Media: !media[id] or !media[collection:id]
 func MarkdownToADF(text string) *ADF {
 	if text == "" {
 		return &ADF{
@@ -47,6 +61,36 @@ func parseBlocks(lines []string) []ADFContent {
 			content = append(content, block)
 			i += consumed
 			continue
+		}
+
+		// Panel (:::type ... :::)
+		if strings.HasPrefix(strings.TrimSpace(line), ":::") {
+			block, consumed := parsePanel(lines, i)
+			if block.Type != "" {
+				content = append(content, block)
+				i += consumed
+				continue
+			}
+		}
+
+		// Expand (+++title ... +++)
+		if strings.HasPrefix(strings.TrimSpace(line), "+++") {
+			block, consumed := parseExpand(lines, i)
+			if block.Type != "" {
+				content = append(content, block)
+				i += consumed
+				continue
+			}
+		}
+
+		// Table (| col | col |)
+		if isTableRow(line) {
+			block, consumed := parseTable(lines, i)
+			if block.Type != "" {
+				content = append(content, block)
+				i += consumed
+				continue
+			}
 		}
 
 		// Heading
@@ -459,6 +503,17 @@ func parseInline(text string) []ADFContent {
 			continue
 		}
 
+		// Media reference: !media[id] or !media[collection:id]
+		if mediaMatch := regexp.MustCompile(`^!media\[([^\]]+)\]`).FindStringSubmatch(remaining); len(mediaMatch) > 0 {
+			// Media is a block element, but we handle it inline for convenience
+			// It will be rendered as [attachment] or similar by the display
+			mediaContent := parseMediaContent(mediaMatch[1])
+			content = append(content, mediaContent)
+			remaining = remaining[len(mediaMatch[0]):]
+			matched = true
+			continue
+		}
+
 		// Bold: **text** or __text__
 		if boldMatch := regexp.MustCompile(`^\*\*([^*]+)\*\*`).FindStringSubmatch(remaining); len(boldMatch) > 0 {
 			// Parse inner content for nested formatting
@@ -520,7 +575,7 @@ func parseInline(text string) []ADFContent {
 		if !matched {
 			// Find the next potential pattern start
 			nextPatternIdx := len(remaining)
-			patterns := []string{"`", "[", "*", "_", "~"}
+			patterns := []string{"`", "[", "*", "_", "~", "!"}
 			for _, p := range patterns {
 				if idx := strings.Index(remaining[1:], p); idx >= 0 && idx+1 < nextPatternIdx {
 					nextPatternIdx = idx + 1
@@ -543,4 +598,240 @@ func parseInline(text string) []ADFContent {
 	}
 
 	return content
+}
+
+// isTableRow checks if a line looks like a table row.
+func isTableRow(line string) bool {
+	trimmed := strings.TrimSpace(line)
+	return strings.HasPrefix(trimmed, "|") && strings.HasSuffix(trimmed, "|")
+}
+
+// isTableSeparator checks if a line is a table separator (|---|---|).
+func isTableSeparator(line string) bool {
+	trimmed := strings.TrimSpace(line)
+	if !strings.HasPrefix(trimmed, "|") {
+		return false
+	}
+	// Check if it contains only |, -, :, and spaces
+	for _, c := range trimmed {
+		if c != '|' && c != '-' && c != ':' && c != ' ' {
+			return false
+		}
+	}
+	// Must have at least one -
+	return strings.Contains(trimmed, "-")
+}
+
+// parseTable parses a GFM-style table.
+func parseTable(lines []string, start int) (ADFContent, int) {
+	if start >= len(lines) {
+		return ADFContent{}, 0
+	}
+
+	// First line should be header row
+	if !isTableRow(lines[start]) {
+		return ADFContent{}, 0
+	}
+
+	// Second line should be separator
+	if start+1 >= len(lines) || !isTableSeparator(lines[start+1]) {
+		return ADFContent{}, 0
+	}
+
+	// Parse header row
+	headerCells := parseTableCells(lines[start])
+	if len(headerCells) == 0 {
+		return ADFContent{}, 0
+	}
+
+	// Create header row with tableHeader cells
+	headerRow := ADFContent{
+		Type:    "tableRow",
+		Content: make([]ADFContent, 0, len(headerCells)),
+	}
+	for _, cell := range headerCells {
+		headerRow.Content = append(headerRow.Content, ADFContent{
+			Type: "tableHeader",
+			Content: []ADFContent{
+				{
+					Type:    "paragraph",
+					Content: parseInline(cell),
+				},
+			},
+		})
+	}
+
+	rows := []ADFContent{headerRow}
+	i := start + 2 // Skip header and separator
+
+	// Parse data rows
+	for i < len(lines) && isTableRow(lines[i]) {
+		cells := parseTableCells(lines[i])
+		row := ADFContent{
+			Type:    "tableRow",
+			Content: make([]ADFContent, 0, len(cells)),
+		}
+		for _, cell := range cells {
+			row.Content = append(row.Content, ADFContent{
+				Type: "tableCell",
+				Content: []ADFContent{
+					{
+						Type:    "paragraph",
+						Content: parseInline(cell),
+					},
+				},
+			})
+		}
+		rows = append(rows, row)
+		i++
+	}
+
+	return ADFContent{
+		Type:    "table",
+		Content: rows,
+	}, i - start
+}
+
+// parseTableCells extracts cells from a table row.
+func parseTableCells(line string) []string {
+	trimmed := strings.TrimSpace(line)
+	// Remove leading and trailing pipes
+	trimmed = strings.TrimPrefix(trimmed, "|")
+	trimmed = strings.TrimSuffix(trimmed, "|")
+
+	// Split by pipe
+	parts := strings.Split(trimmed, "|")
+	cells := make([]string, 0, len(parts))
+	for _, p := range parts {
+		cells = append(cells, strings.TrimSpace(p))
+	}
+	return cells
+}
+
+// parsePanel parses a panel block (:::type ... :::).
+// Supported types: info, note, warning, error, success
+func parsePanel(lines []string, start int) (ADFContent, int) {
+	if start >= len(lines) {
+		return ADFContent{}, 0
+	}
+
+	line := strings.TrimSpace(lines[start])
+	if !strings.HasPrefix(line, ":::") {
+		return ADFContent{}, 0
+	}
+
+	// Extract panel type
+	panelType := strings.TrimPrefix(line, ":::")
+	panelType = strings.TrimSpace(panelType)
+
+	// Validate panel type
+	validTypes := map[string]bool{
+		"info": true, "note": true, "warning": true,
+		"error": true, "success": true,
+	}
+	if !validTypes[panelType] {
+		return ADFContent{}, 0
+	}
+
+	// Find closing :::
+	var contentLines []string
+	i := start + 1
+	for i < len(lines) {
+		if strings.TrimSpace(lines[i]) == ":::" {
+			i++ // consume closing
+			break
+		}
+		contentLines = append(contentLines, lines[i])
+		i++
+	}
+
+	// If no closing found, not a valid panel
+	if i == len(lines) && strings.TrimSpace(lines[i-1]) != ":::" {
+		return ADFContent{}, 0
+	}
+
+	// Parse content inside panel
+	innerContent := parseBlocks(contentLines)
+
+	return ADFContent{
+		Type:    "panel",
+		Attrs:   &ADFAttrs{PanelType: panelType},
+		Content: innerContent,
+	}, i - start
+}
+
+// parseExpand parses an expand/collapsible block (+++title ... +++).
+func parseExpand(lines []string, start int) (ADFContent, int) {
+	if start >= len(lines) {
+		return ADFContent{}, 0
+	}
+
+	line := strings.TrimSpace(lines[start])
+	if !strings.HasPrefix(line, "+++") {
+		return ADFContent{}, 0
+	}
+
+	// Extract title (everything after +++)
+	title := strings.TrimPrefix(line, "+++")
+	title = strings.TrimSpace(title)
+
+	// Find closing +++
+	var contentLines []string
+	i := start + 1
+	for i < len(lines) {
+		if strings.TrimSpace(lines[i]) == "+++" {
+			i++ // consume closing
+			break
+		}
+		contentLines = append(contentLines, lines[i])
+		i++
+	}
+
+	// If no closing found, not a valid expand
+	if i == len(lines) && strings.TrimSpace(lines[i-1]) != "+++" {
+		return ADFContent{}, 0
+	}
+
+	// Parse content inside expand
+	innerContent := parseBlocks(contentLines)
+
+	attrs := &ADFAttrs{}
+	if title != "" {
+		attrs.Title = title
+	}
+
+	return ADFContent{
+		Type:    "expand",
+		Attrs:   attrs,
+		Content: innerContent,
+	}, i - start
+}
+
+// parseMediaReference parses !media[...] syntax in inline content.
+// This is handled in parseInline, but we define the helper here.
+// Format: !media[id] or !media[collection:id]
+func parseMediaContent(ref string) ADFContent {
+	// Parse the reference: could be "id" or "collection:id"
+	parts := strings.SplitN(ref, ":", 2)
+
+	attrs := &ADFAttrs{
+		Type: "file",
+	}
+
+	if len(parts) == 2 {
+		attrs.Collection = parts[0]
+		attrs.ID = parts[1]
+	} else {
+		attrs.ID = parts[0]
+	}
+
+	return ADFContent{
+		Type: "mediaSingle",
+		Content: []ADFContent{
+			{
+				Type:  "media",
+				Attrs: attrs,
+			},
+		},
+	}
 }

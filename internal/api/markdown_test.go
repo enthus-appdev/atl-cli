@@ -442,3 +442,215 @@ func TestTextToADFBackwardCompatibility(t *testing.T) {
 		})
 	}
 }
+
+func TestMarkdownToADF_Table(t *testing.T) {
+	input := `| Header 1 | Header 2 |
+|----------|----------|
+| Cell 1   | Cell 2   |
+| Cell 3   | Cell 4   |`
+
+	adf := MarkdownToADF(input)
+
+	if len(adf.Content) != 1 {
+		t.Fatalf("expected 1 content block, got %d", len(adf.Content))
+	}
+
+	table := adf.Content[0]
+	if table.Type != "table" {
+		t.Errorf("expected type 'table', got %q", table.Type)
+	}
+
+	// Should have 3 rows: 1 header + 2 data rows
+	if len(table.Content) != 3 {
+		t.Errorf("expected 3 rows, got %d", len(table.Content))
+	}
+
+	// First row should be header
+	headerRow := table.Content[0]
+	if headerRow.Type != "tableRow" {
+		t.Errorf("expected tableRow, got %q", headerRow.Type)
+	}
+
+	// Header cells should be tableHeader
+	if len(headerRow.Content) != 2 {
+		t.Errorf("expected 2 header cells, got %d", len(headerRow.Content))
+	}
+	if headerRow.Content[0].Type != "tableHeader" {
+		t.Errorf("expected tableHeader, got %q", headerRow.Content[0].Type)
+	}
+
+	// Data cells should be tableCell
+	dataRow := table.Content[1]
+	if dataRow.Content[0].Type != "tableCell" {
+		t.Errorf("expected tableCell, got %q", dataRow.Content[0].Type)
+	}
+}
+
+func TestMarkdownToADF_Panel(t *testing.T) {
+	tests := []struct {
+		name      string
+		input     string
+		panelType string
+	}{
+		{"info", ":::info\nContent\n:::", "info"},
+		{"warning", ":::warning\nContent\n:::", "warning"},
+		{"error", ":::error\nContent\n:::", "error"},
+		{"note", ":::note\nContent\n:::", "note"},
+		{"success", ":::success\nContent\n:::", "success"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			adf := MarkdownToADF(tt.input)
+
+			if len(adf.Content) != 1 {
+				t.Fatalf("expected 1 content block, got %d", len(adf.Content))
+			}
+
+			panel := adf.Content[0]
+			if panel.Type != "panel" {
+				t.Errorf("expected type 'panel', got %q", panel.Type)
+			}
+
+			if panel.Attrs == nil {
+				t.Fatal("expected attrs to be set")
+			}
+
+			if panel.Attrs.PanelType != tt.panelType {
+				t.Errorf("expected panelType %q, got %q", tt.panelType, panel.Attrs.PanelType)
+			}
+		})
+	}
+}
+
+func TestMarkdownToADF_Expand(t *testing.T) {
+	input := `+++Click to expand
+Hidden content here
++++`
+
+	adf := MarkdownToADF(input)
+
+	if len(adf.Content) != 1 {
+		t.Fatalf("expected 1 content block, got %d", len(adf.Content))
+	}
+
+	expand := adf.Content[0]
+	if expand.Type != "expand" {
+		t.Errorf("expected type 'expand', got %q", expand.Type)
+	}
+
+	if expand.Attrs == nil {
+		t.Fatal("expected attrs to be set")
+	}
+
+	if expand.Attrs.Title != "Click to expand" {
+		t.Errorf("expected title 'Click to expand', got %q", expand.Attrs.Title)
+	}
+
+	// Should have inner content
+	if len(expand.Content) == 0 {
+		t.Error("expected expand to have content")
+	}
+}
+
+func TestMarkdownToADF_Media(t *testing.T) {
+	input := `Check this: !media[abc123]`
+
+	adf := MarkdownToADF(input)
+
+	if len(adf.Content) != 1 {
+		t.Fatalf("expected 1 content block, got %d", len(adf.Content))
+	}
+
+	para := adf.Content[0]
+	if para.Type != "paragraph" {
+		t.Errorf("expected paragraph, got %q", para.Type)
+	}
+
+	// Should have text and mediaSingle
+	if len(para.Content) < 2 {
+		t.Fatalf("expected at least 2 inline elements, got %d", len(para.Content))
+	}
+
+	// Find the mediaSingle
+	var media *ADFContent
+	for i := range para.Content {
+		if para.Content[i].Type == "mediaSingle" {
+			media = &para.Content[i]
+			break
+		}
+	}
+
+	if media == nil {
+		t.Fatal("expected to find mediaSingle")
+	}
+
+	if len(media.Content) != 1 {
+		t.Fatalf("expected 1 media child, got %d", len(media.Content))
+	}
+
+	if media.Content[0].Type != "media" {
+		t.Errorf("expected media, got %q", media.Content[0].Type)
+	}
+
+	if media.Content[0].Attrs == nil || media.Content[0].Attrs.ID != "abc123" {
+		t.Error("expected media ID to be 'abc123'")
+	}
+}
+
+func TestMarkdownToADF_MediaWithCollection(t *testing.T) {
+	input := `!media[my-collection:abc123]`
+
+	adf := MarkdownToADF(input)
+
+	para := adf.Content[0]
+	media := para.Content[0]
+
+	if media.Type != "mediaSingle" {
+		t.Errorf("expected mediaSingle, got %q", media.Type)
+	}
+
+	innerMedia := media.Content[0]
+	if innerMedia.Attrs.Collection != "my-collection" {
+		t.Errorf("expected collection 'my-collection', got %q", innerMedia.Attrs.Collection)
+	}
+	if innerMedia.Attrs.ID != "abc123" {
+		t.Errorf("expected ID 'abc123', got %q", innerMedia.Attrs.ID)
+	}
+}
+
+func TestMarkdownToADF_Combined(t *testing.T) {
+	input := `# Test Document
+
+:::info
+Important information
+:::
+
+| Name | Value |
+|------|-------|
+| Foo  | Bar   |
+
++++Details
+More info
++++`
+
+	adf := MarkdownToADF(input)
+
+	// Should have: heading, panel, table, expand
+	if len(adf.Content) != 4 {
+		t.Fatalf("expected 4 content blocks, got %d", len(adf.Content))
+	}
+
+	if adf.Content[0].Type != "heading" {
+		t.Errorf("expected heading, got %q", adf.Content[0].Type)
+	}
+	if adf.Content[1].Type != "panel" {
+		t.Errorf("expected panel, got %q", adf.Content[1].Type)
+	}
+	if adf.Content[2].Type != "table" {
+		t.Errorf("expected table, got %q", adf.Content[2].Type)
+	}
+	if adf.Content[3].Type != "expand" {
+		t.Errorf("expected expand, got %q", adf.Content[3].Type)
+	}
+}

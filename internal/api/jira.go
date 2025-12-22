@@ -92,6 +92,16 @@ type ADFAttrs struct {
 	Alt        string `json:"alt,omitempty"`
 	Width      int    `json:"width,omitempty"`
 	Height     int    `json:"height,omitempty"`
+	// Panel attributes
+	PanelType string `json:"panelType,omitempty"`
+	// Expand attributes
+	Title string `json:"title,omitempty"`
+	// Table attributes
+	Layout string `json:"layout,omitempty"`
+	// Table cell attributes
+	Colspan  int `json:"colspan,omitempty"`
+	Rowspan  int `json:"rowspan,omitempty"`
+	Colwidth []int `json:"colwidth,omitempty"`
 }
 
 // ADFMark represents text marks in ADF.
@@ -1220,6 +1230,28 @@ func convertAttrs(attrs *ADFAttrs) map[string]interface{} {
 	}
 	if attrs.Height > 0 {
 		result["height"] = attrs.Height
+	}
+	// Panel attributes
+	if attrs.PanelType != "" {
+		result["panelType"] = attrs.PanelType
+	}
+	// Expand attributes
+	if attrs.Title != "" {
+		result["title"] = attrs.Title
+	}
+	// Table attributes
+	if attrs.Layout != "" {
+		result["layout"] = attrs.Layout
+	}
+	// Table cell attributes
+	if attrs.Colspan > 0 {
+		result["colspan"] = attrs.Colspan
+	}
+	if attrs.Rowspan > 0 {
+		result["rowspan"] = attrs.Rowspan
+	}
+	if len(attrs.Colwidth) > 0 {
+		result["colwidth"] = attrs.Colwidth
 	}
 
 	if len(result) == 0 {
