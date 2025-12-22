@@ -44,10 +44,17 @@ atl issue create --project NX --parent PROJ-123 --summary "Subtask"
 
 ```bash
 atl issue edit PROJ-1234 --summary "New summary"
+atl issue edit PROJ-1234 --description "New description content"
+atl issue edit PROJ-1234 --description "Additional notes" --append  # Append to existing
 atl issue edit PROJ-1234 --assignee @me
 atl issue edit PROJ-1234 --add-label bug --remove-label wontfix
 atl issue edit PROJ-1234 --field "Story Points=8"
+atl issue edit PROJ-1234 --field "Technischer Hinweis=Some **markdown** text"  # Auto-converts to ADF
 ```
+
+**Notes**:
+- `--append` preserves existing description content (including embedded media) and adds new content at the end
+- Textarea custom fields automatically convert Markdown to ADF format
 
 ### Transitions and Workflow
 

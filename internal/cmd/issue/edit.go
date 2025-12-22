@@ -21,6 +21,7 @@ type EditOptions struct {
 	IssueKey     string
 	Summary      string
 	Description  string
+	Append       bool
 	Assignee     string
 	AddLabels    []string
 	RemoveLabels []string
@@ -42,6 +43,12 @@ func NewCmdEdit(ios *iostreams.IOStreams) *cobra.Command {
 		Long:  `Edit fields of an existing Jira issue.`,
 		Example: `  # Edit issue summary
   atl issue edit PROJ-1234 --summary "Updated summary"
+
+  # Set new description (replaces existing)
+  atl issue edit PROJ-1234 --description "New description content"
+
+  # Append to existing description (preserves embedded media)
+  atl issue edit PROJ-1234 --description "Additional notes" --append
 
   # Add labels
   atl issue edit PROJ-1234 --add-label bug --add-label urgent
@@ -75,6 +82,7 @@ func NewCmdEdit(ios *iostreams.IOStreams) *cobra.Command {
 
 	cmd.Flags().StringVarP(&opts.Summary, "summary", "s", "", "New summary")
 	cmd.Flags().StringVarP(&opts.Description, "description", "d", "", "New description")
+	cmd.Flags().BoolVar(&opts.Append, "append", false, "Append to existing description instead of replacing")
 	cmd.Flags().StringVarP(&opts.Assignee, "assignee", "a", "", "New assignee (use @me for yourself, empty to unassign)")
 	cmd.Flags().StringSliceVar(&opts.AddLabels, "add-label", nil, "Labels to add")
 	cmd.Flags().StringSliceVar(&opts.RemoveLabels, "remove-label", nil, "Labels to remove")
@@ -103,6 +111,11 @@ func runEdit(opts *EditOptions) error {
 		return fmt.Errorf("at least one field must be specified to edit")
 	}
 
+	// Validate --append requires --description
+	if opts.Append && opts.Description == "" {
+		return fmt.Errorf("--append requires --description flag")
+	}
+
 	client, err := api.NewClientFromConfig()
 	if err != nil {
 		return err
@@ -129,7 +142,24 @@ func runEdit(opts *EditOptions) error {
 	}
 
 	if opts.Description != "" {
-		req.Fields["description"] = api.TextToADF(opts.Description)
+		newADF := api.TextToADF(opts.Description)
+
+		if opts.Append {
+			// Fetch existing issue to get current description
+			issue, err := jira.GetIssue(ctx, opts.IssueKey)
+			if err != nil {
+				return fmt.Errorf("failed to fetch existing issue: %w", err)
+			}
+
+			// Merge existing and new description content
+			if issue.Fields.Description != nil && len(issue.Fields.Description.Content) > 0 {
+				// Append new content to existing content
+				mergedContent := append(issue.Fields.Description.Content, newADF.Content...)
+				newADF.Content = mergedContent
+			}
+		}
+
+		req.Fields["description"] = newADF
 		editOutput.FieldsUpdated = append(editOutput.FieldsUpdated, "description")
 	}
 
@@ -198,9 +228,19 @@ func runEdit(opts *EditOptions) error {
 		}
 		key, value := parts[0], parts[1]
 
-		// If key doesn't look like a field ID, try to resolve it by name
-		if !strings.HasPrefix(key, "customfield_") && !isSystemField(key) {
-			resolvedField, err := jira.GetFieldByName(ctx, key)
+		var resolvedField *api.Field
+		var err error
+
+		if strings.HasPrefix(key, "customfield_") {
+			// Look up field by ID to get type information
+			resolvedField, err = jira.GetFieldByID(ctx, key)
+			if err != nil {
+				return fmt.Errorf("failed to look up field '%s': %w", key, err)
+			}
+			// Note: resolvedField may be nil if field doesn't exist, we'll still try to set it
+		} else if !isSystemField(key) {
+			// Resolve field by name
+			resolvedField, err = jira.GetFieldByName(ctx, key)
 			if err != nil {
 				return fmt.Errorf("failed to look up field '%s': %w", key, err)
 			}
@@ -210,9 +250,16 @@ func runEdit(opts *EditOptions) error {
 			key = resolvedField.ID
 		}
 
-		// Try to parse value as number, otherwise use string
+		// Determine field value based on field type
 		var fieldValue interface{}
-		if numVal, err := strconv.ParseFloat(value, 64); err == nil {
+
+		// Check if this is a textarea field that requires ADF format
+		if resolvedField != nil && resolvedField.Schema != nil &&
+			strings.Contains(resolvedField.Schema.Custom, "textarea") {
+			// Convert Markdown to ADF for textarea fields
+			fieldValue = api.TextToADF(value)
+		} else if numVal, err := strconv.ParseFloat(value, 64); err == nil {
+			// Try to parse value as number
 			fieldValue = numVal
 		} else {
 			fieldValue = value

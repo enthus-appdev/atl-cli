@@ -814,6 +814,23 @@ func (s *JiraService) GetFieldByName(ctx context.Context, name string) (*Field, 
 	return nil, nil
 }
 
+// GetFieldByID finds a field by its ID (e.g., "customfield_10016") and returns it.
+// Returns nil if not found.
+func (s *JiraService) GetFieldByID(ctx context.Context, id string) (*Field, error) {
+	fields, err := s.GetFields(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, f := range fields {
+		if f.ID == id {
+			return f, nil
+		}
+	}
+
+	return nil, nil
+}
+
 // GetFlaggedField finds the "Flagged" custom field.
 // Returns the field or nil if not found.
 func (s *JiraService) GetFlaggedField(ctx context.Context) (*Field, error) {
