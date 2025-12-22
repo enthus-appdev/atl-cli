@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/olekukonko/tablewriter"
+	"github.com/olekukonko/tablewriter/tw"
 )
 
 // TableOptions configures table output.
@@ -41,32 +42,33 @@ func (t *Table) Render() {
 		return
 	}
 
-	table := tablewriter.NewWriter(t.writer)
-
-	// Configure table style for CLI
-	table.SetAutoWrapText(false)
-	table.SetAutoFormatHeaders(true)
-	table.SetHeaderAlignment(tablewriter.ALIGN_LEFT)
-	table.SetAlignment(tablewriter.ALIGN_LEFT)
-	table.SetCenterSeparator("")
-	table.SetColumnSeparator("")
-	table.SetRowSeparator("")
-	table.SetHeaderLine(false)
-	table.SetBorder(false)
-	table.SetTablePadding("  ")
-	table.SetNoWhiteSpace(true)
+	// Configure table style for CLI: no borders, no separators, left-aligned
+	table := tablewriter.NewTable(t.writer,
+		tablewriter.WithRendition(tw.Rendition{
+			Borders: tw.BorderNone,
+			Settings: tw.Settings{
+				Separators: tw.SeparatorsNone,
+				Lines:      tw.LinesNone,
+			},
+		}),
+		tablewriter.WithHeaderAutoFormat(tw.On),
+		tablewriter.WithHeaderAlignment(tw.AlignLeft),
+		tablewriter.WithRowAlignment(tw.AlignLeft),
+		tablewriter.WithPadding(tw.Padding{Left: "", Right: "  ", Overwrite: true}),
+		tablewriter.WithTrimSpace(tw.On),
+	)
 
 	if !t.options.NoHeader && len(t.options.Header) > 0 {
 		// Make headers uppercase
-		headers := make([]string, len(t.options.Header))
+		headers := make([]any, len(t.options.Header))
 		for i, h := range t.options.Header {
 			headers[i] = strings.ToUpper(h)
 		}
-		table.SetHeader(headers)
+		table.Header(headers...)
 	}
 
-	table.AppendBulk(t.rows)
-	table.Render()
+	_ = table.Bulk(t.rows)
+	_ = table.Render()
 }
 
 // SimpleTable creates and renders a simple table in one call.
