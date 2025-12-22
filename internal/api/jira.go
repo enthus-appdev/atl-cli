@@ -83,6 +83,13 @@ type ADFAttrs struct {
 	URL      string `json:"url,omitempty"`
 	Href     string `json:"href,omitempty"`
 	Language string `json:"language,omitempty"`
+	// Media attributes
+	ID         string `json:"id,omitempty"`
+	Type       string `json:"type,omitempty"`
+	Collection string `json:"collection,omitempty"`
+	Alt        string `json:"alt,omitempty"`
+	Width      int    `json:"width,omitempty"`
+	Height     int    `json:"height,omitempty"`
 }
 
 // ADFMark represents text marks in ADF.
@@ -1114,6 +1121,17 @@ func adfContentToText(sb *strings.Builder, content []ADFContent) {
 			sb.WriteString("\n```\n")
 		case "hardBreak":
 			sb.WriteString("\n")
+		case "mediaSingle", "mediaGroup":
+			if i > 0 {
+				sb.WriteString("\n\n")
+			}
+			adfContentToText(sb, c.Content)
+		case "media":
+			if c.Attrs != nil && c.Attrs.Alt != "" {
+				sb.WriteString(fmt.Sprintf("[Image: %s]", c.Attrs.Alt))
+			} else {
+				sb.WriteString("[Embedded image]")
+			}
 		default:
 			adfContentToText(sb, c.Content)
 		}
