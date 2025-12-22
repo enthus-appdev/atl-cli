@@ -1,48 +1,48 @@
-# golangci-lint v2 configuration
-# https://golangci-lint.run/usage/configuration/
 version: "2"
-
 run:
-  timeout: 5m
   modules-download-mode: readonly
-
-formatters:
-  enable:
-    - gofmt
-    - goimports
-
-  settings:
-    goimports:
-      local-prefixes:
-        - github.com/enthus-appdev/atl-cli
-
 linters:
-  # Use standard defaults with minimal additions
-  default: standard
   enable:
     - bodyclose
     - copyloopvar
     - misspell
-
-  # Disable noisy linters for CLI project
   disable:
-    - errcheck  # Too noisy for CLI - lots of intentional ignores
-
+    - errcheck
   settings:
     misspell:
       locale: US
-
     staticcheck:
       checks:
         - all
-        - -ST1000  # Package comments not required
-
+        - -ST1000
+  exclusions:
+    generated: lax
+    presets:
+      - comments
+      - common-false-positives
+      - legacy
+      - std-error-handling
+    rules:
+      - linters:
+          - gosec
+        path: _test\.go
+    paths:
+      - third_party$
+      - builtin$
+      - examples$
 issues:
-  exclude-rules:
-    # Test files have relaxed rules
-    - path: _test\.go
-      linters:
-        - gosec
-
   max-issues-per-linter: 0
   max-same-issues: 0
+formatters:
+  enable:
+    - goimports
+  settings:
+    goimports:
+      local-prefixes:
+        - github.com/enthus-appdev/atl-cli
+  exclusions:
+    generated: lax
+    paths:
+      - third_party$
+      - builtin$
+      - examples$
