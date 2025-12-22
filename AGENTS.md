@@ -59,8 +59,10 @@ atl issue transition PROJ-1234 --list     # List available transitions
 ### Comments
 
 ```bash
-atl issue comment PROJ-1234 --body "Comment text"
-atl issue comment PROJ-1234 --list        # List comments
+atl issue comment list PROJ-1234                    # List comments
+atl issue comment add PROJ-1234 --body "Comment"    # Add comment
+atl issue comment edit PROJ-1234 --id 123 --body "Updated"
+atl issue comment delete PROJ-1234 --id 123
 ```
 
 ### Issue Links
@@ -88,6 +90,15 @@ atl issue sprint PROJ-1234 --backlog                # Move to backlog
 ```bash
 atl issue attachment PROJ-1234 --list               # List attachments
 atl issue attachment PROJ-1234 --download <id>      # Download attachment
+```
+
+### Metadata Discovery
+
+```bash
+atl issue types --project PROJ                      # List issue types
+atl issue priorities                                # List available priorities
+atl issue fields                                    # List all fields
+atl issue fields --search "story points"            # Search for field by name
 ```
 
 ## Jira Boards

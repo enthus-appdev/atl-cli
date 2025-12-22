@@ -127,8 +127,11 @@ type StatusCategory struct {
 
 // Priority represents an issue priority.
 type Priority struct {
-	ID   string `json:"id"`
-	Name string `json:"name"`
+	ID          string `json:"id"`
+	Name        string `json:"name"`
+	Description string `json:"description,omitempty"`
+	IconURL     string `json:"iconUrl,omitempty"`
+	StatusColor string `json:"statusColor,omitempty"`
 }
 
 // IssueType represents an issue type.
@@ -416,6 +419,18 @@ func (s *JiraService) GetSubtaskType(ctx context.Context, projectKey string) (*P
 	}
 
 	return nil, nil
+}
+
+// GetPriorities gets all available priorities in the Jira instance.
+func (s *JiraService) GetPriorities(ctx context.Context) ([]*Priority, error) {
+	path := fmt.Sprintf("%s/priority", s.client.JiraBaseURL())
+
+	var result []*Priority
+	if err := s.client.Get(ctx, path, &result); err != nil {
+		return nil, err
+	}
+
+	return result, nil
 }
 
 // UpdateIssueRequest represents a request to update an issue.
