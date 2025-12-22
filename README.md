@@ -340,21 +340,14 @@ If authentication fails, verify your OAuth app configuration at https://develope
 
    **Jira API** (under "Jira API" in Developer Console):
    - Classic scopes: `read:jira-work`, `write:jira-work`, `read:jira-user`
-   - Granular scopes: `read:project:jira`
-
-   **Jira Software API** (under "Jira Software API" - granular only, no classic scopes exist):
-   - `read:board-scope:jira-software`
-   - `write:board-scope:jira-software`
-   - `read:issue:jira-software`
-   - `write:issue:jira-software`
-   - `read:sprint:jira-software`
-   - `write:sprint:jira-software`
+   - Granular scopes: `read:project:jira`, `read:issue-details:jira`
+   - Granular scopes for boards/sprints/ranking: `read:board-scope:jira-software`, `write:board-scope:jira-software`, `read:issue:jira-software`, `write:issue:jira-software`, `read:sprint:jira-software`, `write:sprint:jira-software`
 
    **Confluence API** (under "Confluence API"):
    - Classic scopes: `read:confluence-content.all`, `write:confluence-content`
-   - Granular scopes: `read:space:confluence`, `read:page:confluence`, `write:page:confluence`, `read:content:confluence`, `write:content:confluence`, `read:content.metadata:confluence`, `read:hierarchical-content:confluence`
+   - Granular scopes: `read:space:confluence`, `read:page:confluence`, `write:page:confluence`, `delete:page:confluence`, `read:content:confluence`, `write:content:confluence`, `read:content.metadata:confluence`, `read:hierarchical-content:confluence`, `read:folder:confluence`, `write:folder:confluence`, `delete:folder:confluence`, `read:template:confluence`, `write:template:confluence`
 
-   > **Note:** Each product's scopes must be added under that specific product in the Developer Console. Jira Software has no classic scopes - only granular. Both Confluence classic and granular scopes are needed as the CLI uses both API versions.
+   > **Note:** Both Confluence classic and granular scopes are needed as the CLI uses both API versions.
 
 ## Development
 
