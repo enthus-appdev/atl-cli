@@ -137,11 +137,14 @@ func runMove(opts *MoveOptions) error {
 	if opts.Space != "" {
 		fmt.Fprintf(opts.IO.Out, "Successfully moved page %s to space %s\n", opts.PageID, opts.Space)
 	} else {
-		positionDesc := "as child of"
-		if opts.Position == "before" {
+		var positionDesc string
+		switch opts.Position {
+		case "before":
 			positionDesc = "before"
-		} else if opts.Position == "after" {
+		case "after":
 			positionDesc = "after"
+		default:
+			positionDesc = "as child of"
 		}
 		fmt.Fprintf(opts.IO.Out, "Successfully moved page %s %s %s\n", opts.PageID, positionDesc, opts.TargetID)
 	}

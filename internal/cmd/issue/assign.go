@@ -75,17 +75,18 @@ func runAssign(opts *AssignOptions) error {
 	var accountID string
 	var assigneeName string
 
-	if opts.Assignee == "-" || opts.Assignee == "none" || opts.Assignee == "" {
+	switch opts.Assignee {
+	case "-", "none", "":
 		accountID = "" // Unassign
 		assigneeName = "Unassigned"
-	} else if opts.Assignee == "@me" {
+	case "@me":
 		user, err := jira.GetMyself(ctx)
 		if err != nil {
 			return fmt.Errorf("failed to get current user: %w", err)
 		}
 		accountID = user.AccountID
 		assigneeName = user.DisplayName
-	} else {
+	default:
 		users, err := jira.SearchUsers(ctx, opts.Assignee)
 		if err != nil {
 			return fmt.Errorf("failed to search for user: %w", err)

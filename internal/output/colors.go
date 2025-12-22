@@ -14,10 +14,10 @@ import (
 //   - Gray for low priority/faint text
 var (
 	// StatusColors for issue/workflow statuses (aligned with Jira status categories)
-	StatusToDo       = lipgloss.NewStyle().Foreground(lipgloss.Color("245"))  // Gray
-	StatusInProgress = lipgloss.NewStyle().Foreground(lipgloss.Color("33"))   // Blue
-	StatusDone       = lipgloss.NewStyle().Foreground(lipgloss.Color("35"))   // Green
-	StatusBlocked    = lipgloss.NewStyle().Foreground(lipgloss.Color("196"))  // Red
+	StatusToDo       = lipgloss.NewStyle().Foreground(lipgloss.Color("245")) // Gray
+	StatusInProgress = lipgloss.NewStyle().Foreground(lipgloss.Color("33"))  // Blue
+	StatusDone       = lipgloss.NewStyle().Foreground(lipgloss.Color("35"))  // Green
+	StatusBlocked    = lipgloss.NewStyle().Foreground(lipgloss.Color("196")) // Red
 
 	// Priority colors
 	PriorityHighest = lipgloss.NewStyle().Foreground(lipgloss.Color("196")) // Red

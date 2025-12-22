@@ -13,13 +13,13 @@ import (
 
 // RankOptions holds the options for the rank command.
 type RankOptions struct {
-	IO          *iostreams.IOStreams
-	IssueKeys   []string
-	Before      string
-	After       string
-	Top         bool
-	BoardID     int
-	JSON        bool
+	IO        *iostreams.IOStreams
+	IssueKeys []string
+	Before    string
+	After     string
+	Top       bool
+	BoardID   int
+	JSON      bool
 }
 
 // NewCmdRank creates the rank command.

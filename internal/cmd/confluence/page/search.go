@@ -13,12 +13,12 @@ import (
 
 // SearchOptions holds the options for the search command.
 type SearchOptions struct {
-	IO       *iostreams.IOStreams
-	Query    string
-	Space    string
-	CQL      string
-	Limit    int
-	JSON     bool
+	IO    *iostreams.IOStreams
+	Query string
+	Space string
+	CQL   string
+	Limit int
+	JSON  bool
 }
 
 // NewCmdSearch creates the search command.

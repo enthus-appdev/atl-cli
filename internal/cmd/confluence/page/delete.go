@@ -81,7 +81,7 @@ func runDelete(opts *DeleteOptions) error {
 		var confirm string
 		fmt.Fscanln(opts.IO.In, &confirm)
 		if confirm != "yes" {
-			return fmt.Errorf("deletion cancelled")
+			return fmt.Errorf("deletion canceled")
 		}
 	}
 

@@ -451,12 +451,13 @@ func parseParagraph(lines []string, start int) (ADFContent, int) {
 func countLeadingSpaces(line string) int {
 	count := 0
 	for _, c := range line {
-		if c == ' ' {
+		switch c {
+		case ' ':
 			count++
-		} else if c == '\t' {
+		case '\t':
 			count += 4 // Treat tabs as 4 spaces
-		} else {
-			break
+		default:
+			return count
 		}
 	}
 	return count

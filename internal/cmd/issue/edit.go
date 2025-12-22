@@ -88,11 +88,11 @@ func NewCmdEdit(ios *iostreams.IOStreams) *cobra.Command {
 
 // EditOutput represents the output after editing an issue.
 type EditOutput struct {
-	Key            string   `json:"key"`
-	FieldsUpdated  []string `json:"fields_updated"`
-	LabelsAdded    []string `json:"labels_added,omitempty"`
-	LabelsRemoved  []string `json:"labels_removed,omitempty"`
-	URL            string   `json:"url"`
+	Key           string   `json:"key"`
+	FieldsUpdated []string `json:"fields_updated"`
+	LabelsAdded   []string `json:"labels_added,omitempty"`
+	LabelsRemoved []string `json:"labels_removed,omitempty"`
+	URL           string   `json:"url"`
 }
 
 func runEdit(opts *EditOptions) error {
@@ -231,15 +231,16 @@ func runEdit(opts *EditOptions) error {
 	// Handle assignee separately (uses different endpoint)
 	if opts.Assignee != "" {
 		var accountID string
-		if opts.Assignee == "@me" {
+		switch opts.Assignee {
+		case "@me":
 			user, err := jira.GetMyself(ctx)
 			if err != nil {
 				return fmt.Errorf("failed to get current user: %w", err)
 			}
 			accountID = user.AccountID
-		} else if opts.Assignee == "-" || opts.Assignee == "none" {
+		case "-", "none":
 			accountID = "" // Unassign
-		} else {
+		default:
 			users, err := jira.SearchUsers(ctx, opts.Assignee)
 			if err != nil {
 				return fmt.Errorf("failed to search for user: %w", err)

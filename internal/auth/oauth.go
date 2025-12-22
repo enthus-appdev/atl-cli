@@ -72,10 +72,10 @@ func DefaultScopes() []string {
 
 // OAuthConfig holds OAuth configuration.
 type OAuthConfig struct {
-	ClientID    string
+	ClientID     string
 	ClientSecret string
-	RedirectURI string
-	Scopes      []string
+	RedirectURI  string
+	Scopes       []string
 }
 
 // OAuthFlow manages the OAuth 2.0 authorization code flow.

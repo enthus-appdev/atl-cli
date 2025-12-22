@@ -77,7 +77,7 @@ func runSetup(opts *SetupOptions) error {
 		answer = strings.TrimSpace(strings.ToLower(answer))
 
 		if answer != "y" && answer != "yes" {
-			fmt.Fprintln(opts.IO.Out, "Setup cancelled.")
+			fmt.Fprintln(opts.IO.Out, "Setup canceled.")
 			return nil
 		}
 		fmt.Fprintln(opts.IO.Out, "")

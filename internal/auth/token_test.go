@@ -145,7 +145,7 @@ func TestTokenSetEmptyScopes(t *testing.T) {
 	}
 
 	// Scopes should be nil or empty after round-trip
-	if decoded.Scopes != nil && len(decoded.Scopes) > 0 {
+	if len(decoded.Scopes) > 0 {
 		t.Errorf("Scopes should be nil or empty, got %v", decoded.Scopes)
 	}
 }

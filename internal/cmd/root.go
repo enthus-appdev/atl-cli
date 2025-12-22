@@ -7,8 +7,8 @@ import (
 
 	authCmd "github.com/enthus-appdev/atl-cli/internal/cmd/auth"
 	boardCmd "github.com/enthus-appdev/atl-cli/internal/cmd/board"
-	confluenceCmd "github.com/enthus-appdev/atl-cli/internal/cmd/confluence"
 	configCmd "github.com/enthus-appdev/atl-cli/internal/cmd/config"
+	confluenceCmd "github.com/enthus-appdev/atl-cli/internal/cmd/confluence"
 	issueCmd "github.com/enthus-appdev/atl-cli/internal/cmd/issue"
 	worklogCmd "github.com/enthus-appdev/atl-cli/internal/cmd/worklog"
 	"github.com/enthus-appdev/atl-cli/internal/iostreams"

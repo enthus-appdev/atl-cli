@@ -3,7 +3,6 @@ package issue
 import (
 	"context"
 	"fmt"
-	"strconv"
 
 	"github.com/spf13/cobra"
 
@@ -224,9 +223,4 @@ func runWebLinkDelete(opts *WebLinkOptions) error {
 	fmt.Fprintf(opts.IO.Out, "Deleted web link %d from %s\n", opts.Delete, opts.IssueKey)
 
 	return nil
-}
-
-// Helper to parse link ID from string
-func parseLinkID(s string) (int, error) {
-	return strconv.Atoi(s)
 }

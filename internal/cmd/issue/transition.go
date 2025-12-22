@@ -63,8 +63,8 @@ func NewCmdTransition(ios *iostreams.IOStreams) *cobra.Command {
 
 // TransitionListOutput represents available transitions.
 type TransitionListOutput struct {
-	IssueKey    string             `json:"issue_key"`
-	Transitions []*TransitionItem  `json:"transitions"`
+	IssueKey    string            `json:"issue_key"`
+	Transitions []*TransitionItem `json:"transitions"`
 }
 
 // TransitionItem represents a single transition.

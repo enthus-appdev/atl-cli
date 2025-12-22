@@ -99,8 +99,8 @@ type ADFAttrs struct {
 	// Table attributes
 	Layout string `json:"layout,omitempty"`
 	// Table cell attributes
-	Colspan  int `json:"colspan,omitempty"`
-	Rowspan  int `json:"rowspan,omitempty"`
+	Colspan  int   `json:"colspan,omitempty"`
+	Rowspan  int   `json:"rowspan,omitempty"`
 	Colwidth []int `json:"colwidth,omitempty"`
 }
 
@@ -840,7 +840,7 @@ func (s *JiraService) FlagIssue(ctx context.Context, issueKey string) error {
 		return fmt.Errorf("failed to get Flagged field: %w", err)
 	}
 	if field == nil {
-		return fmt.Errorf("Flagged field not found. Make sure the Flagged field is available in your Jira instance")
+		return fmt.Errorf("flagged field not found: make sure the Flagged field is available in your Jira instance")
 	}
 
 	path := fmt.Sprintf("%s/issue/%s", s.client.JiraBaseURL(), issueKey)
@@ -864,7 +864,7 @@ func (s *JiraService) UnflagIssue(ctx context.Context, issueKey string) error {
 		return fmt.Errorf("failed to get Flagged field: %w", err)
 	}
 	if field == nil {
-		return fmt.Errorf("Flagged field not found. Make sure the Flagged field is available in your Jira instance")
+		return fmt.Errorf("flagged field not found: make sure the Flagged field is available in your Jira instance")
 	}
 
 	path := fmt.Sprintf("%s/issue/%s", s.client.JiraBaseURL(), issueKey)

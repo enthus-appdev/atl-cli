@@ -55,21 +55,21 @@ func NewCmdView(ios *iostreams.IOStreams) *cobra.Command {
 
 // IssueOutput represents the output format for an issue (LLM-friendly).
 type IssueOutput struct {
-	Key         string        `json:"key"`
-	ID          string        `json:"id"`
-	Summary     string        `json:"summary"`
-	Description string        `json:"description,omitempty"`
-	Status      string        `json:"status"`
-	StatusCategory string     `json:"status_category,omitempty"`
-	Priority    string        `json:"priority,omitempty"`
-	Type        string        `json:"type"`
-	Assignee    *UserOutput   `json:"assignee,omitempty"`
-	Reporter    *UserOutput   `json:"reporter,omitempty"`
-	Project     *ProjectOutput `json:"project"`
-	Labels      []string      `json:"labels,omitempty"`
-	Created     string        `json:"created"`
-	Updated     string        `json:"updated"`
-	URL         string        `json:"url"`
+	Key            string         `json:"key"`
+	ID             string         `json:"id"`
+	Summary        string         `json:"summary"`
+	Description    string         `json:"description,omitempty"`
+	Status         string         `json:"status"`
+	StatusCategory string         `json:"status_category,omitempty"`
+	Priority       string         `json:"priority,omitempty"`
+	Type           string         `json:"type"`
+	Assignee       *UserOutput    `json:"assignee,omitempty"`
+	Reporter       *UserOutput    `json:"reporter,omitempty"`
+	Project        *ProjectOutput `json:"project"`
+	Labels         []string       `json:"labels,omitempty"`
+	Created        string         `json:"created"`
+	Updated        string         `json:"updated"`
+	URL            string         `json:"url"`
 }
 
 // UserOutput represents user information.

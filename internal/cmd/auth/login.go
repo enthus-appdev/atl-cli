@@ -75,7 +75,7 @@ func runLogin(opts *LoginOptions) error {
 	}
 
 	if clientID == "" || clientSecret == "" {
-		return fmt.Errorf("OAuth credentials not configured.\n\nRun 'atl auth setup' to configure your OAuth app credentials.\n\nAlternatively, set ATLASSIAN_CLIENT_ID and ATLASSIAN_CLIENT_SECRET environment variables.")
+		return fmt.Errorf("oauth credentials not configured: run 'atl auth setup' to configure your OAuth app credentials, or set ATLASSIAN_CLIENT_ID and ATLASSIAN_CLIENT_SECRET environment variables")
 	}
 
 	// Get default scopes (granular Confluence + classic Jira)

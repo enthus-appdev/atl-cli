@@ -22,13 +22,13 @@ func TestJSON(t *testing.T) {
 			contains: []string{`"name": "Alice"`, `"age": 30`},
 		},
 		{
-			name: "map",
-			data: map[string]string{"key": "value"},
+			name:     "map",
+			data:     map[string]string{"key": "value"},
 			contains: []string{`"key": "value"`},
 		},
 		{
-			name: "slice",
-			data: []int{1, 2, 3},
+			name:     "slice",
+			data:     []int{1, 2, 3},
 			contains: []string{"1", "2", "3"},
 		},
 		{

@@ -478,7 +478,7 @@ func TestNewJiraService(t *testing.T) {
 	service := NewJiraService(client)
 
 	if service == nil {
-		t.Error("NewJiraService() returned nil")
+		t.Fatal("NewJiraService() returned nil")
 	}
 	if service.client != client {
 		t.Error("NewJiraService() did not set client correctly")

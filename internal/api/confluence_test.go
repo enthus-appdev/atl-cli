@@ -17,7 +17,7 @@ func TestNewConfluenceService(t *testing.T) {
 	service := NewConfluenceService(client)
 
 	if service == nil {
-		t.Error("NewConfluenceService() returned nil")
+		t.Fatal("NewConfluenceService() returned nil")
 	}
 	if service.client != client {
 		t.Error("NewConfluenceService() did not set client correctly")
