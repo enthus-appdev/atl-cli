@@ -3,6 +3,7 @@ package issue
 import (
 	"github.com/spf13/cobra"
 
+	"github.com/enthus-appdev/atl-cli/internal/cmd/issue/comment"
 	"github.com/enthus-appdev/atl-cli/internal/iostreams"
 )
 
@@ -20,7 +21,7 @@ func NewCmdIssue(ios *iostreams.IOStreams) *cobra.Command {
 	cmd.AddCommand(NewCmdCreate(ios))
 	cmd.AddCommand(NewCmdEdit(ios))
 	cmd.AddCommand(NewCmdTransition(ios))
-	cmd.AddCommand(NewCmdComment(ios))
+	cmd.AddCommand(comment.NewCmdComment(ios))
 	cmd.AddCommand(NewCmdAssign(ios))
 	cmd.AddCommand(NewCmdLink(ios))
 	cmd.AddCommand(NewCmdFields(ios))
