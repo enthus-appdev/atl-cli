@@ -7,6 +7,8 @@ import (
 	"net/url"
 	"strconv"
 	"strings"
+
+	"github.com/jcstorino/jira-cli/pkg/adf"
 )
 
 // JiraService handles Jira API operations.
@@ -1080,60 +1082,148 @@ func TextToADF(text string) *ADF {
 	return MarkdownToADF(text)
 }
 
-// ADFToText converts Atlassian Document Format to plain text.
-func ADFToText(adf *ADF) string {
-	if adf == nil {
+// ADFToText converts Atlassian Document Format to Markdown text.
+// Uses the jira-cli adf library for proper Markdown formatting.
+func ADFToText(ourADF *ADF) string {
+	if ourADF == nil {
 		return ""
 	}
-	var sb strings.Builder
-	adfContentToText(&sb, adf.Content)
-	return strings.TrimSpace(sb.String())
+
+	// Convert our ADF type to the library's ADF type
+	libADF := convertToLibraryADF(ourADF)
+	if libADF == nil || len(libADF.Content) == 0 {
+		return ""
+	}
+
+	// Use the library's Markdown translator
+	translator := adf.NewTranslator(libADF, adf.NewMarkdownTranslator())
+	result := translator.Translate()
+
+	return strings.TrimSpace(result)
 }
 
-func adfContentToText(sb *strings.Builder, content []ADFContent) {
-	for i, c := range content {
-		switch c.Type {
-		case "text":
-			sb.WriteString(c.Text)
-		case "paragraph":
-			if i > 0 {
-				sb.WriteString("\n\n")
-			}
-			adfContentToText(sb, c.Content)
-		case "heading":
-			if i > 0 {
-				sb.WriteString("\n\n")
-			}
-			adfContentToText(sb, c.Content)
-			sb.WriteString("\n")
-		case "bulletList", "orderedList":
-			if i > 0 {
-				sb.WriteString("\n")
-			}
-			adfContentToText(sb, c.Content)
-		case "listItem":
-			sb.WriteString("• ")
-			adfContentToText(sb, c.Content)
-			sb.WriteString("\n")
-		case "codeBlock":
-			sb.WriteString("\n```\n")
-			adfContentToText(sb, c.Content)
-			sb.WriteString("\n```\n")
-		case "hardBreak":
-			sb.WriteString("\n")
-		case "mediaSingle", "mediaGroup":
-			if i > 0 {
-				sb.WriteString("\n\n")
-			}
-			adfContentToText(sb, c.Content)
-		case "media":
-			if c.Attrs != nil && c.Attrs.Alt != "" {
-				sb.WriteString(fmt.Sprintf("[Image: %s]", c.Attrs.Alt))
-			} else {
-				sb.WriteString("[Embedded image]")
-			}
-		default:
-			adfContentToText(sb, c.Content)
+// convertToLibraryADF converts our ADF type to the jira-cli library's ADF type.
+func convertToLibraryADF(ourADF *ADF) *adf.ADF {
+	if ourADF == nil {
+		return nil
+	}
+
+	return &adf.ADF{
+		Version: ourADF.Version,
+		DocType: ourADF.Type,
+		Content: convertNodes(ourADF.Content),
+	}
+}
+
+// convertNodes converts our ADFContent slice to the library's Node slice.
+func convertNodes(content []ADFContent) []*adf.Node {
+	if len(content) == 0 {
+		return nil
+	}
+
+	nodes := make([]*adf.Node, 0, len(content))
+	for _, c := range content {
+		node := convertNode(c)
+		if node != nil {
+			nodes = append(nodes, node)
 		}
 	}
+	return nodes
+}
+
+// convertNode converts a single ADFContent to the library's Node.
+func convertNode(c ADFContent) *adf.Node {
+	// Handle media nodes specially - convert to text with descriptive placeholder
+	if c.Type == "media" {
+		altText := "[Embedded image]"
+		if c.Attrs != nil && c.Attrs.Alt != "" {
+			altText = fmt.Sprintf("[Image: %s]", c.Attrs.Alt)
+		}
+		return &adf.Node{
+			NodeType: adf.NodeType("text"),
+			NodeValue: adf.NodeValue{
+				Text: altText,
+			},
+		}
+	}
+
+	node := &adf.Node{
+		NodeType: adf.NodeType(c.Type),
+		Content:  convertNodes(c.Content),
+		NodeValue: adf.NodeValue{
+			Text:  c.Text,
+			Marks: convertMarks(c.Marks),
+		},
+	}
+
+	// Convert attributes
+	if c.Attrs != nil {
+		node.Attributes = convertAttrs(c.Attrs)
+	}
+
+	return node
+}
+
+// convertMarks converts our ADFMark slice to the library's MarkNode slice.
+func convertMarks(marks []ADFMark) []adf.MarkNode {
+	if len(marks) == 0 {
+		return nil
+	}
+
+	result := make([]adf.MarkNode, 0, len(marks))
+	for _, m := range marks {
+		markNode := adf.MarkNode{
+			MarkType: adf.NodeType(m.Type),
+		}
+		if m.Attrs != nil {
+			markNode.Attributes = convertAttrs(m.Attrs)
+		}
+		result = append(result, markNode)
+	}
+	return result
+}
+
+// convertAttrs converts our ADFAttrs to a map for the library.
+func convertAttrs(attrs *ADFAttrs) map[string]interface{} {
+	if attrs == nil {
+		return nil
+	}
+
+	result := make(map[string]interface{})
+
+	if attrs.Level > 0 {
+		result["level"] = attrs.Level
+	}
+	if attrs.URL != "" {
+		result["url"] = attrs.URL
+	}
+	if attrs.Href != "" {
+		result["href"] = attrs.Href
+	}
+	if attrs.Language != "" {
+		result["language"] = attrs.Language
+	}
+	if attrs.ID != "" {
+		result["id"] = attrs.ID
+	}
+	if attrs.Type != "" {
+		result["type"] = attrs.Type
+	}
+	if attrs.Collection != "" {
+		result["collection"] = attrs.Collection
+	}
+	if attrs.Alt != "" {
+		result["alt"] = attrs.Alt
+	}
+	if attrs.Width > 0 {
+		result["width"] = attrs.Width
+	}
+	if attrs.Height > 0 {
+		result["height"] = attrs.Height
+	}
+
+	if len(result) == 0 {
+		return nil
+	}
+	return result
 }

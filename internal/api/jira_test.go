@@ -119,18 +119,28 @@ func TestADFToText(t *testing.T) {
 						Type: "bulletList",
 						Content: []ADFContent{
 							{
-								Type:    "listItem",
-								Content: []ADFContent{{Type: "text", Text: "Item 1"}},
+								Type: "listItem",
+								Content: []ADFContent{
+									{
+										Type:    "paragraph",
+										Content: []ADFContent{{Type: "text", Text: "Item 1"}},
+									},
+								},
 							},
 							{
-								Type:    "listItem",
-								Content: []ADFContent{{Type: "text", Text: "Item 2"}},
+								Type: "listItem",
+								Content: []ADFContent{
+									{
+										Type:    "paragraph",
+										Content: []ADFContent{{Type: "text", Text: "Item 2"}},
+									},
+								},
 							},
 						},
 					},
 				},
 			},
-			want: "• Item 1\n• Item 2",
+			want: "- Item 1\n- Item 2",
 		},
 		{
 			name: "code block",
