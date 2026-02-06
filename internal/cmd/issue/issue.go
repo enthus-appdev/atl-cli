@@ -31,6 +31,7 @@ func NewCmdIssue(ios *iostreams.IOStreams) *cobra.Command {
 	cmd.AddCommand(NewCmdTypes(ios))
 	cmd.AddCommand(NewCmdPriorities(ios))
 	cmd.AddCommand(NewCmdAttachment(ios))
+	cmd.AddCommand(NewCmdChangelog(ios))
 
 	return cmd
 }
