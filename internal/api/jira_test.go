@@ -484,3 +484,168 @@ func TestNewJiraService(t *testing.T) {
 		t.Error("NewJiraService() did not set client correctly")
 	}
 }
+
+// TestChangelogResponse tests the ChangelogResponse structure.
+func TestChangelogResponse(t *testing.T) {
+	jsonData := `{
+		"startAt": 0,
+		"maxResults": 100,
+		"total": 2,
+		"isLast": true,
+		"values": [
+			{
+				"id": "10001",
+				"author": {
+					"accountId": "user-123",
+					"displayName": "Jane Doe",
+					"active": true
+				},
+				"created": "2026-02-03T09:15:22.000+0100",
+				"items": [
+					{
+						"field": "priority",
+						"fieldtype": "jira",
+						"fieldId": "priority",
+						"fromString": "Medium",
+						"toString": "Highest"
+					}
+				]
+			},
+			{
+				"id": "10002",
+				"author": {
+					"accountId": "user-456",
+					"displayName": "John Smith",
+					"active": true
+				},
+				"created": "2026-02-04T14:12:08.000+0100",
+				"items": [
+					{
+						"field": "status",
+						"fieldtype": "jira",
+						"fieldId": "status",
+						"fromString": "In Progress",
+						"toString": "In Review"
+					},
+					{
+						"field": "assignee",
+						"fieldtype": "jira",
+						"fieldId": "assignee",
+						"fromString": "Jane Doe",
+						"toString": "John Smith"
+					}
+				]
+			}
+		]
+	}`
+
+	var result ChangelogResponse
+	if err := json.Unmarshal([]byte(jsonData), &result); err != nil {
+		t.Fatalf("json.Unmarshal() error = %v", err)
+	}
+
+	if result.Total != 2 {
+		t.Errorf("Total = %d, want 2", result.Total)
+	}
+	if !result.IsLast {
+		t.Error("IsLast should be true")
+	}
+	if len(result.Values) != 2 {
+		t.Errorf("Values count = %d, want 2", len(result.Values))
+	}
+
+	entry := result.Values[0]
+	if entry.ID != "10001" {
+		t.Errorf("entry.ID = %q, want %q", entry.ID, "10001")
+	}
+	if entry.Author == nil {
+		t.Fatal("entry.Author should not be nil")
+	}
+	if entry.Author.DisplayName != "Jane Doe" {
+		t.Errorf("Author.DisplayName = %q, want %q", entry.Author.DisplayName, "Jane Doe")
+	}
+	if len(entry.Items) != 1 {
+		t.Fatalf("Items count = %d, want 1", len(entry.Items))
+	}
+	item := entry.Items[0]
+	if item.Field != "priority" {
+		t.Errorf("item.Field = %q, want %q", item.Field, "priority")
+	}
+	if item.FromString != "Medium" {
+		t.Errorf("item.FromString = %q, want %q", item.FromString, "Medium")
+	}
+	if item.ToString != "Highest" {
+		t.Errorf("item.ToString = %q, want %q", item.ToString, "Highest")
+	}
+
+	entry2 := result.Values[1]
+	if len(entry2.Items) != 2 {
+		t.Errorf("entry2 Items count = %d, want 2", len(entry2.Items))
+	}
+}
+
+// TestGetChangelog tests the GetChangelog method with a mock server.
+func TestGetChangelog(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if !strings.Contains(r.URL.Path, "/issue/TEST-123/changelog") {
+			t.Errorf("Unexpected path: %s", r.URL.Path)
+		}
+
+		startAt := r.URL.Query().Get("startAt")
+		if startAt != "0" {
+			t.Errorf("startAt = %q, want %q", startAt, "0")
+		}
+
+		result := ChangelogResponse{
+			StartAt:    0,
+			MaxResults: 100,
+			Total:      1,
+			IsLast:     true,
+			Values: []*ChangelogEntry{
+				{
+					ID: "10001",
+					Author: &User{
+						AccountID:   "user-123",
+						DisplayName: "Jane Doe",
+					},
+					Created: "2026-02-03T09:15:22.000+0100",
+					Items: []*ChangelogItem{
+						{
+							Field:      "status",
+							FieldType:  "jira",
+							FromString: "Open",
+							ToString:   "In Progress",
+						},
+					},
+				},
+			},
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(result)
+	}))
+	defer server.Close()
+
+	client := &Client{
+		httpClient: server.Client(),
+		cloudID:    "test-cloud",
+		tokens: &auth.TokenSet{
+			AccessToken: "test-token",
+			ExpiresAt:   time.Now().Add(time.Hour),
+		},
+	}
+
+	ctx := context.Background()
+	var result ChangelogResponse
+	err := client.Get(ctx, server.URL+"/issue/TEST-123/changelog?startAt=0&maxResults=100", &result)
+
+	if err != nil {
+		t.Fatalf("Get() error = %v", err)
+	}
+	if len(result.Values) != 1 {
+		t.Fatalf("Values count = %d, want 1", len(result.Values))
+	}
+	if result.Values[0].Items[0].ToString != "In Progress" {
+		t.Errorf("ToString = %q, want %q", result.Values[0].Items[0].ToString, "In Progress")
+	}
+}
