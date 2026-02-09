@@ -27,7 +27,7 @@ atl issue view PROJ-1234 --web            # Open in browser
 
 ```bash
 atl issue list --assignee @me           # Your assigned issues
-atl issue list --project NX             # Issues in project
+atl issue list --project PROJ             # Issues in project
 atl issue list --jql "status = Open"    # Custom JQL query
 atl issue list --jql "sprint in openSprints() AND assignee = currentUser()"
 ```
@@ -35,9 +35,9 @@ atl issue list --jql "sprint in openSprints() AND assignee = currentUser()"
 ### Create Issues
 
 ```bash
-atl issue create --project NX --type Bug --summary "Title"
-atl issue create --project NX --type Task --summary "Title" --description "Details"
-atl issue create --project NX --parent PROJ-123 --summary "Subtask"
+atl issue create --project PROJ --type Bug --summary "Title"
+atl issue create --project PROJ --type Task --summary "Title" --description "Details"
+atl issue create --project PROJ --parent PROJ-123 --summary "Subtask"
 ```
 
 ### Edit Issues
@@ -49,7 +49,7 @@ atl issue edit PROJ-1234 --description "Additional notes" --append  # Append to 
 atl issue edit PROJ-1234 --assignee @me
 atl issue edit PROJ-1234 --add-label bug --remove-label wontfix
 atl issue edit PROJ-1234 --field "Story Points=8"
-atl issue edit PROJ-1234 --field "Technischer Hinweis=Some **markdown** text"  # Auto-converts to ADF
+atl issue edit PROJ-1234 --field "Custom Field=Some **markdown** text"  # Auto-converts to ADF
 ```
 
 **Notes**:
@@ -112,7 +112,7 @@ atl issue fields --search "story points"            # Search for field by name
 
 ```bash
 atl board list                                    # List all boards
-atl board list --project NX                       # List boards for project
+atl board list --project PROJ                       # List boards for project
 atl board rank PROJ-123 --before PROJ-456             # Rank issue before another
 atl board rank PROJ-123 --after PROJ-456              # Rank issue after another
 atl board rank PROJ-123 --top --board-id 42         # Move to top of backlog
@@ -257,7 +257,7 @@ atl issue comment PROJ-1234 --body "Starting work on this"
 
 ```bash
 # Create the issue
-atl issue create --project NX --type Task --summary "Implement feature X"
+atl issue create --project PROJ --type Task --summary "Implement feature X"
 
 # Link it to a parent story
 atl issue link PROJ-1235 PROJ-1000 --type "is part of"
