@@ -246,6 +246,19 @@ func (s *JiraService) DownloadAttachment(ctx context.Context, attachmentID strin
 	return s.client.GetRaw(ctx, path)
 }
 
+// UploadAttachment uploads a file as an attachment to an issue.
+// Returns the list of created attachments (Jira returns an array).
+func (s *JiraService) UploadAttachment(ctx context.Context, issueKey, filePath string) ([]*Attachment, error) {
+	path := fmt.Sprintf("%s/issue/%s/attachments", s.client.JiraBaseURL(), issueKey)
+
+	var attachments []*Attachment
+	if err := s.client.PostMultipart(ctx, path, "file", filePath, &attachments); err != nil {
+		return nil, err
+	}
+
+	return attachments, nil
+}
+
 // SearchOptions contains options for searching issues.
 type SearchOptions struct {
 	JQL           string

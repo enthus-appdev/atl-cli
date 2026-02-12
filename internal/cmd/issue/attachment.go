@@ -19,6 +19,7 @@ type AttachmentOptions struct {
 	IssueKey     string
 	AttachmentID string
 	OutputDir    string
+	UploadFiles  []string
 	List         bool
 	Download     bool
 	DownloadAll  bool
@@ -33,10 +34,10 @@ func NewCmdAttachment(ios *iostreams.IOStreams) *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:   "attachment <issue-key>",
-		Short: "List or download attachments from a Jira issue",
-		Long: `List or download attachments from a Jira issue.
+		Short: "Manage attachments on a Jira issue",
+		Long: `List, download, or upload attachments on a Jira issue.
 
-Use this to retrieve files attached to tickets, such as error logs,
+Use this to manage files attached to tickets, such as error logs,
 screenshots, or documents.`,
 		Example: `  # List attachments on an issue
   atl issue attachment PROJ-123 --list
@@ -50,13 +51,19 @@ screenshots, or documents.`,
   # Download to a specific directory
   atl issue attachment PROJ-123 --download-all --output ./downloads
 
+  # Upload a file to an issue
+  atl issue attachment PROJ-123 --upload ./screenshot.png
+
+  # Upload multiple files
+  atl issue attachment PROJ-123 --upload file1.pdf --upload file2.png
+
   # Output attachment list as JSON
   atl issue attachment PROJ-123 --list --json`,
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			opts.IssueKey = args[0]
 
-			if !opts.List && !opts.Download && !opts.DownloadAll {
+			if !opts.List && !opts.Download && !opts.DownloadAll && len(opts.UploadFiles) == 0 {
 				opts.List = true // Default to list
 			}
 
@@ -73,6 +80,7 @@ screenshots, or documents.`,
 	cmd.Flags().StringVar(&opts.AttachmentID, "id", "", "Attachment ID to download")
 	cmd.Flags().BoolVarP(&opts.DownloadAll, "download-all", "a", false, "Download all attachments")
 	cmd.Flags().StringVarP(&opts.OutputDir, "output", "o", ".", "Output directory for downloads")
+	cmd.Flags().StringArrayVarP(&opts.UploadFiles, "upload", "u", nil, "File path(s) to upload (can be repeated)")
 	cmd.Flags().BoolVarP(&opts.JSON, "json", "j", false, "Output as JSON")
 
 	return cmd
@@ -104,6 +112,15 @@ type DownloadOutput struct {
 	Path     string `json:"path"`
 }
 
+// UploadOutput represents an upload result.
+type UploadOutput struct {
+	IssueKey string `json:"issue_key"`
+	ID       string `json:"id"`
+	Filename string `json:"filename"`
+	Size     int64  `json:"size"`
+	MimeType string `json:"mimeType"`
+}
+
 func runAttachment(opts *AttachmentOptions) error {
 	client, err := api.NewClientFromConfig()
 	if err != nil {
@@ -112,6 +129,11 @@ func runAttachment(opts *AttachmentOptions) error {
 
 	ctx := context.Background()
 	jira := api.NewJiraService(client)
+
+	// Upload mode - doesn't need to fetch the issue first
+	if len(opts.UploadFiles) > 0 {
+		return uploadAttachments(opts, jira, ctx)
+	}
 
 	// Get the issue to get attachment list
 	issue, err := jira.GetIssue(ctx, opts.IssueKey)
@@ -305,6 +327,70 @@ func downloadAllAttachments(opts *AttachmentOptions, jira *api.JiraService, ctx 
 	}
 
 	fmt.Fprintf(opts.IO.Out, "\nDownloaded %d of %d attachments to %s\n", len(downloads), len(attachments), opts.OutputDir)
+
+	return nil
+}
+
+func uploadAttachments(opts *AttachmentOptions, jira *api.JiraService, ctx context.Context) error {
+	// Validate all files exist before uploading
+	for _, f := range opts.UploadFiles {
+		info, err := os.Stat(f)
+		if err != nil {
+			return fmt.Errorf("file not found: %s", f)
+		}
+		if info.IsDir() {
+			return fmt.Errorf("cannot upload a directory: %s", f)
+		}
+	}
+
+	var uploads []*UploadOutput
+	var errors []string
+
+	for _, f := range opts.UploadFiles {
+		attachments, err := jira.UploadAttachment(ctx, opts.IssueKey, f)
+		if err != nil {
+			errors = append(errors, fmt.Sprintf("%s: %v", filepath.Base(f), err))
+			continue
+		}
+
+		for _, a := range attachments {
+			uploads = append(uploads, &UploadOutput{
+				IssueKey: opts.IssueKey,
+				ID:       a.ID,
+				Filename: a.Filename,
+				Size:     a.Size,
+				MimeType: a.MimeType,
+			})
+
+			if !opts.JSON {
+				fmt.Fprintf(opts.IO.Out, "Uploaded: %s (%s) [ID: %s]\n", a.Filename, formatSize(a.Size), a.ID)
+			}
+		}
+	}
+
+	if opts.JSON {
+		result := struct {
+			IssueKey string          `json:"issue_key"`
+			Uploads  []*UploadOutput `json:"uploads"`
+			Errors   []string        `json:"errors,omitempty"`
+		}{
+			IssueKey: opts.IssueKey,
+			Uploads:  uploads,
+			Errors:   errors,
+		}
+		return output.JSON(opts.IO.Out, result)
+	}
+
+	if len(errors) > 0 {
+		fmt.Fprintf(opts.IO.Out, "\nFailed to upload %d file(s):\n", len(errors))
+		for _, e := range errors {
+			fmt.Fprintf(opts.IO.Out, "  - %s\n", e)
+		}
+	}
+
+	if len(opts.UploadFiles) > 1 {
+		fmt.Fprintf(opts.IO.Out, "\nUploaded %d of %d files to %s\n", len(uploads), len(opts.UploadFiles), opts.IssueKey)
+	}
 
 	return nil
 }
