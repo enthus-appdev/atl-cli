@@ -1129,6 +1129,51 @@ func (s *JiraService) GetBoardIssues(ctx context.Context, boardID int, maxResult
 	return result.Issues, nil
 }
 
+// ChangelogEntry represents a single changelog entry for an issue.
+type ChangelogEntry struct {
+	ID      string           `json:"id"`
+	Author  *User            `json:"author,omitempty"`
+	Created string           `json:"created"`
+	Items   []*ChangelogItem `json:"items"`
+}
+
+// ChangelogItem represents a single field change within a changelog entry.
+type ChangelogItem struct {
+	Field      string `json:"field"`
+	FieldType  string `json:"fieldtype"`
+	FieldID    string `json:"fieldId,omitempty"`
+	From       string `json:"from,omitempty"`
+	To         string `json:"to,omitempty"`
+	FromString string `json:"fromString,omitempty"`
+	ToString   string `json:"toString,omitempty"`
+}
+
+// ChangelogResponse represents a paginated list of changelog entries.
+type ChangelogResponse struct {
+	StartAt    int               `json:"startAt"`
+	MaxResults int               `json:"maxResults"`
+	Total      int               `json:"total"`
+	IsLast     bool              `json:"isLast"`
+	Values     []*ChangelogEntry `json:"values"`
+}
+
+// GetChangelog fetches the changelog for an issue.
+// Use startAt for pagination (0-indexed). Returns up to 100 entries per call.
+func (s *JiraService) GetChangelog(ctx context.Context, issueKey string, startAt int) (*ChangelogResponse, error) {
+	path := fmt.Sprintf("%s/issue/%s/changelog", s.client.JiraBaseURL(), issueKey)
+
+	params := url.Values{}
+	params.Set("startAt", strconv.Itoa(startAt))
+	params.Set("maxResults", "100")
+
+	var result ChangelogResponse
+	if err := s.client.Get(ctx, path+"?"+params.Encode(), &result); err != nil {
+		return nil, err
+	}
+
+	return &result, nil
+}
+
 // TextToADF converts plain text or markdown to Atlassian Document Format.
 // Supports markdown syntax including: headings (#), bold (**), italic (*),
 // inline code (`), code blocks (```), links, bullet lists (-/*), ordered lists,
