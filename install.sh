@@ -139,8 +139,8 @@ install_from_source() {
             exit 1
         }
     else
-        git clone --depth 1 "git@github.com:${REPO}.git" "$tmp_dir" 2>/dev/null || {
-            echo -e "${RED}Failed to clone repository. Install gh CLI or set up SSH keys.${NC}"
+        git clone --depth 1 "https://github.com/${REPO}.git" "$tmp_dir" 2>/dev/null || {
+            echo -e "${RED}Failed to clone repository. Check network connectivity or repository visibility.${NC}"
             exit 1
         }
     fi
