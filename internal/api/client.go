@@ -25,9 +25,11 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"mime/multipart"
 	"net/http"
 	"net/url"
 	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -336,6 +338,77 @@ func (c *Client) Put(ctx context.Context, path string, body interface{}, result 
 // Delete makes a DELETE request.
 func (c *Client) Delete(ctx context.Context, path string) error {
 	return c.Request(ctx, http.MethodDelete, path, nil, nil)
+}
+
+// PostMultipart makes a multipart/form-data POST request for file uploads.
+// The file at filePath is sent as the form field specified by fieldName.
+func (c *Client) PostMultipart(ctx context.Context, urlPath, fieldName, filePath string, result interface{}) error {
+	if err := c.ensureValidToken(ctx); err != nil {
+		return err
+	}
+
+	f, err := os.Open(filePath)
+	if err != nil {
+		return fmt.Errorf("failed to open file: %w", err)
+	}
+	defer f.Close()
+
+	var buf bytes.Buffer
+	writer := multipart.NewWriter(&buf)
+
+	part, err := writer.CreateFormFile(fieldName, filepath.Base(filePath))
+	if err != nil {
+		return fmt.Errorf("failed to create form file: %w", err)
+	}
+
+	if _, err := io.Copy(part, f); err != nil {
+		return fmt.Errorf("failed to write file content: %w", err)
+	}
+
+	if err := writer.Close(); err != nil {
+		return fmt.Errorf("failed to finalize multipart form: %w", err)
+	}
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, urlPath, &buf)
+	if err != nil {
+		return fmt.Errorf("failed to create request: %w", err)
+	}
+
+	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", c.tokens.AccessToken))
+	req.Header.Set("Accept", "application/json")
+	req.Header.Set("Content-Type", writer.FormDataContentType())
+	req.Header.Set("X-Atlassian-Token", "no-check")
+
+	debugLog("POST %s (multipart)", urlPath)
+
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		return fmt.Errorf("request failed: %w", err)
+	}
+	defer resp.Body.Close()
+
+	respBody, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return fmt.Errorf("failed to read response: %w", err)
+	}
+
+	debugLog("Response: %d %s (%d bytes)", resp.StatusCode, resp.Status, len(respBody))
+
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return &APIError{
+			StatusCode: resp.StatusCode,
+			Status:     resp.Status,
+			Body:       string(respBody),
+		}
+	}
+
+	if result != nil && len(respBody) > 0 {
+		if err := json.Unmarshal(respBody, result); err != nil {
+			return fmt.Errorf("failed to parse response: %w", err)
+		}
+	}
+
+	return nil
 }
 
 // GetRaw makes a GET request and returns raw bytes (for file downloads).
