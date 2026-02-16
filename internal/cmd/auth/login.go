@@ -153,6 +153,11 @@ func runLogin(opts *LoginOptions) error {
 		return fmt.Errorf("no accessible Atlassian sites found. Make sure your OAuth app has the correct permissions")
 	}
 
+	// Normalize hostname (strip https:// prefix if user pasted a URL)
+	if opts.Hostname != "" {
+		opts.Hostname = config.NormalizeHostname(opts.Hostname)
+	}
+
 	// Select resource (use first one or match hostname)
 	var selectedResource *api.AccessibleResource
 	for _, r := range resources {

@@ -267,6 +267,178 @@ func TestSaveAndLoad(t *testing.T) {
 	}
 }
 
+// TestNormalizeHostname tests stripping protocol prefixes and trailing slashes.
+func TestNormalizeHostname(t *testing.T) {
+	tests := []struct {
+		input string
+		want  string
+	}{
+		{"mycompany.atlassian.net", "mycompany.atlassian.net"},
+		{"https://mycompany.atlassian.net", "mycompany.atlassian.net"},
+		{"http://mycompany.atlassian.net", "mycompany.atlassian.net"},
+		{"https://mycompany.atlassian.net/", "mycompany.atlassian.net"},
+		{"https://mycompany.atlassian.net///", "mycompany.atlassian.net"},
+		{"", ""},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.input, func(t *testing.T) {
+			got := NormalizeHostname(tt.input)
+			if got != tt.want {
+				t.Errorf("NormalizeHostname(%q) = %q, want %q", tt.input, got, tt.want)
+			}
+		})
+	}
+}
+
+// TestResolveHost tests alias resolution.
+func TestResolveHost(t *testing.T) {
+	cfg := &Config{
+		Aliases: map[string]string{
+			"prod":    "mycompany.atlassian.net",
+			"sandbox": "mycompany-sandbox.atlassian.net",
+		},
+	}
+
+	tests := []struct {
+		input string
+		want  string
+	}{
+		{"prod", "mycompany.atlassian.net"},
+		{"sandbox", "mycompany-sandbox.atlassian.net"},
+		{"mycompany.atlassian.net", "mycompany.atlassian.net"},          // passthrough
+		{"unknown.atlassian.net", "unknown.atlassian.net"},              // passthrough
+		{"nonexistent", "nonexistent"},                                  // not an alias
+		{"https://mycompany.atlassian.net", "mycompany.atlassian.net"},  // URL normalized
+		{"https://mycompany.atlassian.net/", "mycompany.atlassian.net"}, // URL with trailing slash
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.input, func(t *testing.T) {
+			got := cfg.ResolveHost(tt.input)
+			if got != tt.want {
+				t.Errorf("ResolveHost(%q) = %q, want %q", tt.input, got, tt.want)
+			}
+		})
+	}
+}
+
+// TestResolveHostNilAliases tests ResolveHost with nil aliases map.
+func TestResolveHostNilAliases(t *testing.T) {
+	cfg := &Config{Aliases: nil}
+
+	got := cfg.ResolveHost("prod")
+	if got != "prod" {
+		t.Errorf("ResolveHost(\"prod\") = %q, want %q", got, "prod")
+	}
+}
+
+// TestSetAlias tests creating aliases.
+func TestSetAlias(t *testing.T) {
+	cfg := &Config{
+		Hosts: map[string]*HostConfig{
+			"mycompany.atlassian.net": {Hostname: "mycompany.atlassian.net"},
+		},
+	}
+
+	err := cfg.SetAlias("prod", "mycompany.atlassian.net")
+	if err != nil {
+		t.Fatalf("SetAlias() returned error: %v", err)
+	}
+
+	if cfg.Aliases["prod"] != "mycompany.atlassian.net" {
+		t.Errorf("Aliases[\"prod\"] = %q, want %q", cfg.Aliases["prod"], "mycompany.atlassian.net")
+	}
+}
+
+// TestSetAliasUnknownHost tests that SetAlias rejects unknown hosts.
+func TestSetAliasUnknownHost(t *testing.T) {
+	cfg := &Config{
+		Hosts: map[string]*HostConfig{
+			"mycompany.atlassian.net": {Hostname: "mycompany.atlassian.net"},
+		},
+	}
+
+	err := cfg.SetAlias("bad", "nonexistent.atlassian.net")
+	if err == nil {
+		t.Error("SetAlias() should return error for unknown host")
+	}
+}
+
+// TestSetAliasNilHosts tests SetAlias with nil hosts map.
+func TestSetAliasNilHosts(t *testing.T) {
+	cfg := &Config{Hosts: nil}
+
+	err := cfg.SetAlias("prod", "mycompany.atlassian.net")
+	if err == nil {
+		t.Error("SetAlias() should return error when hosts map is nil")
+	}
+}
+
+// TestRemoveAlias tests removing an alias.
+func TestRemoveAlias(t *testing.T) {
+	cfg := &Config{
+		Aliases: map[string]string{
+			"prod":    "mycompany.atlassian.net",
+			"sandbox": "mycompany-sandbox.atlassian.net",
+		},
+	}
+
+	cfg.RemoveAlias("prod")
+
+	if _, ok := cfg.Aliases["prod"]; ok {
+		t.Error("RemoveAlias() should remove the alias")
+	}
+	if cfg.Aliases["sandbox"] != "mycompany-sandbox.atlassian.net" {
+		t.Error("RemoveAlias() should not affect other aliases")
+	}
+}
+
+// TestRemoveAliasNilMap tests RemoveAlias with nil aliases map.
+func TestRemoveAliasNilMap(t *testing.T) {
+	cfg := &Config{Aliases: nil}
+
+	// Should not panic
+	cfg.RemoveAlias("prod")
+}
+
+// TestAliasForHost tests reverse alias lookup.
+func TestAliasForHost(t *testing.T) {
+	cfg := &Config{
+		Aliases: map[string]string{
+			"prod": "mycompany.atlassian.net",
+		},
+	}
+
+	got := cfg.AliasForHost("mycompany.atlassian.net")
+	if got != "prod" {
+		t.Errorf("AliasForHost() = %q, want %q", got, "prod")
+	}
+
+	got = cfg.AliasForHost("unknown.atlassian.net")
+	if got != "" {
+		t.Errorf("AliasForHost(unknown) = %q, want empty string", got)
+	}
+}
+
+// TestSetCurrentHostResolvesAlias tests that Set("current_host") resolves aliases.
+func TestSetCurrentHostResolvesAlias(t *testing.T) {
+	cfg := &Config{
+		Aliases: map[string]string{
+			"prod": "mycompany.atlassian.net",
+		},
+	}
+
+	err := cfg.Set("current_host", "prod")
+	if err != nil {
+		t.Fatalf("Set() returned error: %v", err)
+	}
+
+	if cfg.CurrentHost != "mycompany.atlassian.net" {
+		t.Errorf("CurrentHost = %q, want %q", cfg.CurrentHost, "mycompany.atlassian.net")
+	}
+}
+
 // TestOAuthConfig tests the OAuthConfig struct.
 func TestOAuthConfig(t *testing.T) {
 	oauth := &OAuthConfig{

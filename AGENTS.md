@@ -13,6 +13,32 @@ atl auth status                         # Check authentication status
 atl auth login                          # Authenticate (opens browser)
 ```
 
+## Context Switching (Multi-Environment)
+
+Switch between Atlassian instances using aliases:
+
+```bash
+# Create aliases
+atl config set-alias prod                                    # alias "prod" → current host
+atl config set-alias sandbox mycompany-sandbox.atlassian.net # alias → specific host
+
+# Switch active host
+atl config use-context prod       # by alias
+atl config use-context mycompany.atlassian.net  # by hostname
+
+# Show current context
+atl config current-context        # prints alias + hostname
+atl config current-context --json # JSON output
+
+# Remove alias
+atl config delete-alias sandbox
+
+# View aliases
+atl config list                   # shows Aliases section with (current) marker
+```
+
+Aliases also work with `--hostname` flags: `atl auth status --hostname prod`
+
 ## Jira Issues
 
 ### View Issues
@@ -334,7 +360,7 @@ internal/
     confluence/          # confluence space|page subcommands
     board/               # board list|rank
     worklog/             # worklog add|list|edit|delete (stubs)
-    config/              # config get|set|list
+    config/              # config get|set|list|use-context|current-context|set-alias|delete-alias
   config/                # Configuration management (~/.config/atlassian/)
   iostreams/             # I/O abstraction for testability
   output/                # Output formatting (JSON, tables, colors)

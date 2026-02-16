@@ -73,6 +73,11 @@ func runStatus(opts *StatusOptions) error {
 		return nil
 	}
 
+	// Resolve alias if --hostname is provided
+	if opts.Hostname != "" {
+		opts.Hostname = cfg.ResolveHost(opts.Hostname)
+	}
+
 	var statuses []AuthStatus
 
 	for hostname, hostCfg := range cfg.Hosts {
