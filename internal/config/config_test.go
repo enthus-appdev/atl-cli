@@ -267,6 +267,30 @@ func TestSaveAndLoad(t *testing.T) {
 	}
 }
 
+// TestNormalizeHostname tests stripping protocol prefixes and trailing slashes.
+func TestNormalizeHostname(t *testing.T) {
+	tests := []struct {
+		input string
+		want  string
+	}{
+		{"mycompany.atlassian.net", "mycompany.atlassian.net"},
+		{"https://mycompany.atlassian.net", "mycompany.atlassian.net"},
+		{"http://mycompany.atlassian.net", "mycompany.atlassian.net"},
+		{"https://mycompany.atlassian.net/", "mycompany.atlassian.net"},
+		{"https://mycompany.atlassian.net///", "mycompany.atlassian.net"},
+		{"", ""},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.input, func(t *testing.T) {
+			got := NormalizeHostname(tt.input)
+			if got != tt.want {
+				t.Errorf("NormalizeHostname(%q) = %q, want %q", tt.input, got, tt.want)
+			}
+		})
+	}
+}
+
 // TestResolveHost tests alias resolution.
 func TestResolveHost(t *testing.T) {
 	cfg := &Config{
@@ -282,9 +306,11 @@ func TestResolveHost(t *testing.T) {
 	}{
 		{"prod", "mycompany.atlassian.net"},
 		{"sandbox", "mycompany-sandbox.atlassian.net"},
-		{"mycompany.atlassian.net", "mycompany.atlassian.net"},       // passthrough
-		{"unknown.atlassian.net", "unknown.atlassian.net"},           // passthrough
-		{"nonexistent", "nonexistent"},                                // not an alias
+		{"mycompany.atlassian.net", "mycompany.atlassian.net"},                      // passthrough
+		{"unknown.atlassian.net", "unknown.atlassian.net"},                          // passthrough
+		{"nonexistent", "nonexistent"},                                               // not an alias
+		{"https://mycompany.atlassian.net", "mycompany.atlassian.net"},              // URL normalized
+		{"https://mycompany.atlassian.net/", "mycompany.atlassian.net"},             // URL with trailing slash
 	}
 
 	for _, tt := range tests {

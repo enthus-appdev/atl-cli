@@ -15,6 +15,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 
 	"gopkg.in/yaml.v3"
@@ -161,16 +162,26 @@ func (c *Config) CurrentHostConfig() *HostConfig {
 	return c.GetHost(c.CurrentHost)
 }
 
+// NormalizeHostname strips protocol prefixes and trailing slashes from a hostname.
+// This allows users to paste full URLs like "https://mycompany.atlassian.net/"
+// and have them treated as bare hostnames.
+func NormalizeHostname(hostname string) string {
+	hostname = strings.TrimPrefix(hostname, "https://")
+	hostname = strings.TrimPrefix(hostname, "http://")
+	hostname = strings.TrimRight(hostname, "/")
+	return hostname
+}
+
 // ResolveHost returns the hostname for a given alias or hostname.
 // If the input matches an alias key, the mapped hostname is returned.
-// Otherwise the input is returned unchanged.
+// Otherwise the input is normalized (protocol prefix stripped) and returned.
 func (c *Config) ResolveHost(nameOrHostname string) string {
 	if c.Aliases != nil {
 		if hostname, ok := c.Aliases[nameOrHostname]; ok {
 			return hostname
 		}
 	}
-	return nameOrHostname
+	return NormalizeHostname(nameOrHostname)
 }
 
 // SetAlias creates or updates an alias mapping to a hostname.
