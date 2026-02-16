@@ -21,6 +21,10 @@ func NewCmdConfig(ios *iostreams.IOStreams) *cobra.Command {
 	cmd.AddCommand(newCmdGet(ios))
 	cmd.AddCommand(newCmdSet(ios))
 	cmd.AddCommand(newCmdList(ios))
+	cmd.AddCommand(newCmdUseContext(ios))
+	cmd.AddCommand(newCmdCurrentContext(ios))
+	cmd.AddCommand(newCmdSetAlias(ios))
+	cmd.AddCommand(newCmdDeleteAlias(ios))
 
 	return cmd
 }
@@ -135,6 +139,7 @@ type ConfigListOutput struct {
 	DefaultOutputFormat string                     `json:"default_output_format,omitempty"`
 	Editor              string                     `json:"editor,omitempty"`
 	Pager               string                     `json:"pager,omitempty"`
+	Aliases             map[string]string          `json:"aliases,omitempty"`
 	Hosts               map[string]*HostInfoOutput `json:"hosts,omitempty"`
 	ConfigFile          string                     `json:"config_file"`
 }
@@ -160,6 +165,10 @@ func runList(ios *iostreams.IOStreams, jsonOutput bool) error {
 		ConfigFile:          config.ConfigFile(),
 	}
 
+	if len(cfg.Aliases) > 0 {
+		listOutput.Aliases = cfg.Aliases
+	}
+
 	if len(cfg.Hosts) > 0 {
 		listOutput.Hosts = make(map[string]*HostInfoOutput)
 		for name, host := range cfg.Hosts {
@@ -182,6 +191,18 @@ func runList(ios *iostreams.IOStreams, jsonOutput bool) error {
 	printConfigValue(ios, "  default_output_format", listOutput.DefaultOutputFormat)
 	printConfigValue(ios, "  editor", listOutput.Editor)
 	printConfigValue(ios, "  pager", listOutput.Pager)
+
+	if len(listOutput.Aliases) > 0 {
+		fmt.Fprintln(ios.Out, "")
+		fmt.Fprintln(ios.Out, "Aliases:")
+		for alias, hostname := range listOutput.Aliases {
+			current := ""
+			if hostname == cfg.CurrentHost {
+				current = " (current)"
+			}
+			fmt.Fprintf(ios.Out, "  %s: %s%s\n", alias, hostname, current)
+		}
+	}
 
 	if len(listOutput.Hosts) > 0 {
 		fmt.Fprintln(ios.Out, "")

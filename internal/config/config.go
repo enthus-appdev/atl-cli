@@ -161,6 +161,48 @@ func (c *Config) CurrentHostConfig() *HostConfig {
 	return c.GetHost(c.CurrentHost)
 }
 
+// ResolveHost returns the hostname for a given alias or hostname.
+// If the input matches an alias key, the mapped hostname is returned.
+// Otherwise the input is returned unchanged.
+func (c *Config) ResolveHost(nameOrHostname string) string {
+	if c.Aliases != nil {
+		if hostname, ok := c.Aliases[nameOrHostname]; ok {
+			return hostname
+		}
+	}
+	return nameOrHostname
+}
+
+// SetAlias creates or updates an alias mapping to a hostname.
+// The hostname must exist in the Hosts map.
+func (c *Config) SetAlias(alias, hostname string) error {
+	if c.Hosts == nil || c.Hosts[hostname] == nil {
+		return fmt.Errorf("host %q not found in configuration\n\nRun 'atl auth login' to authenticate with this host first", hostname)
+	}
+	if c.Aliases == nil {
+		c.Aliases = make(map[string]string)
+	}
+	c.Aliases[alias] = hostname
+	return nil
+}
+
+// RemoveAlias deletes an alias from the configuration.
+func (c *Config) RemoveAlias(alias string) {
+	if c.Aliases != nil {
+		delete(c.Aliases, alias)
+	}
+}
+
+// AliasForHost returns the alias name that maps to the given hostname, if any.
+func (c *Config) AliasForHost(hostname string) string {
+	for alias, host := range c.Aliases {
+		if host == hostname {
+			return alias
+		}
+	}
+	return ""
+}
+
 // Get returns a configuration value by key.
 func (c *Config) Get(key string) string {
 	switch key {
@@ -181,7 +223,7 @@ func (c *Config) Get(key string) string {
 func (c *Config) Set(key, value string) error {
 	switch key {
 	case "current_host":
-		c.CurrentHost = value
+		c.CurrentHost = c.ResolveHost(value)
 	case "default_output_format":
 		c.DefaultOutputFormat = value
 	case "editor":

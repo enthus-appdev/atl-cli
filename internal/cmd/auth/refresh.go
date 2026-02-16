@@ -58,8 +58,8 @@ func runRefresh(opts *RefreshOptions) error {
 		return fmt.Errorf("failed to load config: %w", err)
 	}
 
-	// Determine hostname
-	hostname := opts.Hostname
+	// Determine hostname (resolve alias if needed)
+	hostname := cfg.ResolveHost(opts.Hostname)
 	if hostname == "" {
 		hostname = cfg.CurrentHost
 	}

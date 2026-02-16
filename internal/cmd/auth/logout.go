@@ -58,6 +58,11 @@ func runLogout(opts *LogoutOptions) error {
 		return nil
 	}
 
+	// Resolve alias if --hostname is provided
+	if opts.Hostname != "" {
+		opts.Hostname = cfg.ResolveHost(opts.Hostname)
+	}
+
 	var hostsToRemove []string
 
 	if opts.All {
