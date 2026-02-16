@@ -40,6 +40,8 @@ func runSetAlias(ios *iostreams.IOStreams, alias, hostname string) error {
 
 	if hostname == "" {
 		hostname = cfg.CurrentHost
+	} else {
+		hostname = config.NormalizeHostname(hostname)
 	}
 	if hostname == "" {
 		return fmt.Errorf("no hostname specified and no current host configured\n\nUse 'atl auth login' first or provide a hostname argument")
@@ -59,11 +61,11 @@ func runSetAlias(ios *iostreams.IOStreams, alias, hostname string) error {
 
 func newCmdDeleteAlias(ios *iostreams.IOStreams) *cobra.Command {
 	return &cobra.Command{
-		Use:   "delete-alias <alias>",
-		Short: "Remove a host alias",
-		Long:  `Remove a named alias from the configuration.`,
+		Use:     "delete-alias <alias>",
+		Short:   "Remove a host alias",
+		Long:    `Remove a named alias from the configuration.`,
 		Example: `  atl config delete-alias sandbox`,
-		Args: cobra.ExactArgs(1),
+		Args:    cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return runDeleteAlias(ios, args[0])
 		},
@@ -76,7 +78,7 @@ func runDeleteAlias(ios *iostreams.IOStreams, alias string) error {
 		return fmt.Errorf("failed to load config: %w", err)
 	}
 
-	if cfg.Aliases == nil || cfg.Aliases[alias] == "" {
+	if _, ok := cfg.Aliases[alias]; !ok {
 		return fmt.Errorf("alias %q not found", alias)
 	}
 

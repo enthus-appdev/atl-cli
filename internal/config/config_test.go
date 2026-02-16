@@ -306,11 +306,11 @@ func TestResolveHost(t *testing.T) {
 	}{
 		{"prod", "mycompany.atlassian.net"},
 		{"sandbox", "mycompany-sandbox.atlassian.net"},
-		{"mycompany.atlassian.net", "mycompany.atlassian.net"},                      // passthrough
-		{"unknown.atlassian.net", "unknown.atlassian.net"},                          // passthrough
-		{"nonexistent", "nonexistent"},                                               // not an alias
-		{"https://mycompany.atlassian.net", "mycompany.atlassian.net"},              // URL normalized
-		{"https://mycompany.atlassian.net/", "mycompany.atlassian.net"},             // URL with trailing slash
+		{"mycompany.atlassian.net", "mycompany.atlassian.net"},          // passthrough
+		{"unknown.atlassian.net", "unknown.atlassian.net"},              // passthrough
+		{"nonexistent", "nonexistent"},                                  // not an alias
+		{"https://mycompany.atlassian.net", "mycompany.atlassian.net"},  // URL normalized
+		{"https://mycompany.atlassian.net/", "mycompany.atlassian.net"}, // URL with trailing slash
 	}
 
 	for _, tt := range tests {
