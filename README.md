@@ -1,6 +1,6 @@
 # Atlassian CLI (atl)
 
-A command-line tool for working with Jira, Confluence, and Tempo. Designed with LLM-friendly output for easy integration with AI assistants.
+A command-line tool for working with Jira and Confluence. Designed with LLM-friendly output for easy integration with AI assistants.
 
 ## Installation
 
