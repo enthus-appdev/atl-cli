@@ -43,6 +43,7 @@ jobs:
             "darwin/amd64"
             "darwin/arm64"
             "windows/amd64"
+            "windows/arm64"
           )
 
           for platform in "${platforms[@]}"; do
@@ -125,7 +126,7 @@ jobs:
             ```
 
             ### Windows
-            Download `atl-windows-amd64.zip` and add to your PATH.
+            Download `atl-windows-amd64.zip` (or `atl-windows-arm64.zip` for ARM) and add to your PATH.
 
             ## Checksums
 

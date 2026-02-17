@@ -10,6 +10,8 @@ A command-line tool for working with Jira, Confluence, and Tempo. Designed with 
 go install github.com/enthus-appdev/atl-cli/cmd/atl@latest
 ```
 
+Make sure `$GOPATH/bin` (or `$HOME/go/bin`) is in your `PATH`.
+
 ### From Source
 
 ```bash
