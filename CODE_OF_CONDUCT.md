@@ -4,4 +4,4 @@ This project follows the [Contributor Covenant v2.1](https://www.contributor-cov
 
 In short: be respectful, constructive, and inclusive. Harassment or exclusionary behavior will not be tolerated.
 
-For concerns, contact the maintainers via [GitHub issues](https://github.com/enthus-appdev/atl-cli/issues) or email.
+For concerns, contact the maintainers via [GitHub issues](https://github.com/enthus-appdev/atl-cli/issues).
