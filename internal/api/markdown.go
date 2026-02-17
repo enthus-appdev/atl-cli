@@ -463,6 +463,31 @@ func countLeadingSpaces(line string) int {
 	return count
 }
 
+// hasCodeMark returns true if the content node has an inline code mark.
+// In ADF, the code mark is exclusive and cannot be combined with other marks
+// like strong, em, or strike. Jira will reject the document with INVALID_INPUT.
+func hasCodeMark(c ADFContent) bool {
+	for _, m := range c.Marks {
+		if m.Type == "code" {
+			return true
+		}
+	}
+	return false
+}
+
+// addMarkToContent prepends a mark to inner content nodes, skipping nodes that
+// already have a code mark (since code is exclusive in ADF).
+func addMarkToContent(innerContent []ADFContent, mark ADFMark) []ADFContent {
+	result := make([]ADFContent, 0, len(innerContent))
+	for _, c := range innerContent {
+		if !hasCodeMark(c) {
+			c.Marks = append([]ADFMark{mark}, c.Marks...)
+		}
+		result = append(result, c)
+	}
+	return result
+}
+
 // parseInline parses inline markdown elements (bold, italic, code, links).
 func parseInline(text string) []ADFContent {
 	if text == "" {
@@ -519,20 +544,14 @@ func parseInline(text string) []ADFContent {
 		if boldMatch := regexp.MustCompile(`^\*\*([^*]+)\*\*`).FindStringSubmatch(remaining); len(boldMatch) > 0 {
 			// Parse inner content for nested formatting
 			innerContent := parseInline(boldMatch[1])
-			for _, c := range innerContent {
-				c.Marks = append([]ADFMark{{Type: "strong"}}, c.Marks...)
-				content = append(content, c)
-			}
+			content = append(content, addMarkToContent(innerContent, ADFMark{Type: "strong"})...)
 			remaining = remaining[len(boldMatch[0]):]
 			matched = true
 			continue
 		}
 		if boldMatch := regexp.MustCompile(`^__([^_]+)__`).FindStringSubmatch(remaining); len(boldMatch) > 0 {
 			innerContent := parseInline(boldMatch[1])
-			for _, c := range innerContent {
-				c.Marks = append([]ADFMark{{Type: "strong"}}, c.Marks...)
-				content = append(content, c)
-			}
+			content = append(content, addMarkToContent(innerContent, ADFMark{Type: "strong"})...)
 			remaining = remaining[len(boldMatch[0]):]
 			matched = true
 			continue
@@ -541,10 +560,7 @@ func parseInline(text string) []ADFContent {
 		// Strikethrough: ~~text~~
 		if strikeMatch := regexp.MustCompile(`^~~([^~]+)~~`).FindStringSubmatch(remaining); len(strikeMatch) > 0 {
 			innerContent := parseInline(strikeMatch[1])
-			for _, c := range innerContent {
-				c.Marks = append([]ADFMark{{Type: "strike"}}, c.Marks...)
-				content = append(content, c)
-			}
+			content = append(content, addMarkToContent(innerContent, ADFMark{Type: "strike"})...)
 			remaining = remaining[len(strikeMatch[0]):]
 			matched = true
 			continue
@@ -553,20 +569,14 @@ func parseInline(text string) []ADFContent {
 		// Italic: *text* or _text_ (must not be followed by another * or _)
 		if italicMatch := regexp.MustCompile(`^\*([^*]+)\*`).FindStringSubmatch(remaining); len(italicMatch) > 0 {
 			innerContent := parseInline(italicMatch[1])
-			for _, c := range innerContent {
-				c.Marks = append([]ADFMark{{Type: "em"}}, c.Marks...)
-				content = append(content, c)
-			}
+			content = append(content, addMarkToContent(innerContent, ADFMark{Type: "em"})...)
 			remaining = remaining[len(italicMatch[0]):]
 			matched = true
 			continue
 		}
 		if italicMatch := regexp.MustCompile(`^_([^_]+)_`).FindStringSubmatch(remaining); len(italicMatch) > 0 {
 			innerContent := parseInline(italicMatch[1])
-			for _, c := range innerContent {
-				c.Marks = append([]ADFMark{{Type: "em"}}, c.Marks...)
-				content = append(content, c)
-			}
+			content = append(content, addMarkToContent(innerContent, ADFMark{Type: "em"})...)
 			remaining = remaining[len(italicMatch[0]):]
 			matched = true
 			continue
