@@ -4,7 +4,7 @@ This document provides guidance for LLM agents using the `atl` CLI tool.
 
 ## Overview
 
-`atl` is a command-line tool for Jira, Confluence, and Tempo. All commands support `--json` for structured output, making it ideal for programmatic use.
+`atl` is a command-line tool for Jira and Confluence. All commands support `--json` for structured output, making it ideal for programmatic use.
 
 ## Authentication
 
@@ -312,7 +312,6 @@ The CLI returns non-zero exit codes on failure. Common errors:
 
 ## Limitations
 
-- `worklog` commands are not yet implemented (Tempo API pending)
 - No automatic pagination for large result sets
 - Rate limiting may apply for bulk operations
 
@@ -359,7 +358,6 @@ internal/
     issue/               # issue view|list|create|edit|transition|comment|assign
     confluence/          # confluence space|page subcommands
     board/               # board list|rank
-    worklog/             # worklog add|list|edit|delete (stubs)
     config/              # config get|set|list|use-context|current-context|set-alias|delete-alias
   config/                # Configuration management (~/.config/atlassian/)
   iostreams/             # I/O abstraction for testability

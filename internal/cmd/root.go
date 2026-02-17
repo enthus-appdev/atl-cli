@@ -10,7 +10,6 @@ import (
 	configCmd "github.com/enthus-appdev/atl-cli/internal/cmd/config"
 	confluenceCmd "github.com/enthus-appdev/atl-cli/internal/cmd/confluence"
 	issueCmd "github.com/enthus-appdev/atl-cli/internal/cmd/issue"
-	worklogCmd "github.com/enthus-appdev/atl-cli/internal/cmd/worklog"
 	"github.com/enthus-appdev/atl-cli/internal/iostreams"
 )
 
@@ -35,13 +34,12 @@ func Execute(ios *iostreams.IOStreams, buildInfo BuildInfo) int {
 func NewRootCmd(ios *iostreams.IOStreams, buildInfo BuildInfo) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "atl",
-		Short: "Atlassian CLI - Work with Jira, Confluence, and Tempo from the command line",
+		Short: "Atlassian CLI - Work with Jira and Confluence from the command line",
 		Long: `atl is a CLI tool for interacting with Atlassian products.
 
 It provides commands for:
   - Jira: View, create, and manage issues
   - Confluence: Read and edit pages
-  - Tempo: Log and manage worklogs
 
 Get started by running 'atl auth login' to authenticate with your Atlassian account.
 
@@ -66,7 +64,6 @@ Environment variables:
 	cmd.AddCommand(issueCmd.NewCmdIssue(ios))
 	cmd.AddCommand(boardCmd.NewCmdBoard(ios))
 	cmd.AddCommand(confluenceCmd.NewCmdConfluence(ios))
-	cmd.AddCommand(worklogCmd.NewCmdWorklog(ios))
 	cmd.AddCommand(configCmd.NewCmdConfig(ios))
 	cmd.AddCommand(newVersionCmd(ios, buildInfo))
 	cmd.AddCommand(newCompletionCmd(ios))
