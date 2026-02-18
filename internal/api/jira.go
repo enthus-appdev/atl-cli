@@ -13,7 +13,8 @@ import (
 
 // JiraService handles Jira API operations.
 type JiraService struct {
-	client *Client
+	client      *Client
+	fieldsCache []*Field
 }
 
 // NewJiraService creates a new Jira service.
@@ -120,19 +121,10 @@ func FormatCustomFieldValue(raw json.RawMessage) string {
 	if err := json.Unmarshal(raw, &arr); err == nil {
 		var values []string
 		for _, item := range arr {
-			var sv struct {
-				Value string `json:"value"`
+			formatted := FormatCustomFieldValue(item)
+			if formatted != "" {
+				values = append(values, formatted)
 			}
-			if err := json.Unmarshal(item, &sv); err == nil && sv.Value != "" {
-				values = append(values, sv.Value)
-				continue
-			}
-			var s string
-			if err := json.Unmarshal(item, &s); err == nil {
-				values = append(values, s)
-				continue
-			}
-			values = append(values, string(item))
 		}
 		return strings.Join(values, ", ")
 	}
@@ -562,7 +554,7 @@ type FieldMetaResponse struct {
 // Uses the createmeta endpoint: /issue/createmeta/{projectKey}/issuetypes/{issueTypeId}
 func (s *JiraService) GetFieldOptions(ctx context.Context, projectKey, issueTypeID string) ([]*FieldMeta, error) {
 	path := fmt.Sprintf("%s/issue/createmeta/%s/issuetypes/%s",
-		s.client.JiraBaseURL(), projectKey, issueTypeID)
+		s.client.JiraBaseURL(), url.PathEscape(projectKey), url.PathEscape(issueTypeID))
 
 	params := url.Values{}
 	params.Set("maxResults", "100")
@@ -954,6 +946,10 @@ type FieldSchema struct {
 
 // GetFields gets all field definitions.
 func (s *JiraService) GetFields(ctx context.Context) ([]*Field, error) {
+	if s.fieldsCache != nil {
+		return s.fieldsCache, nil
+	}
+
 	path := fmt.Sprintf("%s/field", s.client.JiraBaseURL())
 
 	var fields []*Field
@@ -961,6 +957,7 @@ func (s *JiraService) GetFields(ctx context.Context) ([]*Field, error) {
 		return nil, err
 	}
 
+	s.fieldsCache = fields
 	return fields, nil
 }
 
