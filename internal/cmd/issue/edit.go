@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
-	"strconv"
 	"strings"
 
 	"github.com/spf13/cobra"
@@ -222,47 +221,9 @@ func runEdit(opts *EditOptions) error {
 
 	// Parse and add custom fields from command line (override file values)
 	for _, field := range opts.CustomFields {
-		parts := strings.SplitN(field, "=", 2)
-		if len(parts) != 2 {
-			return fmt.Errorf("invalid field format: %s (expected key=value)", field)
-		}
-		key, value := parts[0], parts[1]
-
-		var resolvedField *api.Field
-		var err error
-
-		if strings.HasPrefix(key, "customfield_") {
-			// Look up field by ID to get type information
-			resolvedField, err = jira.GetFieldByID(ctx, key)
-			if err != nil {
-				return fmt.Errorf("failed to look up field '%s': %w", key, err)
-			}
-			// Note: resolvedField may be nil if field doesn't exist, we'll still try to set it
-		} else if !isSystemField(key) {
-			// Resolve field by name
-			resolvedField, err = jira.GetFieldByName(ctx, key)
-			if err != nil {
-				return fmt.Errorf("failed to look up field '%s': %w", key, err)
-			}
-			if resolvedField == nil {
-				return fmt.Errorf("field not found: %s\n\nUse 'atl issue fields --search \"%s\"' to find available fields", key, key)
-			}
-			key = resolvedField.ID
-		}
-
-		// Determine field value based on field type
-		var fieldValue interface{}
-
-		// Check if this is a textarea field that requires ADF format
-		if resolvedField != nil && resolvedField.Schema != nil &&
-			strings.Contains(resolvedField.Schema.Custom, "textarea") {
-			// Convert Markdown to ADF for textarea fields
-			fieldValue = api.TextToADF(value)
-		} else if numVal, err := strconv.ParseFloat(value, 64); err == nil {
-			// Try to parse value as number
-			fieldValue = numVal
-		} else {
-			fieldValue = value
+		key, fieldValue, err := ParseCustomField(ctx, jira, field)
+		if err != nil {
+			return err
 		}
 		req.Fields[key] = fieldValue
 		editOutput.FieldsUpdated = append(editOutput.FieldsUpdated, key)

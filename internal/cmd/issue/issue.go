@@ -25,6 +25,7 @@ func NewCmdIssue(ios *iostreams.IOStreams) *cobra.Command {
 	cmd.AddCommand(NewCmdAssign(ios))
 	cmd.AddCommand(NewCmdLink(ios))
 	cmd.AddCommand(NewCmdFields(ios))
+	cmd.AddCommand(NewCmdFieldOptions(ios))
 	cmd.AddCommand(NewCmdSprint(ios))
 	cmd.AddCommand(NewCmdFlag(ios))
 	cmd.AddCommand(NewCmdWebLink(ios))

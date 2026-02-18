@@ -2,7 +2,9 @@ package issue
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"sort"
 	"strings"
 	"time"
 
@@ -55,21 +57,29 @@ func NewCmdView(ios *iostreams.IOStreams) *cobra.Command {
 
 // IssueOutput represents the output format for an issue (LLM-friendly).
 type IssueOutput struct {
-	Key            string         `json:"key"`
-	ID             string         `json:"id"`
-	Summary        string         `json:"summary"`
-	Description    string         `json:"description,omitempty"`
-	Status         string         `json:"status"`
-	StatusCategory string         `json:"status_category,omitempty"`
-	Priority       string         `json:"priority,omitempty"`
-	Type           string         `json:"type"`
-	Assignee       *UserOutput    `json:"assignee,omitempty"`
-	Reporter       *UserOutput    `json:"reporter,omitempty"`
-	Project        *ProjectOutput `json:"project"`
-	Labels         []string       `json:"labels,omitempty"`
-	Created        string         `json:"created"`
-	Updated        string         `json:"updated"`
-	URL            string         `json:"url"`
+	Key            string                        `json:"key"`
+	ID             string                        `json:"id"`
+	Summary        string                        `json:"summary"`
+	Description    string                        `json:"description,omitempty"`
+	Status         string                        `json:"status"`
+	StatusCategory string                        `json:"status_category,omitempty"`
+	Priority       string                        `json:"priority,omitempty"`
+	Type           string                        `json:"type"`
+	Assignee       *UserOutput                   `json:"assignee,omitempty"`
+	Reporter       *UserOutput                   `json:"reporter,omitempty"`
+	Project        *ProjectOutput                `json:"project"`
+	Labels         []string                      `json:"labels,omitempty"`
+	Created        string                        `json:"created"`
+	Updated        string                        `json:"updated"`
+	URL            string                        `json:"url"`
+	CustomFields   map[string]*CustomFieldOutput `json:"custom_fields,omitempty"`
+}
+
+// CustomFieldOutput represents a custom field in the output.
+type CustomFieldOutput struct {
+	ID    string          `json:"id"`
+	Value string          `json:"value"`
+	Raw   json.RawMessage `json:"raw,omitempty"`
 }
 
 // UserOutput represents user information.
@@ -104,7 +114,18 @@ func runView(opts *ViewOptions) error {
 		return fmt.Errorf("failed to get issue: %w", err)
 	}
 
-	issueOutput := formatIssueOutput(issue, client.Hostname())
+	// Resolve field ID -> name mapping for custom fields.
+	fieldNames := make(map[string]string)
+	if len(issue.Fields.Extra) > 0 {
+		fields, err := jira.GetFields(ctx)
+		if err == nil {
+			for _, f := range fields {
+				fieldNames[f.ID] = f.Name
+			}
+		}
+	}
+
+	issueOutput := formatIssueOutput(issue, client.Hostname(), fieldNames)
 
 	if opts.JSON {
 		return output.JSON(opts.IO.Out, issueOutput)
@@ -116,7 +137,7 @@ func runView(opts *ViewOptions) error {
 	return nil
 }
 
-func formatIssueOutput(issue *api.Issue, hostname string) *IssueOutput {
+func formatIssueOutput(issue *api.Issue, hostname string, fieldNames map[string]string) *IssueOutput {
 	out := &IssueOutput{
 		Key:     issue.Key,
 		ID:      issue.ID,
@@ -170,6 +191,26 @@ func formatIssueOutput(issue *api.Issue, hostname string) *IssueOutput {
 	out.Created = formatTime(issue.Fields.Created)
 	out.Updated = formatTime(issue.Fields.Updated)
 
+	// Add custom fields.
+	if len(issue.Fields.Extra) > 0 {
+		out.CustomFields = make(map[string]*CustomFieldOutput, len(issue.Fields.Extra))
+		for id, raw := range issue.Fields.Extra {
+			value := api.FormatCustomFieldValue(raw)
+			if value == "" {
+				continue
+			}
+			name := id
+			if n, ok := fieldNames[id]; ok {
+				name = n
+			}
+			out.CustomFields[name] = &CustomFieldOutput{
+				ID:    id,
+				Value: value,
+				Raw:   raw,
+			}
+		}
+	}
+
 	return out
 }
 
@@ -203,6 +244,24 @@ func printIssueDetails(ios *iostreams.IOStreams, issue *IssueOutput) {
 	fmt.Fprintf(ios.Out, "Created: %s\n", issue.Created)
 	fmt.Fprintf(ios.Out, "Updated: %s\n", issue.Updated)
 	fmt.Fprintf(ios.Out, "URL: %s\n", issue.URL)
+
+	if len(issue.CustomFields) > 0 {
+		fmt.Fprintln(ios.Out, "")
+		fmt.Fprintln(ios.Out, "## Custom Fields")
+		fmt.Fprintln(ios.Out, "")
+
+		// Sort keys for deterministic output.
+		names := make([]string, 0, len(issue.CustomFields))
+		for name := range issue.CustomFields {
+			names = append(names, name)
+		}
+		sort.Strings(names)
+
+		for _, name := range names {
+			cf := issue.CustomFields[name]
+			fmt.Fprintf(ios.Out, "%s: %s\n", name, cf.Value)
+		}
+	}
 
 	if issue.Description != "" {
 		fmt.Fprintln(ios.Out, "")
