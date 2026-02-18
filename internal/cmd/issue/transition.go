@@ -14,12 +14,13 @@ import (
 
 // TransitionOptions holds the options for the transition command.
 type TransitionOptions struct {
-	IO       *iostreams.IOStreams
-	IssueKey string
-	Status   string
-	Comment  string
-	List     bool
-	JSON     bool
+	IO           *iostreams.IOStreams
+	IssueKey     string
+	Status       string
+	Comment      string
+	CustomFields []string
+	List         bool
+	JSON         bool
 }
 
 // NewCmdTransition creates the transition command.
@@ -42,6 +43,9 @@ func NewCmdTransition(ios *iostreams.IOStreams) *cobra.Command {
   # Move issue to Done with a comment
   atl issue transition PROJ-1234 Done --comment "Completed the implementation"
 
+  # Transition with required fields
+  atl issue transition PROJ-1234 "Done" --field "Resolution=Fixed"
+
   # Output result as JSON
   atl issue transition PROJ-1234 Done --json`,
 		Args: cobra.RangeArgs(1, 2),
@@ -55,6 +59,7 @@ func NewCmdTransition(ios *iostreams.IOStreams) *cobra.Command {
 	}
 
 	cmd.Flags().StringVarP(&opts.Comment, "comment", "c", "", "Add a comment with the transition")
+	cmd.Flags().StringSliceVarP(&opts.CustomFields, "field", "f", nil, "Custom field in key=value format (for transitions that require fields)")
 	cmd.Flags().BoolVarP(&opts.List, "list", "l", false, "List available transitions")
 	cmd.Flags().BoolVarP(&opts.JSON, "json", "j", false, "Output as JSON")
 
@@ -166,8 +171,21 @@ func runTransition(opts *TransitionOptions) error {
 		fromStatus = issue.Fields.Status.Name
 	}
 
+	// Parse custom fields if provided
+	var fields map[string]interface{}
+	if len(opts.CustomFields) > 0 {
+		fields = make(map[string]interface{})
+		for _, field := range opts.CustomFields {
+			key, fieldValue, err := ParseCustomField(ctx, jira, field)
+			if err != nil {
+				return err
+			}
+			fields[key] = fieldValue
+		}
+	}
+
 	// Perform transition
-	if err := jira.TransitionIssue(ctx, opts.IssueKey, matchedTransition.ID); err != nil {
+	if err := jira.TransitionIssue(ctx, opts.IssueKey, matchedTransition.ID, fields); err != nil {
 		return fmt.Errorf("failed to transition issue: %w", err)
 	}
 

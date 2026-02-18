@@ -13,7 +13,8 @@ import (
 
 // JiraService handles Jira API operations.
 type JiraService struct {
-	client *Client
+	client      *Client
+	fieldsCache []*Field
 }
 
 // NewJiraService creates a new Jira service.
@@ -47,6 +48,103 @@ type IssueFields struct {
 	Comment     *Comments     `json:"comment,omitempty"`
 	Parent      *Issue        `json:"parent,omitempty"`
 	Attachment  []*Attachment `json:"attachment,omitempty"`
+
+	// Extra holds custom field values not captured by the typed fields above.
+	// Keys are field IDs like "customfield_10413", values are raw JSON.
+	Extra map[string]json.RawMessage `json:"-"`
+}
+
+// UnmarshalJSON implements custom unmarshaling to capture both standard
+// and custom fields. Standard fields are decoded into typed struct fields,
+// while custom fields (customfield_*) are preserved as raw JSON in Extra.
+func (f *IssueFields) UnmarshalJSON(data []byte) error {
+	type Alias IssueFields
+	var alias Alias
+	if err := json.Unmarshal(data, &alias); err != nil {
+		return err
+	}
+	*f = IssueFields(alias)
+
+	var raw map[string]json.RawMessage
+	if err := json.Unmarshal(data, &raw); err != nil {
+		return err
+	}
+
+	f.Extra = make(map[string]json.RawMessage)
+	for key, val := range raw {
+		if strings.HasPrefix(key, "customfield_") {
+			f.Extra[key] = val
+		}
+	}
+
+	return nil
+}
+
+// FormatCustomFieldValue extracts a human-readable string from a raw JSON
+// custom field value. Handles common Jira field value shapes:
+// select/radio, user, ADF, arrays, strings, numbers, null.
+func FormatCustomFieldValue(raw json.RawMessage) string {
+	if len(raw) == 0 || string(raw) == "null" {
+		return ""
+	}
+
+	// Try as object with "value" key (select/radio fields).
+	var selectField struct {
+		Value string `json:"value"`
+	}
+	if err := json.Unmarshal(raw, &selectField); err == nil && selectField.Value != "" {
+		return selectField.Value
+	}
+
+	// Try as object with "displayName" key (user fields).
+	var userField struct {
+		DisplayName string `json:"displayName"`
+	}
+	if err := json.Unmarshal(raw, &userField); err == nil && userField.DisplayName != "" {
+		return userField.DisplayName
+	}
+
+	// Try as ADF document.
+	var adfField struct {
+		Type    string `json:"type"`
+		Version int    `json:"version"`
+	}
+	if err := json.Unmarshal(raw, &adfField); err == nil && adfField.Type == "doc" {
+		var adfDoc ADF
+		if err := json.Unmarshal(raw, &adfDoc); err == nil {
+			return ADFToText(&adfDoc)
+		}
+	}
+
+	// Try as array.
+	var arr []json.RawMessage
+	if err := json.Unmarshal(raw, &arr); err == nil {
+		var values []string
+		for _, item := range arr {
+			formatted := FormatCustomFieldValue(item)
+			if formatted != "" {
+				values = append(values, formatted)
+			}
+		}
+		return strings.Join(values, ", ")
+	}
+
+	// Try as string.
+	var s string
+	if err := json.Unmarshal(raw, &s); err == nil {
+		return s
+	}
+
+	// Try as number.
+	var n float64
+	if err := json.Unmarshal(raw, &n); err == nil {
+		if n == float64(int64(n)) {
+			return fmt.Sprintf("%d", int64(n))
+		}
+		return fmt.Sprintf("%g", n)
+	}
+
+	return string(raw)
 }
 
 // Attachment represents an attachment on an issue.
@@ -434,6 +532,52 @@ func (s *JiraService) GetSubtaskType(ctx context.Context, projectKey string) (*P
 	return nil, nil
 }
 
+// FieldMeta represents metadata for a field from the createmeta endpoint.
+type FieldMeta struct {
+	Required      bool              `json:"required"`
+	Schema        *FieldSchema      `json:"schema,omitempty"`
+	Name          string            `json:"name"`
+	Key           string            `json:"key"`
+	FieldID       string            `json:"fieldId"`
+	AllowedValues []json.RawMessage `json:"allowedValues,omitempty"`
+}
+
+// FieldMetaResponse is the paginated response from the createmeta field endpoint.
+type FieldMetaResponse struct {
+	MaxResults int          `json:"maxResults"`
+	StartAt    int          `json:"startAt"`
+	Total      int          `json:"total"`
+	Values     []*FieldMeta `json:"values"`
+}
+
+// GetFieldOptions gets field metadata (including allowed values) for a project/issue type.
+// Uses the createmeta endpoint: /issue/createmeta/{projectKey}/issuetypes/{issueTypeId}
+func (s *JiraService) GetFieldOptions(ctx context.Context, projectKey, issueTypeID string) ([]*FieldMeta, error) {
+	path := fmt.Sprintf("%s/issue/createmeta/%s/issuetypes/%s",
+		s.client.JiraBaseURL(), url.PathEscape(projectKey), url.PathEscape(issueTypeID))
+
+	params := url.Values{}
+	params.Set("maxResults", "100")
+
+	var allFields []*FieldMeta
+	startAt := 0
+
+	for {
+		params.Set("startAt", strconv.Itoa(startAt))
+		var result FieldMetaResponse
+		if err := s.client.Get(ctx, path+"?"+params.Encode(), &result); err != nil {
+			return nil, err
+		}
+		allFields = append(allFields, result.Values...)
+		if startAt+result.MaxResults >= result.Total {
+			break
+		}
+		startAt += result.MaxResults
+	}
+
+	return allFields, nil
+}
+
 // GetPriorities gets all available priorities in the Jira instance.
 func (s *JiraService) GetPriorities(ctx context.Context) ([]*Priority, error) {
 	path := fmt.Sprintf("%s/priority", s.client.JiraBaseURL())
@@ -479,7 +623,8 @@ func (s *JiraService) GetTransitions(ctx context.Context, key string) ([]*Transi
 
 // TransitionRequest represents a request to transition an issue.
 type TransitionRequest struct {
-	Transition TransitionID `json:"transition"`
+	Transition TransitionID           `json:"transition"`
+	Fields     map[string]interface{} `json:"fields,omitempty"`
 }
 
 // TransitionID identifies a transition.
@@ -488,10 +633,12 @@ type TransitionID struct {
 }
 
 // TransitionIssue transitions an issue to a new status.
-func (s *JiraService) TransitionIssue(ctx context.Context, key string, transitionID string) error {
+// Optional fields can be set during the transition.
+func (s *JiraService) TransitionIssue(ctx context.Context, key string, transitionID string, fields map[string]interface{}) error {
 	path := fmt.Sprintf("%s/issue/%s/transitions", s.client.JiraBaseURL(), key)
 	req := &TransitionRequest{
 		Transition: TransitionID{ID: transitionID},
+		Fields:     fields,
 	}
 	return s.client.Post(ctx, path, req, nil)
 }
@@ -799,6 +946,10 @@ type FieldSchema struct {
 
 // GetFields gets all field definitions.
 func (s *JiraService) GetFields(ctx context.Context) ([]*Field, error) {
+	if s.fieldsCache != nil {
+		return s.fieldsCache, nil
+	}
+
 	path := fmt.Sprintf("%s/field", s.client.JiraBaseURL())
 
 	var fields []*Field
@@ -806,6 +957,7 @@ func (s *JiraService) GetFields(ctx context.Context) ([]*Field, error) {
 		return nil, err
 	}
 
+	s.fieldsCache = fields
 	return fields, nil
 }
 

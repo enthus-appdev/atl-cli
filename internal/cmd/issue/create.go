@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
-	"strconv"
 	"strings"
 
 	"github.com/spf13/cobra"
@@ -218,30 +217,11 @@ func runCreate(opts *CreateOptions) error {
 			req.Fields.CustomFields = make(map[string]interface{})
 		}
 		for _, field := range opts.CustomFields {
-			parts := strings.SplitN(field, "=", 2)
-			if len(parts) != 2 {
-				return fmt.Errorf("invalid field format: %s (expected key=value)", field)
+			key, fieldValue, err := ParseCustomField(ctx, jira, field)
+			if err != nil {
+				return err
 			}
-			key, value := parts[0], parts[1]
-
-			// If key doesn't look like a field ID, try to resolve it by name
-			if !strings.HasPrefix(key, "customfield_") && !isSystemField(key) {
-				resolvedField, err := jira.GetFieldByName(ctx, key)
-				if err != nil {
-					return fmt.Errorf("failed to look up field '%s': %w", key, err)
-				}
-				if resolvedField == nil {
-					return fmt.Errorf("field not found: %s\n\nUse 'atl issue fields --search \"%s\"' to find available fields", key, key)
-				}
-				key = resolvedField.ID
-			}
-
-			// Try to parse value as number, otherwise use string
-			if numVal, err := strconv.ParseFloat(value, 64); err == nil {
-				req.Fields.CustomFields[key] = numVal
-			} else {
-				req.Fields.CustomFields[key] = value
-			}
+			req.Fields.CustomFields[key] = fieldValue
 		}
 	}
 
@@ -273,17 +253,4 @@ func runCreate(opts *CreateOptions) error {
 	fmt.Fprintf(opts.IO.Out, "URL: %s\n", createOutput.URL)
 
 	return nil
-}
-
-// isSystemField checks if a field name is a known Jira system field.
-func isSystemField(name string) bool {
-	systemFields := map[string]bool{
-		"summary": true, "description": true, "issuetype": true,
-		"project": true, "reporter": true, "assignee": true,
-		"priority": true, "labels": true, "components": true,
-		"fixVersions": true, "versions": true, "duedate": true,
-		"environment": true, "resolution": true, "status": true,
-		"created": true, "updated": true, "parent": true,
-	}
-	return systemFields[strings.ToLower(name)]
 }

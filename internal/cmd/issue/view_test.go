@@ -91,7 +91,7 @@ func TestFormatIssueOutput(t *testing.T) {
 	}
 
 	hostname := "example.atlassian.net"
-	output := formatIssueOutput(issue, hostname)
+	output := formatIssueOutput(issue, hostname, nil)
 
 	// Verify basic fields
 	if output.Key != "TEST-123" {
@@ -165,7 +165,7 @@ func TestFormatIssueOutputMinimal(t *testing.T) {
 		},
 	}
 
-	output := formatIssueOutput(issue, "example.atlassian.net")
+	output := formatIssueOutput(issue, "example.atlassian.net", nil)
 
 	if output.Key != "TEST-1" {
 		t.Errorf("Key = %q, want %q", output.Key, "TEST-1")

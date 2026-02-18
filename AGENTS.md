@@ -44,8 +44,8 @@ Aliases also work with `--hostname` flags: `atl auth status --hostname prod`
 ### View Issues
 
 ```bash
-atl issue view PROJ-1234                  # View issue details
-atl issue view PROJ-1234 --json           # View as JSON (for parsing)
+atl issue view PROJ-1234                  # View issue details (includes custom fields)
+atl issue view PROJ-1234 --json           # View as JSON (includes custom_fields section)
 atl issue view PROJ-1234 --web            # Open in browser
 ```
 
@@ -87,6 +87,7 @@ atl issue edit PROJ-1234 --field "Custom Field=Some **markdown** text"  # Auto-c
 ```bash
 atl issue transition PROJ-1234 "In Progress"
 atl issue transition PROJ-1234 --list     # List available transitions
+atl issue transition PROJ-1234 "Done" --field "Resolution=Fixed"  # With required fields
 ```
 
 ### Comments
@@ -132,6 +133,8 @@ atl issue types --project PROJ                      # List issue types
 atl issue priorities                                # List available priorities
 atl issue fields                                    # List all fields
 atl issue fields --search "story points"            # Search for field by name
+atl issue field-options --project PROJ --type Bug   # Show allowed values for fields
+atl issue field-options --project PROJ --type Bug --field "Priority"  # Specific field
 ```
 
 ## Jira Boards
