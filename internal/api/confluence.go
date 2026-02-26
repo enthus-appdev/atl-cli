@@ -372,15 +372,24 @@ type UpdatePageRequest struct {
 }
 
 // UpdatePage updates an existing page.
-func (s *ConfluenceService) UpdatePage(ctx context.Context, pageID, title, content string, version int, message string) (*Page, error) {
+// status controls the resulting page status ("current" or "draft"). Empty defaults to "current".
+func (s *ConfluenceService) UpdatePage(ctx context.Context, pageID, title, content string, version int, message string, status string) (*Page, error) {
 	path := fmt.Sprintf("%s/pages/%s", s.baseURL(), pageID)
+
+	if status == "" {
+		status = "current"
+	}
 
 	reqBody := UpdatePageRequest{
 		ID:     pageID,
-		Status: "current",
+		Status: status,
 		Title:  title,
 	}
-	reqBody.Version.Number = version + 1
+	if status == "draft" {
+		reqBody.Version.Number = version
+	} else {
+		reqBody.Version.Number = version + 1
+	}
 	reqBody.Version.Message = message
 	reqBody.Body.Representation = "storage"
 	reqBody.Body.Value = content
