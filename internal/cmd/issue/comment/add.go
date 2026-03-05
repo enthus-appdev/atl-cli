@@ -162,7 +162,7 @@ func replyToComment(ctx context.Context, jira *api.JiraService, hostname string,
 	// Create quoted reply
 	quotedLines := strings.Split(originalText, "\n")
 	var quoted strings.Builder
-	quoted.WriteString(fmt.Sprintf("*Replying to %s:*\n", originalAuthor))
+	fmt.Fprintf(&quoted, "*Replying to %s:*\n", originalAuthor)
 	quoted.WriteString("{quote}\n")
 	for _, line := range quotedLines {
 		quoted.WriteString(line)
