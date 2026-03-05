@@ -1347,13 +1347,10 @@ func TextToADF(text string) *ADF {
 	return MarkdownToADF(text)
 }
 
-// TextToADFWithResolver converts markdown to ADF and resolves @[Name] mentions
-// using the provided JiraService to search for users.
-func TextToADFWithResolver(ctx context.Context, text string, jira *JiraService) (*ADF, error) {
-	doc := MarkdownToADF(text)
-
-	resolver := func(ctx context.Context, displayName string) (string, error) {
-		users, err := jira.SearchUsers(ctx, displayName)
+// NewMentionResolver returns a MentionResolver that looks up users via the Jira API.
+func (s *JiraService) NewMentionResolver() MentionResolver {
+	return func(ctx context.Context, displayName string) (string, error) {
+		users, err := s.SearchUsers(ctx, displayName)
 		if err != nil {
 			return "", err
 		}
@@ -1364,8 +1361,13 @@ func TextToADFWithResolver(ctx context.Context, text string, jira *JiraService) 
 		}
 		return "", nil
 	}
+}
 
-	if err := ResolveMentions(ctx, doc, resolver); err != nil {
+// TextToADFWithResolver converts markdown to ADF and resolves @[Name] mentions
+// using the provided JiraService to search for users.
+func TextToADFWithResolver(ctx context.Context, text string, jira *JiraService) (*ADF, error) {
+	doc := MarkdownToADF(text)
+	if err := ResolveMentions(ctx, doc, jira.NewMentionResolver()); err != nil {
 		return nil, err
 	}
 	return doc, nil
