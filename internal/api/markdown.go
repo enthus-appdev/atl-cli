@@ -540,6 +540,35 @@ func parseInline(text string) []ADFContent {
 			continue
 		}
 
+		// Mention by ID: @[id:accountId]
+		if mentionIDMatch := regexp.MustCompile(`^@\[id:([^\]]+)\]`).FindStringSubmatch(remaining); len(mentionIDMatch) > 0 {
+			content = append(content, ADFContent{
+				Type: "mention",
+				Attrs: &ADFAttrs{
+					ID:          mentionIDMatch[1],
+					Text:        "@" + mentionIDMatch[1],
+					AccessLevel: "",
+				},
+			})
+			remaining = remaining[len(mentionIDMatch[0]):]
+			matched = true
+			continue
+		}
+
+		// Mention by name: @[Display Name] (unresolved - needs post-processing)
+		if mentionNameMatch := regexp.MustCompile(`^@\[([^\]]+)\]`).FindStringSubmatch(remaining); len(mentionNameMatch) > 0 {
+			content = append(content, ADFContent{
+				Type: "mention",
+				Attrs: &ADFAttrs{
+					Text:        "@" + mentionNameMatch[1],
+					AccessLevel: "",
+				},
+			})
+			remaining = remaining[len(mentionNameMatch[0]):]
+			matched = true
+			continue
+		}
+
 		// Bold: **text** or __text__
 		if boldMatch := regexp.MustCompile(`^\*\*([^*]+)\*\*`).FindStringSubmatch(remaining); len(boldMatch) > 0 {
 			// Parse inner content for nested formatting
@@ -586,7 +615,7 @@ func parseInline(text string) []ADFContent {
 		if !matched {
 			// Find the next potential pattern start
 			nextPatternIdx := len(remaining)
-			patterns := []string{"`", "[", "*", "_", "~", "!"}
+			patterns := []string{"`", "[", "*", "_", "~", "!", "@"}
 			for _, p := range patterns {
 				if idx := strings.Index(remaining[1:], p); idx >= 0 && idx+1 < nextPatternIdx {
 					nextPatternIdx = idx + 1
@@ -595,7 +624,7 @@ func parseInline(text string) []ADFContent {
 
 			// Add plain text
 			plainText := remaining[:nextPatternIdx]
-			if len(content) > 0 && len(content[len(content)-1].Marks) == 0 {
+			if len(content) > 0 && content[len(content)-1].Type == "text" && len(content[len(content)-1].Marks) == 0 {
 				// Merge with previous plain text
 				content[len(content)-1].Text += plainText
 			} else {
