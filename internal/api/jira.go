@@ -194,6 +194,9 @@ type ADFAttrs struct {
 	PanelType string `json:"panelType,omitempty"`
 	// Expand attributes
 	Title string `json:"title,omitempty"`
+	// Mention attributes
+	Text        string `json:"text,omitempty"`
+	AccessLevel string `json:"accessLevel,omitempty"`
 	// Table attributes
 	Layout string `json:"layout,omitempty"`
 	// Table cell attributes
@@ -1385,6 +1388,20 @@ func convertNodes(content []ADFContent) []*adf.Node {
 
 // convertNode converts a single ADFContent to the library's Node.
 func convertNode(c ADFContent) *adf.Node {
+	// Handle mention nodes - convert to text with @display name
+	if c.Type == "mention" {
+		displayText := "@Unknown"
+		if c.Attrs != nil && c.Attrs.Text != "" {
+			displayText = c.Attrs.Text
+		}
+		return &adf.Node{
+			NodeType: adf.NodeType("text"),
+			NodeValue: adf.NodeValue{
+				Text: displayText,
+			},
+		}
+	}
+
 	// Handle media nodes specially - convert to text with descriptive placeholder
 	if c.Type == "media" {
 		altText := "[Embedded image]"
@@ -1499,6 +1516,14 @@ func convertAttrs(attrs *ADFAttrs) map[string]interface{} {
 			floatWidths[i] = float64(w)
 		}
 		result["colwidth"] = floatWidths
+	}
+
+	// Mention attributes
+	if attrs.Text != "" {
+		result["text"] = attrs.Text
+	}
+	if attrs.AccessLevel != "" {
+		result["accessLevel"] = attrs.AccessLevel
 	}
 
 	if len(result) == 0 {
