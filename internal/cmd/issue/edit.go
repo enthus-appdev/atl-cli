@@ -141,7 +141,10 @@ func runEdit(opts *EditOptions) error {
 	}
 
 	if opts.Description != "" {
-		newADF := api.TextToADF(opts.Description)
+		newADF, err := api.TextToADFWithResolver(ctx, opts.Description, jira)
+		if err != nil {
+			return fmt.Errorf("failed to process description: %w", err)
+		}
 
 		if opts.Append {
 			// Fetch existing issue to get current description

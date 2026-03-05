@@ -49,6 +49,25 @@ func ParseCustomField(ctx context.Context, jira *api.JiraService, raw string) (s
 	}
 
 	fieldValue := coerceFieldValue(resolvedField, value)
+
+	// If the field was converted to ADF (textarea), resolve any @[Name] mentions
+	if adfDoc, ok := fieldValue.(*api.ADF); ok {
+		if err := api.ResolveMentions(ctx, adfDoc, func(ctx context.Context, displayName string) (string, error) {
+			users, err := jira.SearchUsers(ctx, displayName)
+			if err != nil {
+				return "", err
+			}
+			for _, u := range users {
+				if strings.EqualFold(u.DisplayName, displayName) {
+					return u.AccountID, nil
+				}
+			}
+			return "", nil
+		}); err != nil {
+			return "", nil, fmt.Errorf("failed to process mentions in field '%s': %w", key, err)
+		}
+	}
+
 	return key, fieldValue, nil
 }
 

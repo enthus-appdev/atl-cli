@@ -167,7 +167,11 @@ func runCreate(opts *CreateOptions) error {
 	}
 
 	if opts.Description != "" {
-		req.Fields.Description = api.TextToADF(opts.Description)
+		desc, err := api.TextToADFWithResolver(ctx, opts.Description, jira)
+		if err != nil {
+			return fmt.Errorf("failed to process description: %w", err)
+		}
+		req.Fields.Description = desc
 	}
 
 	if assigneeID != "" {

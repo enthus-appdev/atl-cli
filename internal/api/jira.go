@@ -675,8 +675,13 @@ func (s *JiraService) AddComment(ctx context.Context, key string, body string) (
 func (s *JiraService) AddCommentWithOptions(ctx context.Context, key string, opts *CommentOptions) (*Comment, error) {
 	path := fmt.Sprintf("%s/issue/%s/comment", s.client.JiraBaseURL(), key)
 
+	body, err := TextToADFWithResolver(ctx, opts.Body, s)
+	if err != nil {
+		return nil, fmt.Errorf("failed to process mentions: %w", err)
+	}
+
 	req := &AddCommentRequest{
-		Body: TextToADF(opts.Body),
+		Body: body,
 	}
 
 	if opts.VisibilityType != "" && opts.VisibilityName != "" {
@@ -722,8 +727,13 @@ func (s *JiraService) GetComments(ctx context.Context, key string) ([]*Comment, 
 func (s *JiraService) UpdateComment(ctx context.Context, key string, commentID string, opts *CommentOptions) (*Comment, error) {
 	path := fmt.Sprintf("%s/issue/%s/comment/%s", s.client.JiraBaseURL(), key, commentID)
 
+	body, err := TextToADFWithResolver(ctx, opts.Body, s)
+	if err != nil {
+		return nil, fmt.Errorf("failed to process mentions: %w", err)
+	}
+
 	req := &AddCommentRequest{
-		Body: TextToADF(opts.Body),
+		Body: body,
 	}
 
 	if opts.VisibilityType != "" && opts.VisibilityName != "" {
@@ -1335,6 +1345,30 @@ func (s *JiraService) GetChangelog(ctx context.Context, issueKey string, startAt
 // blockquotes (>), and horizontal rules (---).
 func TextToADF(text string) *ADF {
 	return MarkdownToADF(text)
+}
+
+// TextToADFWithResolver converts markdown to ADF and resolves @[Name] mentions
+// using the provided JiraService to search for users.
+func TextToADFWithResolver(ctx context.Context, text string, jira *JiraService) (*ADF, error) {
+	doc := MarkdownToADF(text)
+
+	resolver := func(ctx context.Context, displayName string) (string, error) {
+		users, err := jira.SearchUsers(ctx, displayName)
+		if err != nil {
+			return "", err
+		}
+		for _, u := range users {
+			if strings.EqualFold(u.DisplayName, displayName) {
+				return u.AccountID, nil
+			}
+		}
+		return "", nil
+	}
+
+	if err := ResolveMentions(ctx, doc, resolver); err != nil {
+		return nil, err
+	}
+	return doc, nil
 }
 
 // ADFToText converts Atlassian Document Format to Markdown text.
