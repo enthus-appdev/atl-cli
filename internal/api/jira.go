@@ -194,6 +194,9 @@ type ADFAttrs struct {
 	PanelType string `json:"panelType,omitempty"`
 	// Expand attributes
 	Title string `json:"title,omitempty"`
+	// Mention attributes
+	Text        string `json:"text,omitempty"`
+	AccessLevel string `json:"accessLevel,omitempty"`
 	// Table attributes
 	Layout string `json:"layout,omitempty"`
 	// Table cell attributes
@@ -672,8 +675,13 @@ func (s *JiraService) AddComment(ctx context.Context, key string, body string) (
 func (s *JiraService) AddCommentWithOptions(ctx context.Context, key string, opts *CommentOptions) (*Comment, error) {
 	path := fmt.Sprintf("%s/issue/%s/comment", s.client.JiraBaseURL(), key)
 
+	body, err := TextToADFWithResolver(ctx, opts.Body, s)
+	if err != nil {
+		return nil, fmt.Errorf("failed to process mentions: %w", err)
+	}
+
 	req := &AddCommentRequest{
-		Body: TextToADF(opts.Body),
+		Body: body,
 	}
 
 	if opts.VisibilityType != "" && opts.VisibilityName != "" {
@@ -719,8 +727,13 @@ func (s *JiraService) GetComments(ctx context.Context, key string) ([]*Comment, 
 func (s *JiraService) UpdateComment(ctx context.Context, key string, commentID string, opts *CommentOptions) (*Comment, error) {
 	path := fmt.Sprintf("%s/issue/%s/comment/%s", s.client.JiraBaseURL(), key, commentID)
 
+	body, err := TextToADFWithResolver(ctx, opts.Body, s)
+	if err != nil {
+		return nil, fmt.Errorf("failed to process mentions: %w", err)
+	}
+
 	req := &AddCommentRequest{
-		Body: TextToADF(opts.Body),
+		Body: body,
 	}
 
 	if opts.VisibilityType != "" && opts.VisibilityName != "" {
@@ -1334,6 +1347,32 @@ func TextToADF(text string) *ADF {
 	return MarkdownToADF(text)
 }
 
+// NewMentionResolver returns a MentionResolver that looks up users via the Jira API.
+func (s *JiraService) NewMentionResolver() MentionResolver {
+	return func(ctx context.Context, displayName string) (string, error) {
+		users, err := s.SearchUsers(ctx, displayName)
+		if err != nil {
+			return "", err
+		}
+		for _, u := range users {
+			if strings.EqualFold(u.DisplayName, displayName) {
+				return u.AccountID, nil
+			}
+		}
+		return "", nil
+	}
+}
+
+// TextToADFWithResolver converts markdown to ADF and resolves @[Name] mentions
+// using the provided JiraService to search for users.
+func TextToADFWithResolver(ctx context.Context, text string, jira *JiraService) (*ADF, error) {
+	doc := MarkdownToADF(text)
+	if err := ResolveMentions(ctx, doc, jira.NewMentionResolver()); err != nil {
+		return nil, err
+	}
+	return doc, nil
+}
+
 // ADFToText converts Atlassian Document Format to Markdown text.
 // Uses the jira-cli adf library for proper Markdown formatting.
 func ADFToText(ourADF *ADF) string {
@@ -1385,6 +1424,20 @@ func convertNodes(content []ADFContent) []*adf.Node {
 
 // convertNode converts a single ADFContent to the library's Node.
 func convertNode(c ADFContent) *adf.Node {
+	// Handle mention nodes - convert to text with @display name
+	if c.Type == "mention" {
+		displayText := "@Unknown"
+		if c.Attrs != nil && c.Attrs.Text != "" {
+			displayText = c.Attrs.Text
+		}
+		return &adf.Node{
+			NodeType: adf.NodeType("text"),
+			NodeValue: adf.NodeValue{
+				Text: displayText,
+			},
+		}
+	}
+
 	// Handle media nodes specially - convert to text with descriptive placeholder
 	if c.Type == "media" {
 		altText := "[Embedded image]"
@@ -1499,6 +1552,14 @@ func convertAttrs(attrs *ADFAttrs) map[string]interface{} {
 			floatWidths[i] = float64(w)
 		}
 		result["colwidth"] = floatWidths
+	}
+
+	// Mention attributes
+	if attrs.Text != "" {
+		result["text"] = attrs.Text
+	}
+	if attrs.AccessLevel != "" {
+		result["accessLevel"] = attrs.AccessLevel
 	}
 
 	if len(result) == 0 {

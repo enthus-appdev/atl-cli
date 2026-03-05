@@ -3,6 +3,7 @@ package comment
 import (
 	"context"
 	"fmt"
+	"os"
 	"strings"
 
 	"github.com/spf13/cobra"
@@ -17,6 +18,7 @@ type AddOptions struct {
 	IO             *iostreams.IOStreams
 	IssueKey       string
 	Body           string
+	BodyFile       string
 	ReplyTo        string
 	VisibilityType string
 	VisibilityName string
@@ -48,21 +50,35 @@ and replying to existing comments with automatic quoting.`,
   # Reply to a specific comment (quotes the original)
   atl issue comment add PROJ-1234 --body "I agree!" --reply-to 12345
 
+  # Read comment body from a file
+  atl issue comment add PROJ-1234 --body-file comment.md
+
   # Output as JSON
   atl issue comment add PROJ-1234 --body "Comment" --json`,
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			opts.IssueKey = args[0]
 
-			if opts.Body == "" {
-				return fmt.Errorf("--body is required")
+			if opts.Body != "" && opts.BodyFile != "" {
+				return fmt.Errorf("--body and --body-file are mutually exclusive")
+			}
+			if opts.Body == "" && opts.BodyFile == "" {
+				return fmt.Errorf("--body or --body-file is required")
+			}
+			if opts.BodyFile != "" {
+				data, err := os.ReadFile(opts.BodyFile)
+				if err != nil {
+					return fmt.Errorf("failed to read body file: %w", err)
+				}
+				opts.Body = string(data)
 			}
 
 			return runAdd(opts)
 		},
 	}
 
-	cmd.Flags().StringVarP(&opts.Body, "body", "b", "", "Comment text (required)")
+	cmd.Flags().StringVarP(&opts.Body, "body", "b", "", "Comment text (mutually exclusive with --body-file)")
+	cmd.Flags().StringVar(&opts.BodyFile, "body-file", "", "Read comment body from file (mutually exclusive with --body)")
 	cmd.Flags().StringVar(&opts.ReplyTo, "reply-to", "", "Comment ID to reply to (quotes original)")
 	cmd.Flags().StringVar(&opts.VisibilityType, "visibility-type", "", "Visibility type: 'role' or 'group'")
 	cmd.Flags().StringVar(&opts.VisibilityName, "visibility-name", "", "Role or group name for visibility restriction")
@@ -146,7 +162,7 @@ func replyToComment(ctx context.Context, jira *api.JiraService, hostname string,
 	// Create quoted reply
 	quotedLines := strings.Split(originalText, "\n")
 	var quoted strings.Builder
-	quoted.WriteString(fmt.Sprintf("*Replying to %s:*\n", originalAuthor))
+	fmt.Fprintf(&quoted, "*Replying to %s:*\n", originalAuthor)
 	quoted.WriteString("{quote}\n")
 	for _, line := range quotedLines {
 		quoted.WriteString(line)

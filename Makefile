@@ -55,7 +55,7 @@ test-coverage: ## Run tests with coverage
 	$(GO) tool cover -html=coverage.out -o coverage.html
 
 lint: ## Run linter
-	golangci-lint run
+	$(GO) tool golangci-lint run
 
 fmt: ## Format code
 	$(GOFMT) -w .

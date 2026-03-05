@@ -3,6 +3,7 @@ package comment
 import (
 	"context"
 	"fmt"
+	"os"
 
 	"github.com/spf13/cobra"
 
@@ -17,6 +18,7 @@ type EditOptions struct {
 	IssueKey       string
 	CommentID      string
 	Body           string
+	BodyFile       string
 	VisibilityType string
 	VisibilityName string
 	JSON           bool
@@ -40,6 +42,9 @@ Requires the comment ID which can be found using 'atl issue comment list'.`,
   # Update visibility while editing
   atl issue comment edit PROJ-1234 --id 12345 --body "Text" --visibility-type role --visibility-name "Developers"
 
+  # Read comment body from a file
+  atl issue comment edit PROJ-1234 --id 12345 --body-file comment.md
+
   # Output as JSON
   atl issue comment edit PROJ-1234 --id 12345 --body "Text" --json`,
 		Args: cobra.ExactArgs(1),
@@ -49,8 +54,18 @@ Requires the comment ID which can be found using 'atl issue comment list'.`,
 			if opts.CommentID == "" {
 				return fmt.Errorf("--id is required\n\nUse 'atl issue comment list %s' to see comment IDs", args[0])
 			}
-			if opts.Body == "" {
-				return fmt.Errorf("--body is required")
+			if opts.Body != "" && opts.BodyFile != "" {
+				return fmt.Errorf("--body and --body-file are mutually exclusive")
+			}
+			if opts.Body == "" && opts.BodyFile == "" {
+				return fmt.Errorf("--body or --body-file is required")
+			}
+			if opts.BodyFile != "" {
+				data, err := os.ReadFile(opts.BodyFile)
+				if err != nil {
+					return fmt.Errorf("failed to read body file: %w", err)
+				}
+				opts.Body = string(data)
 			}
 
 			return runEdit(opts)
@@ -58,7 +73,8 @@ Requires the comment ID which can be found using 'atl issue comment list'.`,
 	}
 
 	cmd.Flags().StringVar(&opts.CommentID, "id", "", "Comment ID to edit (required)")
-	cmd.Flags().StringVarP(&opts.Body, "body", "b", "", "New comment text (required)")
+	cmd.Flags().StringVarP(&opts.Body, "body", "b", "", "New comment text (mutually exclusive with --body-file)")
+	cmd.Flags().StringVar(&opts.BodyFile, "body-file", "", "Read comment body from file (mutually exclusive with --body)")
 	cmd.Flags().StringVar(&opts.VisibilityType, "visibility-type", "", "Visibility type: 'role' or 'group'")
 	cmd.Flags().StringVar(&opts.VisibilityName, "visibility-name", "", "Role or group name for visibility restriction")
 	cmd.Flags().BoolVarP(&opts.JSON, "json", "j", false, "Output as JSON")
