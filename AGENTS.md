@@ -95,7 +95,9 @@ atl issue transition PROJ-1234 "Done" --field "Resolution=Fixed"  # With require
 ```bash
 atl issue comment list PROJ-1234                    # List comments
 atl issue comment add PROJ-1234 --body "Comment"    # Add comment
+atl issue comment add PROJ-1234 --body-file msg.md  # Add from file (avoids shell escaping)
 atl issue comment edit PROJ-1234 --id 123 --body "Updated"
+atl issue comment edit PROJ-1234 --id 123 --body-file msg.md
 atl issue comment delete PROJ-1234 --id 123
 ```
 
@@ -186,42 +188,20 @@ atl confluence template update <id> --body "<html>"
 
 ## Formatting Guidelines
 
-### Jira Wiki Markup
+### Jira Formatting (Markdown to ADF)
 
-Jira uses its own wiki markup, NOT Markdown. Common syntax:
+The atl CLI accepts Markdown for descriptions AND comments, converting to Atlassian Document Format (ADF):
 
-```
-h1. Heading 1
-h2. Heading 2
+- Standard Markdown: headings, bold, italic, strikethrough, code, lists, links
+- Blockquotes: `> text`
+- Horizontal rules: `---` or `***` or `___`
+- GFM tables: `| Header | Header |` with `|---|---|` separator
+- Panels: `:::info`, `:::warning`, `:::error`, `:::note`, `:::success`
+- Expandable sections: `+++Title\ncontent\n+++`
+- Media references: `!media[attachment-id]`
+- Mentions: `@[Display Name]` or `@[id:accountId]`
 
-*bold text*
-_italic text_
--strikethrough-
-
-* Bullet list
-** Nested bullet
-# Numbered list
-
-{code:java}
-code block
-{code}
-
-{noformat}
-preformatted text
-{noformat}
-
-[Link text|https://example.com]
-[PROJ-1234]                           # Auto-links to issue
-
-||Header 1||Header 2||
-|Cell 1|Cell 2|
-
-{quote}
-Quoted text
-{quote}
-```
-
-**Important**: Comments (`atl issue comment`) render as plain text only - wiki markup does NOT work in comments. Use wiki markup only in issue descriptions.
+**Tip**: Use `--body-file` for multi-line content to avoid shell escaping issues with backticks and special characters.
 
 ### Confluence HTML
 
