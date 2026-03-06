@@ -159,16 +159,16 @@ func replyToComment(ctx context.Context, jira *api.JiraService, hostname string,
 		originalAuthor = originalComment.Author.DisplayName
 	}
 
-	// Create quoted reply
+	// Create quoted reply using Markdown blockquote syntax
 	quotedLines := strings.Split(originalText, "\n")
 	var quoted strings.Builder
-	fmt.Fprintf(&quoted, "*Replying to %s:*\n", originalAuthor)
-	quoted.WriteString("{quote}\n")
+	fmt.Fprintf(&quoted, "_Replying to %s:_\n\n", originalAuthor)
 	for _, line := range quotedLines {
+		quoted.WriteString("> ")
 		quoted.WriteString(line)
 		quoted.WriteString("\n")
 	}
-	quoted.WriteString("{quote}\n\n")
+	quoted.WriteString("\n")
 	quoted.WriteString(opts.Body)
 
 	commentOpts := &api.CommentOptions{
