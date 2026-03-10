@@ -86,7 +86,7 @@ func NewCmdEdit(ios *iostreams.IOStreams) *cobra.Command {
 	cmd.Flags().StringSliceVar(&opts.AddLabels, "add-label", nil, "Labels to add")
 	cmd.Flags().StringSliceVar(&opts.RemoveLabels, "remove-label", nil, "Labels to remove")
 	cmd.Flags().StringVar(&opts.Priority, "priority", "", "New priority")
-	cmd.Flags().StringSliceVarP(&opts.CustomFields, "field", "f", nil, "Custom field in key=value format (can be repeated)")
+	cmd.Flags().StringArrayVarP(&opts.CustomFields, "field", "f", nil, "Custom field in key=value format (can be repeated)")
 	cmd.Flags().StringVar(&opts.FieldFile, "field-file", "", "JSON file with field values (for complex types like ADF)")
 	cmd.Flags().BoolVarP(&opts.JSON, "json", "j", false, "Output as JSON")
 
