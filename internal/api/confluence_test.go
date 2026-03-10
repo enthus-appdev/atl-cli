@@ -349,6 +349,89 @@ func TestSpaceDescription(t *testing.T) {
 	}
 }
 
+// TestConfluenceAttachmentStructure tests the ConfluenceAttachment JSON serialization.
+func TestConfluenceAttachmentStructure(t *testing.T) {
+	att := &ConfluenceAttachment{
+		ID:        "att123",
+		Title:     "screenshot.png",
+		MediaType: "image/png",
+		FileSize:  12345,
+		Status:    "current",
+		Version: &AttachmentVersion{
+			Number:    1,
+			CreatedAt: "2026-01-15T10:00:00.000Z",
+		},
+		DownloadLink: "/download/attachments/456/screenshot.png",
+	}
+
+	data, err := json.Marshal(att)
+	if err != nil {
+		t.Fatalf("json.Marshal() error = %v", err)
+	}
+
+	var decoded ConfluenceAttachment
+	if err := json.Unmarshal(data, &decoded); err != nil {
+		t.Fatalf("json.Unmarshal() error = %v", err)
+	}
+
+	if decoded.ID != "att123" {
+		t.Errorf("ID = %q, want %q", decoded.ID, "att123")
+	}
+	if decoded.Title != "screenshot.png" {
+		t.Errorf("Title = %q, want %q", decoded.Title, "screenshot.png")
+	}
+	if decoded.FileSize != 12345 {
+		t.Errorf("FileSize = %d, want 12345", decoded.FileSize)
+	}
+	if decoded.DownloadLink != "/download/attachments/456/screenshot.png" {
+		t.Errorf("DownloadLink = %q, want %q", decoded.DownloadLink, "/download/attachments/456/screenshot.png")
+	}
+}
+
+// TestGetPageAttachments tests listing attachments on a page.
+func TestGetPageAttachments(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			t.Errorf("Method = %s, want GET", r.Method)
+		}
+
+		response := ConfluenceAttachmentsResponse{
+			Results: []*ConfluenceAttachment{
+				{ID: "att1", Title: "file1.pdf", MediaType: "application/pdf", FileSize: 1000},
+				{ID: "att2", Title: "file2.png", MediaType: "image/png", FileSize: 2000},
+			},
+			Links: &PaginationLinks{},
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(response)
+	}))
+	defer server.Close()
+
+	client := &Client{
+		httpClient: server.Client(),
+		cloudID:    "test-cloud",
+		tokens: &auth.TokenSet{
+			AccessToken: "test-token",
+			ExpiresAt:   time.Now().Add(time.Hour),
+		},
+	}
+
+	ctx := context.Background()
+	var result ConfluenceAttachmentsResponse
+	err := client.Get(ctx, server.URL, &result)
+
+	if err != nil {
+		t.Fatalf("error = %v", err)
+	}
+	if len(result.Results) != 2 {
+		t.Errorf("got %d attachments, want 2", len(result.Results))
+	}
+	if result.Results[0].Title != "file1.pdf" {
+		t.Errorf("first attachment title = %q, want %q", result.Results[0].Title, "file1.pdf")
+	}
+}
+
 // TestPageBodyFormats tests the PageBody structure with different formats.
 func TestPageBodyFormats(t *testing.T) {
 	body := &PageBody{
