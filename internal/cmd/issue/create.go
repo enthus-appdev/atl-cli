@@ -95,7 +95,7 @@ func NewCmdCreate(ios *iostreams.IOStreams) *cobra.Command {
 	cmd.Flags().StringSliceVarP(&opts.Labels, "label", "l", nil, "Labels to add")
 	cmd.Flags().StringVar(&opts.Priority, "priority", "", "Priority level")
 	cmd.Flags().StringVar(&opts.Parent, "parent", "", "Parent issue key (for subtasks)")
-	cmd.Flags().StringSliceVarP(&opts.CustomFields, "field", "f", nil, "Custom field in key=value format (can be repeated)")
+	cmd.Flags().StringArrayVarP(&opts.CustomFields, "field", "f", nil, "Custom field in key=value format (can be repeated)")
 	cmd.Flags().StringVar(&opts.FieldFile, "field-file", "", "JSON file with field values (for complex types like ADF)")
 	cmd.Flags().BoolVarP(&opts.Web, "web", "w", false, "Open created issue in browser")
 	cmd.Flags().BoolVarP(&opts.JSON, "json", "j", false, "Output as JSON")

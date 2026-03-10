@@ -59,7 +59,7 @@ func NewCmdTransition(ios *iostreams.IOStreams) *cobra.Command {
 	}
 
 	cmd.Flags().StringVarP(&opts.Comment, "comment", "c", "", "Add a comment with the transition")
-	cmd.Flags().StringSliceVarP(&opts.CustomFields, "field", "f", nil, "Custom field in key=value format (for transitions that require fields)")
+	cmd.Flags().StringArrayVarP(&opts.CustomFields, "field", "f", nil, "Custom field in key=value format (for transitions that require fields)")
 	cmd.Flags().BoolVarP(&opts.List, "list", "l", false, "List available transitions")
 	cmd.Flags().BoolVarP(&opts.JSON, "json", "j", false, "Output as JSON")
 
