@@ -967,3 +967,46 @@ func (s *ConfluenceService) GetConfluenceAttachment(ctx context.Context, attachm
 
 	return &attachment, nil
 }
+
+// DownloadConfluenceAttachment downloads an attachment's content.
+// downloadLink is the relative link from the attachment's downloadLink field.
+// The full URL is constructed by prepending the Confluence site base.
+func (s *ConfluenceService) DownloadConfluenceAttachment(ctx context.Context, downloadLink string) ([]byte, string, error) {
+	// downloadLink is relative (e.g. "/download/attachments/123/file.pdf")
+	// Construct full URL via the Confluence site
+	fullURL := fmt.Sprintf("%s/ex/confluence/%s/wiki%s", AtlassianAPIURL, s.client.CloudID(), downloadLink)
+	return s.client.GetRaw(ctx, fullURL)
+}
+
+// UploadConfluenceAttachment uploads a file as an attachment to a Confluence page.
+// Uses v1 API: POST /content/{pageID}/child/attachment
+func (s *ConfluenceService) UploadConfluenceAttachment(ctx context.Context, pageID, filePath string) (*ConfluenceUploadResponse, error) {
+	path := fmt.Sprintf("%s/content/%s/child/attachment", s.baseURLV1(), pageID)
+
+	var result ConfluenceUploadResponse
+	if err := s.client.PostMultipart(ctx, path, "file", filePath, &result); err != nil {
+		return nil, err
+	}
+
+	return &result, nil
+}
+
+// ConfluenceUploadResponse represents the v1 response when uploading attachments.
+type ConfluenceUploadResponse struct {
+	Results []*ConfluenceUploadResult `json:"results"`
+}
+
+// ConfluenceUploadResult represents a single uploaded attachment in the v1 response.
+type ConfluenceUploadResult struct {
+	ID         string                    `json:"id"`
+	Title      string                    `json:"title"`
+	MediaType  string                    `json:"mediaType,omitempty"`
+	FileSize   int64                     `json:"fileSize,omitempty"`
+	Extensions *ConfluenceUploadMetadata `json:"extensions,omitempty"`
+}
+
+// ConfluenceUploadMetadata holds metadata from the v1 upload response.
+type ConfluenceUploadMetadata struct {
+	MediaType string `json:"mediaType,omitempty"`
+	FileSize  int64  `json:"fileSize,omitempty"`
+}
