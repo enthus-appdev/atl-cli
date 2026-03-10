@@ -186,6 +186,18 @@ atl confluence template create --space DOCS --name "Name" --body "<html>"
 atl confluence template update <id> --body "<html>"
 ```
 
+### Attachments
+
+```bash
+atl confluence page attachment <id> --list               # List attachments
+atl confluence page attachment <id> --list --json        # List as JSON
+atl confluence page attachment <id> --download --id <attID>  # Download specific
+atl confluence page attachment <id> --download-all       # Download all
+atl confluence page attachment <id> --download-all -o ./dir  # Download to directory
+atl confluence page attachment <id> --upload ./file.pdf  # Upload file
+atl confluence page attachment <id> --upload a.pdf --upload b.png  # Upload multiple
+```
+
 ## Formatting Guidelines
 
 ### Jira Formatting (Markdown to ADF)

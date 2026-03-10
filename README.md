@@ -242,6 +242,14 @@ atl confluence page archive <id> --unarchive     # Restore archived page
 atl confluence page move <id> --target <parent-id>           # Move as child of target
 atl confluence page move <id> --target <sibling-id> --position before  # Move before sibling
 atl confluence page move <id> --space NEWSPACE               # Move to different space
+
+atl confluence page attachment <id> --list               # List attachments
+atl confluence page attachment <id> --list --json        # List as JSON
+atl confluence page attachment <id> --download --id <attID>  # Download specific
+atl confluence page attachment <id> --download-all       # Download all
+atl confluence page attachment <id> --download-all -o ./dir  # Download to directory
+atl confluence page attachment <id> --upload ./file.pdf  # Upload file
+atl confluence page attachment <id> --upload a.pdf --upload b.png  # Upload multiple
 ```
 
 ### Configuration
