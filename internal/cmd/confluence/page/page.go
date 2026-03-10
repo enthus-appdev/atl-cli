@@ -24,6 +24,7 @@ func NewCmdPage(ios *iostreams.IOStreams) *cobra.Command {
 	cmd.AddCommand(NewCmdSearch(ios))
 	cmd.AddCommand(NewCmdArchive(ios))
 	cmd.AddCommand(NewCmdMove(ios))
+	cmd.AddCommand(NewCmdAttachment(ios))
 
 	return cmd
 }

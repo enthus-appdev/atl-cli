@@ -885,3 +885,128 @@ func (s *ConfluenceService) UpdateTemplate(ctx context.Context, templateID, name
 
 	return &template, nil
 }
+
+// ConfluenceAttachment represents a file attachment on a Confluence page.
+type ConfluenceAttachment struct {
+	ID           string             `json:"id"`
+	Title        string             `json:"title"`
+	MediaType    string             `json:"mediaType"`
+	FileSize     int64              `json:"fileSize"`
+	Status       string             `json:"status"`
+	Version      *AttachmentVersion `json:"version,omitempty"`
+	DownloadLink string             `json:"downloadLink,omitempty"`
+}
+
+// AttachmentVersion represents version info for an attachment.
+type AttachmentVersion struct {
+	Number    int    `json:"number"`
+	CreatedAt string `json:"createdAt,omitempty"`
+	AuthorID  string `json:"authorId,omitempty"`
+}
+
+// ConfluenceAttachmentsResponse represents a paginated list of attachments.
+type ConfluenceAttachmentsResponse struct {
+	Results []*ConfluenceAttachment `json:"results"`
+	Links   *PaginationLinks        `json:"_links,omitempty"`
+}
+
+// GetPageAttachments lists attachments on a Confluence page.
+// Uses v2 API: GET /pages/{pageID}/attachments
+func (s *ConfluenceService) GetPageAttachments(ctx context.Context, pageID string, limit int, cursor string) (*ConfluenceAttachmentsResponse, error) {
+	path := fmt.Sprintf("%s/pages/%s/attachments", s.baseURL(), pageID)
+
+	params := url.Values{}
+	if limit > 0 {
+		params.Set("limit", strconv.Itoa(capLimit(limit, ConfluenceMaxLimit)))
+	}
+	if cursor != "" {
+		params.Set("cursor", cursor)
+	}
+
+	var result ConfluenceAttachmentsResponse
+	if err := s.client.Get(ctx, path+"?"+params.Encode(), &result); err != nil {
+		return nil, err
+	}
+
+	return &result, nil
+}
+
+// GetPageAttachmentsAll lists all attachments on a page by following pagination.
+func (s *ConfluenceService) GetPageAttachmentsAll(ctx context.Context, pageID string) ([]*ConfluenceAttachment, error) {
+	var all []*ConfluenceAttachment
+	cursor := ""
+
+	for {
+		result, err := s.GetPageAttachments(ctx, pageID, 100, cursor)
+		if err != nil {
+			return nil, err
+		}
+		all = append(all, result.Results...)
+
+		if result.Links == nil || result.Links.Next == "" {
+			break
+		}
+		cursor = extractCursor(result.Links.Next)
+		if cursor == "" {
+			break
+		}
+	}
+
+	return all, nil
+}
+
+// GetConfluenceAttachment gets a single attachment by ID.
+// Uses v2 API: GET /attachments/{id}
+func (s *ConfluenceService) GetConfluenceAttachment(ctx context.Context, attachmentID string) (*ConfluenceAttachment, error) {
+	path := fmt.Sprintf("%s/attachments/%s", s.baseURL(), attachmentID)
+
+	var attachment ConfluenceAttachment
+	if err := s.client.Get(ctx, path, &attachment); err != nil {
+		return nil, err
+	}
+
+	return &attachment, nil
+}
+
+// DownloadConfluenceAttachment downloads an attachment's content.
+// downloadLink is the relative link from the attachment's downloadLink field.
+// The full URL is constructed by prepending the Confluence site base.
+func (s *ConfluenceService) DownloadConfluenceAttachment(ctx context.Context, downloadLink string) ([]byte, string, error) {
+	// downloadLink is relative (e.g. "/download/attachments/123/file.pdf")
+	// Construct full URL via the Confluence site
+	fullURL := fmt.Sprintf("%s/ex/confluence/%s/wiki%s", AtlassianAPIURL, s.client.CloudID(), downloadLink)
+	return s.client.GetRaw(ctx, fullURL)
+}
+
+// UploadConfluenceAttachment uploads a file as an attachment to a Confluence page.
+// Uses v1 API: POST /content/{pageID}/child/attachment
+func (s *ConfluenceService) UploadConfluenceAttachment(ctx context.Context, pageID, filePath string) (*ConfluenceUploadResponse, error) {
+	path := fmt.Sprintf("%s/content/%s/child/attachment", s.baseURLV1(), pageID)
+
+	var result ConfluenceUploadResponse
+	if err := s.client.PostMultipart(ctx, path, "file", filePath, &result); err != nil {
+		return nil, err
+	}
+
+	return &result, nil
+}
+
+// ConfluenceUploadResponse represents the v1 response when uploading attachments.
+type ConfluenceUploadResponse struct {
+	Results []*ConfluenceUploadResult `json:"results"`
+}
+
+// ConfluenceUploadResult represents a single uploaded attachment in the v1 response.
+type ConfluenceUploadResult struct {
+	ID         string                    `json:"id"`
+	Title      string                    `json:"title"`
+	MediaType  string                    `json:"mediaType,omitempty"`
+	FileSize   int64                     `json:"fileSize,omitempty"`
+	Extensions *ConfluenceUploadMetadata `json:"extensions,omitempty"`
+}
+
+// ConfluenceUploadMetadata holds metadata from the v1 upload response.
+type ConfluenceUploadMetadata struct {
+	MediaType string `json:"mediaType,omitempty"`
+	FileSize  int64  `json:"fileSize,omitempty"`
+}

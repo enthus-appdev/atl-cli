@@ -349,6 +349,120 @@ func TestSpaceDescription(t *testing.T) {
 	}
 }
 
+// TestConfluenceAttachmentStructure tests the ConfluenceAttachment JSON serialization.
+func TestConfluenceAttachmentStructure(t *testing.T) {
+	att := &ConfluenceAttachment{
+		ID:        "att123",
+		Title:     "screenshot.png",
+		MediaType: "image/png",
+		FileSize:  12345,
+		Status:    "current",
+		Version: &AttachmentVersion{
+			Number:    1,
+			CreatedAt: "2026-01-15T10:00:00.000Z",
+		},
+		DownloadLink: "/download/attachments/456/screenshot.png",
+	}
+
+	data, err := json.Marshal(att)
+	if err != nil {
+		t.Fatalf("json.Marshal() error = %v", err)
+	}
+
+	var decoded ConfluenceAttachment
+	if err := json.Unmarshal(data, &decoded); err != nil {
+		t.Fatalf("json.Unmarshal() error = %v", err)
+	}
+
+	if decoded.ID != "att123" {
+		t.Errorf("ID = %q, want %q", decoded.ID, "att123")
+	}
+	if decoded.Title != "screenshot.png" {
+		t.Errorf("Title = %q, want %q", decoded.Title, "screenshot.png")
+	}
+	if decoded.FileSize != 12345 {
+		t.Errorf("FileSize = %d, want 12345", decoded.FileSize)
+	}
+	if decoded.DownloadLink != "/download/attachments/456/screenshot.png" {
+		t.Errorf("DownloadLink = %q, want %q", decoded.DownloadLink, "/download/attachments/456/screenshot.png")
+	}
+}
+
+// TestGetPageAttachments tests listing attachments on a page.
+func TestGetPageAttachments(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			t.Errorf("Method = %s, want GET", r.Method)
+		}
+
+		response := ConfluenceAttachmentsResponse{
+			Results: []*ConfluenceAttachment{
+				{ID: "att1", Title: "file1.pdf", MediaType: "application/pdf", FileSize: 1000},
+				{ID: "att2", Title: "file2.png", MediaType: "image/png", FileSize: 2000},
+			},
+			Links: &PaginationLinks{},
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(response)
+	}))
+	defer server.Close()
+
+	client := &Client{
+		httpClient: server.Client(),
+		cloudID:    "test-cloud",
+		tokens: &auth.TokenSet{
+			AccessToken: "test-token",
+			ExpiresAt:   time.Now().Add(time.Hour),
+		},
+	}
+
+	ctx := context.Background()
+	var result ConfluenceAttachmentsResponse
+	err := client.Get(ctx, server.URL, &result)
+
+	if err != nil {
+		t.Fatalf("error = %v", err)
+	}
+	if len(result.Results) != 2 {
+		t.Errorf("got %d attachments, want 2", len(result.Results))
+	}
+	if result.Results[0].Title != "file1.pdf" {
+		t.Errorf("first attachment title = %q, want %q", result.Results[0].Title, "file1.pdf")
+	}
+}
+
+// TestConfluenceUploadResponseStructure tests the upload response JSON serialization.
+func TestConfluenceUploadResponseStructure(t *testing.T) {
+	jsonData := `{"results": [{"id": "att100", "title": "report.pdf", "extensions": {"mediaType": "application/pdf", "fileSize": 54321}}]}`
+
+	var response ConfluenceUploadResponse
+	if err := json.Unmarshal([]byte(jsonData), &response); err != nil {
+		t.Fatalf("json.Unmarshal() error = %v", err)
+	}
+
+	if len(response.Results) != 1 {
+		t.Fatalf("Results count = %d, want 1", len(response.Results))
+	}
+
+	r := response.Results[0]
+	if r.ID != "att100" {
+		t.Errorf("ID = %q, want %q", r.ID, "att100")
+	}
+	if r.Title != "report.pdf" {
+		t.Errorf("Title = %q, want %q", r.Title, "report.pdf")
+	}
+	if r.Extensions == nil {
+		t.Fatal("Extensions is nil")
+	}
+	if r.Extensions.MediaType != "application/pdf" {
+		t.Errorf("Extensions.MediaType = %q, want %q", r.Extensions.MediaType, "application/pdf")
+	}
+	if r.Extensions.FileSize != 54321 {
+		t.Errorf("Extensions.FileSize = %d, want 54321", r.Extensions.FileSize)
+	}
+}
+
 // TestPageBodyFormats tests the PageBody structure with different formats.
 func TestPageBodyFormats(t *testing.T) {
 	body := &PageBody{
@@ -367,5 +481,35 @@ func TestPageBodyFormats(t *testing.T) {
 	}
 	if body.View.Representation != "view" {
 		t.Errorf("PageBody.View.Representation = %q, want %q", body.View.Representation, "view")
+	}
+}
+
+// TestDownloadConfluenceAttachment tests downloading attachment content.
+func TestDownloadConfluenceAttachment(t *testing.T) {
+	fileContent := []byte("file content here")
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/pdf")
+		w.Write(fileContent)
+	}))
+	defer server.Close()
+
+	client := &Client{
+		httpClient: server.Client(),
+		cloudID:    "test-cloud",
+		tokens: &auth.TokenSet{
+			AccessToken: "test-token",
+			ExpiresAt:   time.Now().Add(time.Hour),
+		},
+	}
+
+	content, contentType, err := client.GetRaw(context.Background(), server.URL)
+	if err != nil {
+		t.Fatalf("error = %v", err)
+	}
+	if string(content) != "file content here" {
+		t.Errorf("content = %q, want %q", string(content), "file content here")
+	}
+	if contentType != "application/pdf" {
+		t.Errorf("contentType = %q, want %q", contentType, "application/pdf")
 	}
 }
