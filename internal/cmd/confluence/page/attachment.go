@@ -234,7 +234,9 @@ func downloadAttachment(opts *AttachmentOptions, confluence *api.ConfluenceServi
 		return fmt.Errorf("failed to create output directory: %w", err)
 	}
 
-	outputPath := filepath.Join(opts.OutputDir, attachment.Title)
+	// Sanitize filename to prevent path traversal
+	safeFilename := filepath.Base(attachment.Title)
+	outputPath := filepath.Join(opts.OutputDir, safeFilename)
 	if err := os.WriteFile(outputPath, content, 0644); err != nil {
 		return fmt.Errorf("failed to write file: %w", err)
 	}
@@ -242,8 +244,8 @@ func downloadAttachment(opts *AttachmentOptions, confluence *api.ConfluenceServi
 	dlOut := &attachmentDownloadOutput{
 		PageID:   opts.PageID,
 		ID:       attachment.ID,
-		Filename: attachment.Title,
-		Size:     int64(len(content)),
+		Filename: safeFilename,
+		Size:     attachment.FileSize,
 		Path:     outputPath,
 	}
 
@@ -251,7 +253,7 @@ func downloadAttachment(opts *AttachmentOptions, confluence *api.ConfluenceServi
 		return output.JSON(opts.IO.Out, dlOut)
 	}
 
-	fmt.Fprintf(opts.IO.Out, "Downloaded: %s (%s)\n", outputPath, formatAttachmentSize(int64(len(content))))
+	fmt.Fprintf(opts.IO.Out, "Downloaded: %s (%s)\n", outputPath, formatAttachmentSize(attachment.FileSize))
 	return nil
 }
 
@@ -280,7 +282,9 @@ func downloadAllAttachments(opts *AttachmentOptions, confluence *api.ConfluenceS
 			continue
 		}
 
-		outputPath := filepath.Join(opts.OutputDir, a.Title)
+		// Sanitize filename to prevent path traversal
+		safeFilename := filepath.Base(a.Title)
+		outputPath := filepath.Join(opts.OutputDir, safeFilename)
 		if err := os.WriteFile(outputPath, content, 0644); err != nil {
 			errors = append(errors, fmt.Sprintf("%s: %v", a.Title, err))
 			continue
@@ -289,13 +293,13 @@ func downloadAllAttachments(opts *AttachmentOptions, confluence *api.ConfluenceS
 		downloads = append(downloads, &attachmentDownloadOutput{
 			PageID:   opts.PageID,
 			ID:       a.ID,
-			Filename: a.Title,
-			Size:     int64(len(content)),
+			Filename: safeFilename,
+			Size:     a.FileSize,
 			Path:     outputPath,
 		})
 
 		if !opts.JSON {
-			fmt.Fprintf(opts.IO.Out, "Downloaded: %s (%s)\n", outputPath, formatAttachmentSize(int64(len(content))))
+			fmt.Fprintf(opts.IO.Out, "Downloaded: %s (%s)\n", outputPath, formatAttachmentSize(a.FileSize))
 		}
 	}
 
@@ -389,7 +393,7 @@ func uploadAttachments(opts *AttachmentOptions, confluence *api.ConfluenceServic
 		}
 	}
 
-	if len(opts.UploadFiles) > 1 {
+	if len(opts.UploadFiles) > 1 || len(errors) > 0 {
 		fmt.Fprintf(opts.IO.Out, "\nUploaded %d of %d files to page %s\n", len(uploads), len(opts.UploadFiles), opts.PageID)
 	}
 
