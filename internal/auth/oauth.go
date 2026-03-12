@@ -62,6 +62,9 @@ func DefaultScopes() []string {
 		"read:content.metadata:confluence",
 		"read:content-details:confluence",
 		"read:hierarchical-content:confluence",
+		// Confluence attachment scopes (v2 API)
+		"read:attachment:confluence",
+		"write:attachment:confluence",
 		// Confluence template scopes (v1 API)
 		"read:template:confluence",
 		"write:template:confluence",
