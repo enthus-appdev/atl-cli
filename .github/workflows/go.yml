@@ -95,7 +95,7 @@ jobs:
           name: coverage
 
       - name: Post coverage report
-        uses: fgrosse/go-coverage-report@v1.2.0
+        uses: fgrosse/go-coverage-report@v1.3.0
         with:
           coverage-artifact-name: "coverage"
           coverage-file-name: "coverage.out"
