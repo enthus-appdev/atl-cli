@@ -888,15 +888,15 @@ func (s *ConfluenceService) UpdateTemplate(ctx context.Context, templateID, name
 
 // FooterComment represents a Confluence page footer comment.
 type FooterComment struct {
-	ID        string              `json:"id"`
-	Status    string              `json:"status"`
-	Title     string              `json:"title,omitempty"`
-	PageID    string              `json:"pageId,omitempty"`
-	ParentID  string              `json:"parentCommentId,omitempty"`
+	ID        string                `json:"id"`
+	Status    string                `json:"status"`
+	Title     string                `json:"title,omitempty"`
+	PageID    string                `json:"pageId,omitempty"`
+	ParentID  string                `json:"parentCommentId,omitempty"`
 	Version   *FooterCommentVersion `json:"version,omitempty"`
-	Body      *PageBody           `json:"body,omitempty"`
-	AuthorID  string              `json:"authorId,omitempty"`
-	CreatedAt string              `json:"createdAt,omitempty"`
+	Body      *PageBody             `json:"body,omitempty"`
+	AuthorID  string                `json:"authorId,omitempty"`
+	CreatedAt string                `json:"createdAt,omitempty"`
 }
 
 // FooterCommentVersion represents version info for a comment.
