@@ -3,6 +3,7 @@ package confluence
 import (
 	"github.com/spf13/cobra"
 
+	"github.com/enthus-appdev/atl-cli/internal/cmd/confluence/comment"
 	"github.com/enthus-appdev/atl-cli/internal/cmd/confluence/page"
 	"github.com/enthus-appdev/atl-cli/internal/cmd/confluence/space"
 	"github.com/enthus-appdev/atl-cli/internal/cmd/confluence/template"
@@ -18,6 +19,7 @@ func NewCmdConfluence(ios *iostreams.IOStreams) *cobra.Command {
 		Long:    `Read and manage Confluence pages, spaces, and templates.`,
 	}
 
+	cmd.AddCommand(comment.NewCmdComment(ios))
 	cmd.AddCommand(page.NewCmdPage(ios))
 	cmd.AddCommand(space.NewCmdSpace(ios))
 	cmd.AddCommand(template.NewCmdTemplate(ios))

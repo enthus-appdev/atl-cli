@@ -886,6 +886,175 @@ func (s *ConfluenceService) UpdateTemplate(ctx context.Context, templateID, name
 	return &template, nil
 }
 
+// FooterComment represents a Confluence page footer comment.
+type FooterComment struct {
+	ID        string              `json:"id"`
+	Status    string              `json:"status"`
+	Title     string              `json:"title,omitempty"`
+	PageID    string              `json:"pageId,omitempty"`
+	ParentID  string              `json:"parentCommentId,omitempty"`
+	Version   *FooterCommentVersion `json:"version,omitempty"`
+	Body      *PageBody           `json:"body,omitempty"`
+	AuthorID  string              `json:"authorId,omitempty"`
+	CreatedAt string              `json:"createdAt,omitempty"`
+}
+
+// FooterCommentVersion represents version info for a comment.
+type FooterCommentVersion struct {
+	Number    int    `json:"number"`
+	CreatedAt string `json:"createdAt,omitempty"`
+	AuthorID  string `json:"authorId,omitempty"`
+}
+
+// FooterCommentsResponse represents a paginated list of footer comments.
+type FooterCommentsResponse struct {
+	Results []*FooterComment `json:"results"`
+	Links   *PaginationLinks `json:"_links,omitempty"`
+}
+
+// CreateFooterCommentRequest represents a request to create a footer comment.
+type CreateFooterCommentRequest struct {
+	PageID          string `json:"pageId"`
+	ParentCommentID string `json:"parentCommentId,omitempty"`
+	Body            struct {
+		Representation string `json:"representation"`
+		Value          string `json:"value"`
+	} `json:"body"`
+}
+
+// UpdateFooterCommentRequest represents a request to update a footer comment.
+type UpdateFooterCommentRequest struct {
+	Version struct {
+		Number int `json:"number"`
+	} `json:"version"`
+	Body struct {
+		Representation string `json:"representation"`
+		Value          string `json:"value"`
+	} `json:"body"`
+}
+
+// GetPageFooterComments gets footer comments on a page.
+// Uses v2 API: GET /pages/{id}/footer-comments
+func (s *ConfluenceService) GetPageFooterComments(ctx context.Context, pageID string, limit int, cursor string) (*FooterCommentsResponse, error) {
+	path := fmt.Sprintf("%s/pages/%s/footer-comments", s.baseURL(), pageID)
+
+	params := url.Values{}
+	params.Set("body-format", "storage")
+	if limit > 0 {
+		params.Set("limit", strconv.Itoa(capLimit(limit, ConfluenceMaxLimit)))
+	}
+	if cursor != "" {
+		params.Set("cursor", cursor)
+	}
+
+	var result FooterCommentsResponse
+	if err := s.client.Get(ctx, path+"?"+params.Encode(), &result); err != nil {
+		return nil, err
+	}
+
+	return &result, nil
+}
+
+// GetPageFooterCommentsAll gets all footer comments on a page by following pagination.
+func (s *ConfluenceService) GetPageFooterCommentsAll(ctx context.Context, pageID string) ([]*FooterComment, error) {
+	var all []*FooterComment
+	cursor := ""
+
+	for {
+		result, err := s.GetPageFooterComments(ctx, pageID, 100, cursor)
+		if err != nil {
+			return nil, err
+		}
+		all = append(all, result.Results...)
+
+		if result.Links == nil || result.Links.Next == "" {
+			break
+		}
+		cursor = extractCursor(result.Links.Next)
+		if cursor == "" {
+			break
+		}
+	}
+
+	return all, nil
+}
+
+// GetFooterComment gets a single footer comment by ID.
+// Uses v2 API: GET /footer-comments/{id}
+func (s *ConfluenceService) GetFooterComment(ctx context.Context, commentID string) (*FooterComment, error) {
+	path := fmt.Sprintf("%s/footer-comments/%s", s.baseURL(), commentID)
+
+	params := url.Values{}
+	params.Set("body-format", "storage")
+
+	var comment FooterComment
+	if err := s.client.Get(ctx, path+"?"+params.Encode(), &comment); err != nil {
+		return nil, err
+	}
+
+	return &comment, nil
+}
+
+// GetFooterCommentChildren gets child comments (replies) of a footer comment.
+// Uses v2 API: GET /footer-comments/{id}/children
+func (s *ConfluenceService) GetFooterCommentChildren(ctx context.Context, commentID string, limit int, cursor string) (*FooterCommentsResponse, error) {
+	path := fmt.Sprintf("%s/footer-comments/%s/children", s.baseURL(), commentID)
+
+	params := url.Values{}
+	params.Set("body-format", "storage")
+	if limit > 0 {
+		params.Set("limit", strconv.Itoa(capLimit(limit, ConfluenceMaxLimit)))
+	}
+	if cursor != "" {
+		params.Set("cursor", cursor)
+	}
+
+	var result FooterCommentsResponse
+	if err := s.client.Get(ctx, path+"?"+params.Encode(), &result); err != nil {
+		return nil, err
+	}
+
+	return &result, nil
+}
+
+// CreateFooterComment creates a footer comment on a page.
+// Uses v2 API: POST /footer-comments
+func (s *ConfluenceService) CreateFooterComment(ctx context.Context, pageID, body, parentCommentID string) (*FooterComment, error) {
+	path := fmt.Sprintf("%s/footer-comments", s.baseURL())
+
+	reqBody := CreateFooterCommentRequest{
+		PageID:          pageID,
+		ParentCommentID: parentCommentID,
+	}
+	reqBody.Body.Representation = "storage"
+	reqBody.Body.Value = body
+
+	var comment FooterComment
+	if err := s.client.Post(ctx, path, reqBody, &comment); err != nil {
+		return nil, err
+	}
+
+	return &comment, nil
+}
+
+// UpdateFooterComment updates a footer comment.
+// Uses v2 API: PUT /footer-comments/{id}
+func (s *ConfluenceService) UpdateFooterComment(ctx context.Context, commentID, body string, version int) (*FooterComment, error) {
+	path := fmt.Sprintf("%s/footer-comments/%s", s.baseURL(), commentID)
+
+	reqBody := UpdateFooterCommentRequest{}
+	reqBody.Version.Number = version + 1
+	reqBody.Body.Representation = "storage"
+	reqBody.Body.Value = body
+
+	var comment FooterComment
+	if err := s.client.Put(ctx, path, reqBody, &comment); err != nil {
+		return nil, err
+	}
+
+	return &comment, nil
+}
+
 // ConfluenceAttachment represents a file attachment on a Confluence page.
 type ConfluenceAttachment struct {
 	ID           string             `json:"id"`
