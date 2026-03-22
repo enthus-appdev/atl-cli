@@ -122,7 +122,9 @@ func runChildren(opts *ChildrenOptions) error {
 		// Also fetch child folders (v2 API only returns pages, not folders)
 		if opts.Type == "" || opts.Type == "folder" {
 			folders, folderErr := confluence.GetChildFolders(ctx, opts.PageID)
-			if folderErr == nil {
+			if folderErr != nil {
+				fmt.Fprintf(opts.IO.ErrOut, "Warning: could not fetch child folders: %v\n", folderErr)
+			} else {
 				children = append(children, folders...)
 			}
 		}

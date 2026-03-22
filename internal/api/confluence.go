@@ -715,6 +715,7 @@ func (s *ConfluenceService) GetPageChildren(ctx context.Context, pageID string, 
 // GetChildFolders gets immediate child folders of a page using CQL search.
 // The v2 /pages/{id}/children endpoint only returns pages, not folders.
 // This uses v1 CQL search with "parent = {id} AND type = folder" as a workaround.
+// Limited to 100 results (no pagination) — sufficient for practical use.
 func (s *ConfluenceService) GetChildFolders(ctx context.Context, pageID string) ([]*PageChild, error) {
 	cql := fmt.Sprintf("parent = %s AND type = folder", pageID)
 	searchResult, err := s.SearchWithCQL(ctx, cql, 100, "")
