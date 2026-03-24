@@ -853,6 +853,50 @@ func (s *JiraService) CreateIssueLink(ctx context.Context, inwardKey, outwardKey
 	return s.client.Post(ctx, path, req, nil)
 }
 
+// IssueLink represents a link between two issues as returned by the issue fields.
+type IssueLink struct {
+	ID           string         `json:"id"`
+	Type         *IssueLinkType `json:"type"`
+	InwardIssue  *LinkedIssue   `json:"inwardIssue,omitempty"`
+	OutwardIssue *LinkedIssue   `json:"outwardIssue,omitempty"`
+}
+
+// LinkedIssue represents the linked issue summary in a link response.
+type LinkedIssue struct {
+	Key    string             `json:"key"`
+	Fields *LinkedIssueFields `json:"fields,omitempty"`
+}
+
+// LinkedIssueFields contains summary fields for a linked issue.
+type LinkedIssueFields struct {
+	Summary string `json:"summary"`
+}
+
+// issueLinksResponse is used to parse issuelinks from the issue fields.
+type issueLinksResponse struct {
+	Fields struct {
+		IssueLinks []*IssueLink `json:"issuelinks"`
+	} `json:"fields"`
+}
+
+// GetIssueLinks returns all issue links for the given issue key.
+func (s *JiraService) GetIssueLinks(ctx context.Context, issueKey string) ([]*IssueLink, error) {
+	path := fmt.Sprintf("%s/issue/%s?fields=issuelinks", s.client.JiraBaseURL(), issueKey)
+
+	var result issueLinksResponse
+	if err := s.client.Get(ctx, path, &result); err != nil {
+		return nil, err
+	}
+
+	return result.Fields.IssueLinks, nil
+}
+
+// DeleteIssueLink deletes an issue link by its ID.
+func (s *JiraService) DeleteIssueLink(ctx context.Context, linkID string) error {
+	path := fmt.Sprintf("%s/issueLink/%s", s.client.JiraBaseURL(), linkID)
+	return s.client.Delete(ctx, path)
+}
+
 // RemoteLink represents a remote/web link on an issue.
 type RemoteLink struct {
 	ID           int               `json:"id"`
