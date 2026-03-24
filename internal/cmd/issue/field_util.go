@@ -77,6 +77,9 @@ func coerceFieldValue(field *api.Field, value string) interface{} {
 			return options
 		}
 		if strings.Contains(customType, "textarea") {
+			// Support literal \n for newlines and \\ for literal backslashes.
+			// Handles: "line1\nline2" → two lines, "C:\\path" → C:\path
+			value = strings.ReplaceAll(strings.ReplaceAll(strings.ReplaceAll(value, `\\`, "\x00"), `\n`, "\n"), "\x00", `\`)
 			return api.TextToADF(value)
 		}
 		if field.Schema.Type == "array" && field.Schema.Custom == "" {
