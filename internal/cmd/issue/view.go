@@ -68,6 +68,7 @@ type IssueOutput struct {
 	Assignee       *UserOutput                   `json:"assignee,omitempty"`
 	Reporter       *UserOutput                   `json:"reporter,omitempty"`
 	Project        *ProjectOutput                `json:"project"`
+	Parent         *ParentOutput                 `json:"parent,omitempty"`
 	Labels         []string                      `json:"labels,omitempty"`
 	Created        string                        `json:"created"`
 	Updated        string                        `json:"updated"`
@@ -87,6 +88,12 @@ type UserOutput struct {
 	AccountID   string `json:"account_id"`
 	DisplayName string `json:"display_name"`
 	Email       string `json:"email,omitempty"`
+}
+
+// ParentOutput represents the parent issue for subtasks.
+type ParentOutput struct {
+	Key     string `json:"key"`
+	Summary string `json:"summary"`
 }
 
 // ProjectOutput represents project information.
@@ -187,6 +194,13 @@ func formatIssueOutput(issue *api.Issue, hostname string, fieldNames map[string]
 		}
 	}
 
+	if issue.Fields.Parent != nil {
+		out.Parent = &ParentOutput{
+			Key:     issue.Fields.Parent.Key,
+			Summary: issue.Fields.Parent.Fields.Summary,
+		}
+	}
+
 	out.Labels = issue.Fields.Labels
 	out.Created = formatTime(issue.Fields.Created)
 	out.Updated = formatTime(issue.Fields.Updated)
@@ -221,6 +235,10 @@ func printIssueDetails(ios *iostreams.IOStreams, issue *IssueOutput) {
 	fmt.Fprintf(ios.Out, "Status: %s\n", issue.Status)
 	if issue.Priority != "" {
 		fmt.Fprintf(ios.Out, "Priority: %s\n", issue.Priority)
+	}
+
+	if issue.Parent != nil {
+		fmt.Fprintf(ios.Out, "Parent: %s (%s)\n", issue.Parent.Key, issue.Parent.Summary)
 	}
 
 	if issue.Project != nil {
