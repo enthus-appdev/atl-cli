@@ -55,8 +55,12 @@ func parseBlocks(lines []string) []ADFContent {
 			continue
 		}
 
-		// Fenced code block
-		if strings.HasPrefix(line, "```") {
+		// Fenced code block (trim to also catch indented fences inside lists
+		// or other contexts — without trimming, "    ```" slipped past every
+		// dispatch branch and fell into parseParagraph, which broke on the
+		// trimmed "```" prefix and returned consumed=0, causing an infinite
+		// loop in this dispatch loop.)
+		if strings.HasPrefix(strings.TrimSpace(line), "```") {
 			block, consumed := parseCodeBlock(lines, i)
 			content = append(content, block)
 			i += consumed
@@ -412,6 +416,10 @@ func parseOrderedList(lines []string, start int) (ADFContent, int) {
 }
 
 // parseParagraph parses a paragraph (consecutive non-empty lines).
+//
+// Always consumes at least one line. Returning consumed=0 is forbidden because
+// the parseBlocks dispatch loop relies on monotonic progress; a 0-consume
+// return would spin forever.
 func parseParagraph(lines []string, start int) (ADFContent, int) {
 	var paraLines []string
 	i := start
@@ -425,13 +433,18 @@ func parseParagraph(lines []string, start int) (ADFContent, int) {
 			break
 		}
 
-		// Special block elements end the paragraph
-		if strings.HasPrefix(trimmed, "#") ||
+		// Special block elements end the paragraph — but only if we have
+		// already collected at least one paragraph line. Breaking on the
+		// first line would return consumed=0 and hang parseBlocks. The
+		// dispatcher in parseBlocks is responsible for routing block-shaped
+		// lines elsewhere; if one slips through to us, treat it as literal
+		// paragraph text.
+		if i > start && (strings.HasPrefix(trimmed, "#") ||
 			strings.HasPrefix(trimmed, "```") ||
 			strings.HasPrefix(trimmed, ">") ||
 			isBulletListItem(line) ||
 			isOrderedListItem(line) ||
-			isHorizontalRule(line) {
+			isHorizontalRule(line)) {
 			break
 		}
 
