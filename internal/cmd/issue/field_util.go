@@ -82,8 +82,14 @@ func coerceFieldValue(field *api.Field, value string) interface{} {
 			value = strings.ReplaceAll(strings.ReplaceAll(strings.ReplaceAll(value, `\\`, "\x00"), `\n`, "\n"), "\x00", `\`)
 			return api.TextToADF(value)
 		}
-		if field.Schema.Type == "array" && field.Schema.Custom == "" {
-			// Labels-type array of strings.
+		// Labels-type fields: both the standard system "labels" field
+		// (Custom == "") and custom label fields (Custom contains "labels",
+		// e.g. "...customfieldtypes:labels"). Detected via Schema.Type=="array"
+		// with string items, or by the "labels" marker in Schema.Custom.
+		isLabelsCustom := strings.Contains(customType, "labels")
+		isStringArray := field.Schema.Type == "array" && field.Schema.Items == "string"
+		isUntypedArray := field.Schema.Type == "array" && field.Schema.Custom == ""
+		if isLabelsCustom || isStringArray || isUntypedArray {
 			vals := strings.Split(value, ",")
 			for i := range vals {
 				vals[i] = strings.TrimSpace(vals[i])
