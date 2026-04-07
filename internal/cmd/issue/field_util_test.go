@@ -37,6 +37,11 @@ func TestCoerceFieldValue_LabelsCustomField(t *testing.T) {
 		{"single label", "API", []string{"API"}},
 		{"multiple labels comma-separated", "API,GUI,Portal", []string{"API", "GUI", "Portal"}},
 		{"with spaces around commas", "API, GUI ,Portal", []string{"API", "GUI", "Portal"}},
+		{"double commas dropped", "API,,GUI", []string{"API", "GUI"}},
+		{"trailing comma dropped", "API,GUI,", []string{"API", "GUI"}},
+		{"leading comma dropped", ",API,GUI", []string{"API", "GUI"}},
+		{"whitespace-only entry dropped", "API, ,GUI", []string{"API", "GUI"}},
+		{"all empty returns empty slice", ",,,", []string{}},
 	}
 
 	for _, tt := range tests {

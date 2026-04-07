@@ -90,9 +90,12 @@ func coerceFieldValue(field *api.Field, value string) interface{} {
 		isStringArray := field.Schema.Type == "array" && field.Schema.Items == "string"
 		isUntypedArray := field.Schema.Type == "array" && field.Schema.Custom == ""
 		if isLabelsCustom || isStringArray || isUntypedArray {
-			vals := strings.Split(value, ",")
-			for i := range vals {
-				vals[i] = strings.TrimSpace(vals[i])
+			raw := strings.Split(value, ",")
+			vals := make([]string, 0, len(raw))
+			for _, v := range raw {
+				if trimmed := strings.TrimSpace(v); trimmed != "" {
+					vals = append(vals, trimmed)
+				}
 			}
 			return vals
 		}
