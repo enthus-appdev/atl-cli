@@ -996,6 +996,7 @@ type Field struct {
 // FieldSchema describes the type of a field.
 type FieldSchema struct {
 	Type     string `json:"type"`
+	Items    string `json:"items,omitempty"`
 	System   string `json:"system,omitempty"`
 	Custom   string `json:"custom,omitempty"`
 	CustomID int    `json:"customId,omitempty"`
