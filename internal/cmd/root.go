@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"fmt"
+	"runtime/debug"
 
 	"github.com/spf13/cobra"
 
@@ -13,16 +14,9 @@ import (
 	"github.com/enthus-appdev/atl-cli/internal/iostreams"
 )
 
-// BuildInfo contains version and build information.
-type BuildInfo struct {
-	Version string
-	Commit  string
-	Date    string
-}
-
 // Execute runs the root command and returns an exit code.
-func Execute(ios *iostreams.IOStreams, buildInfo BuildInfo) int {
-	rootCmd := NewRootCmd(ios, buildInfo)
+func Execute(ios *iostreams.IOStreams, version string) int {
+	rootCmd := NewRootCmd(ios, version)
 	if err := rootCmd.Execute(); err != nil {
 		fmt.Fprintf(ios.ErrOut, "Error: %s\n", err)
 		return 1
@@ -31,7 +25,8 @@ func Execute(ios *iostreams.IOStreams, buildInfo BuildInfo) int {
 }
 
 // NewRootCmd creates the root command for the CLI.
-func NewRootCmd(ios *iostreams.IOStreams, buildInfo BuildInfo) *cobra.Command {
+func NewRootCmd(ios *iostreams.IOStreams, version string) *cobra.Command {
+	commit, date := vcsInfo()
 	cmd := &cobra.Command{
 		Use:   "atl",
 		Short: "Atlassian CLI - Work with Jira and Confluence from the command line",
@@ -47,12 +42,12 @@ Environment variables:
   ATL_DEBUG=1    Enable debug logging (shows API requests/responses)`,
 		SilenceUsage:  true,
 		SilenceErrors: true,
-		Version:       buildInfo.Version,
+		Version:       version,
 	}
 
 	// Set custom version template
-	cmd.SetVersionTemplate(fmt.Sprintf("atl version %s\ncommit: %s\nbuilt: %s\n",
-		buildInfo.Version, buildInfo.Commit, buildInfo.Date))
+	cmd.SetVersionTemplate(fmt.Sprintf("atl version %s\ncommit: %s\nbuilt:  %s\n",
+		version, commit, date))
 
 	// Set I/O streams
 	cmd.SetIn(ios.In)
@@ -65,23 +60,50 @@ Environment variables:
 	cmd.AddCommand(boardCmd.NewCmdBoard(ios))
 	cmd.AddCommand(confluenceCmd.NewCmdConfluence(ios))
 	cmd.AddCommand(configCmd.NewCmdConfig(ios))
-	cmd.AddCommand(newVersionCmd(ios, buildInfo))
+	cmd.AddCommand(newVersionCmd(ios, version, commit, date))
 	cmd.AddCommand(newCompletionCmd(ios))
 
 	return cmd
 }
 
 // newVersionCmd creates the version command.
-func newVersionCmd(ios *iostreams.IOStreams, buildInfo BuildInfo) *cobra.Command {
+func newVersionCmd(ios *iostreams.IOStreams, version, commit, date string) *cobra.Command {
 	return &cobra.Command{
 		Use:   "version",
 		Short: "Print version information",
 		Run: func(cmd *cobra.Command, args []string) {
-			fmt.Fprintf(ios.Out, "atl version %s\n", buildInfo.Version)
-			fmt.Fprintf(ios.Out, "commit: %s\n", buildInfo.Commit)
-			fmt.Fprintf(ios.Out, "built: %s\n", buildInfo.Date)
+			fmt.Fprintf(ios.Out, "atl version %s\n", version)
+			fmt.Fprintf(ios.Out, "commit: %s\n", commit)
+			fmt.Fprintf(ios.Out, "built:  %s\n", date)
 		},
 	}
+}
+
+func vcsInfo() (commit, date string) {
+	commit, date = "unknown", "unknown"
+	var modified bool
+	info, ok := debug.ReadBuildInfo()
+	if !ok {
+		return
+	}
+	for _, s := range info.Settings {
+		switch s.Key {
+		case "vcs.revision":
+			if len(s.Value) > 7 {
+				commit = s.Value[:7]
+			} else {
+				commit = s.Value
+			}
+		case "vcs.time":
+			date = s.Value
+		case "vcs.modified":
+			modified = s.Value == "true"
+		}
+	}
+	if modified {
+		commit += "-dirty"
+	}
+	return
 }
 
 // newCompletionCmd creates the completion command for shell autocompletion.
