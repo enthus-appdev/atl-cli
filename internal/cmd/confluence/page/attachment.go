@@ -313,7 +313,13 @@ func downloadAllAttachments(opts *AttachmentOptions, confluence *api.ConfluenceS
 			Downloads: downloads,
 			Errors:    errors,
 		}
-		return output.JSON(opts.IO.Out, result)
+		if err := output.JSON(opts.IO.Out, result); err != nil {
+			return err
+		}
+		if len(errors) > 0 {
+			return fmt.Errorf("failed to download %d attachment(s)", len(errors))
+		}
+		return nil
 	}
 
 	if len(errors) > 0 {
@@ -324,6 +330,9 @@ func downloadAllAttachments(opts *AttachmentOptions, confluence *api.ConfluenceS
 	}
 
 	fmt.Fprintf(opts.IO.Out, "\nDownloaded %d of %d attachments to %s\n", len(downloads), len(attachments), opts.OutputDir)
+	if len(errors) > 0 {
+		return fmt.Errorf("failed to download %d attachment(s)", len(errors))
+	}
 	return nil
 }
 
