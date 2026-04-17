@@ -71,6 +71,9 @@ func DefaultScopes() []string {
 		// Confluence template scopes (v1 API)
 		"read:template:confluence",
 		"write:template:confluence",
+		// Jira Service Management scopes - for JSM REST API (read-only)
+		"read:servicedesk",
+		"read:servicedesk-request",
 		// Token refresh
 		"offline_access",
 	}
