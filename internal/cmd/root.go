@@ -11,6 +11,7 @@ import (
 	configCmd "github.com/enthus-appdev/atl-cli/internal/cmd/config"
 	confluenceCmd "github.com/enthus-appdev/atl-cli/internal/cmd/confluence"
 	issueCmd "github.com/enthus-appdev/atl-cli/internal/cmd/issue"
+	smCmd "github.com/enthus-appdev/atl-cli/internal/cmd/sm"
 	"github.com/enthus-appdev/atl-cli/internal/iostreams"
 )
 
@@ -60,6 +61,7 @@ Environment variables:
 	cmd.AddCommand(boardCmd.NewCmdBoard(ios))
 	cmd.AddCommand(confluenceCmd.NewCmdConfluence(ios))
 	cmd.AddCommand(configCmd.NewCmdConfig(ios))
+	cmd.AddCommand(smCmd.NewCmdSM(ios))
 	cmd.AddCommand(newVersionCmd(ios, version, commit, date))
 	cmd.AddCommand(newCompletionCmd(ios))
 
