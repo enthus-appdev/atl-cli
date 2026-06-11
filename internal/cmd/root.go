@@ -73,12 +73,34 @@ Environment variables:
 	return cmd
 }
 
-// deprecatedAlias hides a relocated command and warns on use.
+// deprecatedAlias hides a relocated command and warns once on use.
+//
+// The warning wraps each leaf's PreRun rather than the parent's PersistentPreRun:
+// cobra runs only the nearest ancestor's PersistentPreRun, so a future root-level
+// PersistentPreRun would otherwise shadow (or be shadowed by) the warning. PreRun
+// is per-leaf and leaves none defined today, so wrapping is collision-free.
 func deprecatedAlias(cmd *cobra.Command, ios *iostreams.IOStreams, newPath string) *cobra.Command {
 	cmd.Hidden = true
-	cmd.PersistentPreRun = func(c *cobra.Command, args []string) {
+	warn := func() {
 		fmt.Fprintf(ios.ErrOut, "warning: 'atl %s' is deprecated, use 'atl %s' instead\n", cmd.Name(), newPath)
 	}
+	var apply func(*cobra.Command)
+	apply = func(c *cobra.Command) {
+		switch {
+		case c.PreRunE != nil:
+			next := c.PreRunE
+			c.PreRunE = func(cmd *cobra.Command, args []string) error { warn(); return next(cmd, args) }
+		case c.PreRun != nil:
+			next := c.PreRun
+			c.PreRun = func(cmd *cobra.Command, args []string) { warn(); next(cmd, args) }
+		default:
+			c.PreRun = func(*cobra.Command, []string) { warn() }
+		}
+		for _, sub := range c.Commands() {
+			apply(sub)
+		}
+	}
+	apply(cmd)
 	return cmd
 }
 

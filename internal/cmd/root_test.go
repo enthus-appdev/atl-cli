@@ -36,7 +36,7 @@ func TestDeprecatedTopLevelAliases(t *testing.T) {
 		if !c.Hidden {
 			t.Errorf("alias %q should be hidden", name)
 		}
-		if c.PersistentPreRun == nil {
+		if c.PreRun == nil {
 			t.Errorf("alias %q should have a deprecation hook", name)
 		}
 	}
@@ -48,12 +48,14 @@ func TestDeprecationWarning(t *testing.T) {
 	ios.ErrOut = &errOut
 
 	root := NewRootCmd(ios, "test")
-	alias := findChild(root, "issue")
-	if alias == nil || alias.PersistentPreRun == nil {
-		t.Fatal("issue alias or its deprecation hook missing")
+	// A leaf under the alias, not the alias root — proves the warning reaches
+	// the command actually executed (e.g. `atl issue view`).
+	leaf := findChild(findChild(root, "issue"), "view")
+	if leaf == nil || leaf.PreRun == nil {
+		t.Fatal("issue view leaf or its deprecation hook missing")
 	}
 
-	alias.PersistentPreRun(alias, nil)
+	leaf.PreRun(leaf, nil)
 
 	if got := errOut.String(); !strings.Contains(got, "deprecated") || !strings.Contains(got, "jira issue") {
 		t.Errorf("warning missing expected text, got: %q", got)
