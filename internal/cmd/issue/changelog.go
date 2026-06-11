@@ -47,16 +47,16 @@ func NewCmdChangelog(ios *iostreams.IOStreams) *cobra.Command {
 		Short:   "View the changelog of a Jira issue",
 		Long:    `Display the history of field changes for a Jira issue.`,
 		Example: `  # View full changelog
-  atl issue changelog NX-1234
+  atl jira issue changelog NX-1234
 
   # Filter by field name
-  atl issue changelog NX-1234 --field status
+  atl jira issue changelog NX-1234 --field status
 
   # Limit number of entries
-  atl issue changelog NX-1234 --limit 5
+  atl jira issue changelog NX-1234 --limit 5
 
   # Output as JSON
-  atl issue changelog NX-1234 --json`,
+  atl jira issue changelog NX-1234 --json`,
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			opts.IssueKey = args[0]

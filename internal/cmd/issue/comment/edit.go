@@ -35,24 +35,24 @@ func NewCmdEdit(ios *iostreams.IOStreams) *cobra.Command {
 		Short: "Edit a comment on an issue",
 		Long: `Edit an existing comment on a Jira issue.
 
-Requires the comment ID which can be found using 'atl issue comment list'.`,
+Requires the comment ID which can be found using 'atl jira issue comment list'.`,
 		Example: `  # Edit a comment
-  atl issue comment edit PROJ-1234 --id 12345 --body "Updated comment text"
+  atl jira issue comment edit PROJ-1234 --id 12345 --body "Updated comment text"
 
   # Update visibility while editing
-  atl issue comment edit PROJ-1234 --id 12345 --body "Text" --visibility-type role --visibility-name "Developers"
+  atl jira issue comment edit PROJ-1234 --id 12345 --body "Text" --visibility-type role --visibility-name "Developers"
 
   # Read comment body from a file
-  atl issue comment edit PROJ-1234 --id 12345 --body-file comment.md
+  atl jira issue comment edit PROJ-1234 --id 12345 --body-file comment.md
 
   # Output as JSON
-  atl issue comment edit PROJ-1234 --id 12345 --body "Text" --json`,
+  atl jira issue comment edit PROJ-1234 --id 12345 --body "Text" --json`,
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			opts.IssueKey = args[0]
 
 			if opts.CommentID == "" {
-				return fmt.Errorf("--id is required\n\nUse 'atl issue comment list %s' to see comment IDs", args[0])
+				return fmt.Errorf("--id is required\n\nUse 'atl jira issue comment list %s' to see comment IDs", args[0])
 			}
 			if opts.Body != "" && opts.BodyFile != "" {
 				return fmt.Errorf("--body and --body-file are mutually exclusive")

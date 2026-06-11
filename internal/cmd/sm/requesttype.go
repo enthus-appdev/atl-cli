@@ -41,7 +41,7 @@ func newCmdRequestTypeList(ios *iostreams.IOStreams) *cobra.Command {
 		Use:   "list",
 		Short: "List request types for a service desk",
 		Example: `  # List request types for service desk 2
-  atl sm request-type list --service-desk-id 2`,
+  atl jira sm request-type list --service-desk-id 2`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if opts.ServiceDeskID == 0 {
 				return fmt.Errorf("--service-desk-id is required")
@@ -105,7 +105,7 @@ func newCmdRequestTypeFields(ios *iostreams.IOStreams) *cobra.Command {
 		Use:   "fields",
 		Short: "List fields for a request type",
 		Example: `  # List fields for request type 26 on service desk 2
-  atl sm request-type fields --service-desk-id 2 --request-type-id 26`,
+  atl jira sm request-type fields --service-desk-id 2 --request-type-id 26`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if opts.ServiceDeskID == 0 {
 				return fmt.Errorf("--service-desk-id is required")

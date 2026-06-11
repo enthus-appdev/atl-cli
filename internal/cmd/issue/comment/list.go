@@ -30,10 +30,10 @@ func NewCmdList(ios *iostreams.IOStreams) *cobra.Command {
 		Short:   "List comments on an issue",
 		Long:    `View all comments on a Jira issue.`,
 		Example: `  # List comments on an issue
-  atl issue comment list PROJ-1234
+  atl jira issue comment list PROJ-1234
 
   # Output as JSON
-  atl issue comment list PROJ-1234 --json`,
+  atl jira issue comment list PROJ-1234 --json`,
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			opts.IssueKey = args[0]

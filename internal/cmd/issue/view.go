@@ -35,13 +35,13 @@ func NewCmdView(ios *iostreams.IOStreams) *cobra.Command {
 		Short: "View a Jira issue",
 		Long:  `Display details of a Jira issue.`,
 		Example: `  # View an issue
-  atl issue view PROJ-1234
+  atl jira issue view PROJ-1234
 
   # View an issue as JSON
-  atl issue view PROJ-1234 --json
+  atl jira issue view PROJ-1234 --json
 
   # Open issue in browser
-  atl issue view PROJ-1234 --web`,
+  atl jira issue view PROJ-1234 --web`,
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			opts.IssueKey = args[0]

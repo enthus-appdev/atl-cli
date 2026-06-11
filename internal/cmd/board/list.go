@@ -29,13 +29,13 @@ func NewCmdList(ios *iostreams.IOStreams) *cobra.Command {
 		Short: "List Jira boards",
 		Long:  `List all Jira boards, optionally filtered by project.`,
 		Example: `  # List all boards
-  atl board list
+  atl jira board list
 
   # List boards for a specific project
-  atl board list --project PROJ
+  atl jira board list --project PROJ
 
   # Output as JSON
-  atl board list --json`,
+  atl jira board list --json`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return runList(opts)
 		},

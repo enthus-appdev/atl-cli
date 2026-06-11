@@ -42,25 +42,25 @@ func NewCmdList(ios *iostreams.IOStreams) *cobra.Command {
 By default, lists issues assigned to you. Use --project, --assignee, or --jql
 to specify different search criteria.`,
 		Example: `  # List your issues (default)
-  atl issue list
+  atl jira issue list
 
   # List issues in a project
-  atl issue list --project PROJ
+  atl jira issue list --project PROJ
 
   # List issues with custom JQL
-  atl issue list --jql "project = PROJ AND status = 'In Progress'"
+  atl jira issue list --jql "project = PROJ AND status = 'In Progress'"
 
   # List open issues assigned to you
-  atl issue list --assignee @me --status Open
+  atl jira issue list --assignee @me --status Open
 
   # Get next page using token from previous result
-  atl issue list --project PROJ --next-token "TOKEN_FROM_PREVIOUS_RESULT"
+  atl jira issue list --project PROJ --next-token "TOKEN_FROM_PREVIOUS_RESULT"
 
   # Fetch all matching issues (may be slow for large result sets)
-  atl issue list --project PROJ --all
+  atl jira issue list --project PROJ --all
 
   # Output as JSON for LLM processing
-  atl issue list --project PROJ --json`,
+  atl jira issue list --project PROJ --json`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return runList(opts)
 		},

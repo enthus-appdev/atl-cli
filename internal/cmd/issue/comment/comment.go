@@ -19,16 +19,16 @@ Use subcommands to manage comments:
   edit   - Edit an existing comment
   delete - Delete a comment`,
 		Example: `  # List comments on an issue
-  atl issue comment list PROJ-1234
+  atl jira issue comment list PROJ-1234
 
   # Add a comment
-  atl issue comment add PROJ-1234 --body "This is my comment"
+  atl jira issue comment add PROJ-1234 --body "This is my comment"
 
   # Edit a comment
-  atl issue comment edit PROJ-1234 --id 12345 --body "Updated text"
+  atl jira issue comment edit PROJ-1234 --id 12345 --body "Updated text"
 
   # Delete a comment
-  atl issue comment delete PROJ-1234 --id 12345`,
+  atl jira issue comment delete PROJ-1234 --id 12345`,
 	}
 
 	cmd.AddCommand(NewCmdList(ios))

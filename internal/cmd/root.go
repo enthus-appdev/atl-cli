@@ -11,6 +11,7 @@ import (
 	configCmd "github.com/enthus-appdev/atl-cli/internal/cmd/config"
 	confluenceCmd "github.com/enthus-appdev/atl-cli/internal/cmd/confluence"
 	issueCmd "github.com/enthus-appdev/atl-cli/internal/cmd/issue"
+	jiraCmd "github.com/enthus-appdev/atl-cli/internal/cmd/jira"
 	smCmd "github.com/enthus-appdev/atl-cli/internal/cmd/sm"
 	"github.com/enthus-appdev/atl-cli/internal/iostreams"
 )
@@ -34,8 +35,8 @@ func NewRootCmd(ios *iostreams.IOStreams, version string) *cobra.Command {
 		Long: `atl is a CLI tool for interacting with Atlassian products.
 
 It provides commands for:
-  - Jira: View, create, and manage issues
-  - Confluence: Read and edit pages
+  - Jira: View, create, and manage issues, boards, and Service Management (atl jira ...)
+  - Confluence: Read and edit pages (atl confluence ...)
 
 Get started by running 'atl auth login' to authenticate with your Atlassian account.
 
@@ -57,14 +58,27 @@ Environment variables:
 
 	// Add subcommands
 	cmd.AddCommand(authCmd.NewCmdAuth(ios))
-	cmd.AddCommand(issueCmd.NewCmdIssue(ios))
-	cmd.AddCommand(boardCmd.NewCmdBoard(ios))
+	cmd.AddCommand(jiraCmd.NewCmdJira(ios))
 	cmd.AddCommand(confluenceCmd.NewCmdConfluence(ios))
 	cmd.AddCommand(configCmd.NewCmdConfig(ios))
-	cmd.AddCommand(smCmd.NewCmdSM(ios))
 	cmd.AddCommand(newVersionCmd(ios, version, commit, date))
 	cmd.AddCommand(newCompletionCmd(ios))
 
+	// Deprecated top-level aliases for Jira commands moved under `atl jira`.
+	// Hidden from help/completion; warn on use. Remove after the deprecation window.
+	cmd.AddCommand(deprecatedAlias(issueCmd.NewCmdIssue(ios), ios, "jira issue"))
+	cmd.AddCommand(deprecatedAlias(boardCmd.NewCmdBoard(ios), ios, "jira board"))
+	cmd.AddCommand(deprecatedAlias(smCmd.NewCmdSM(ios), ios, "jira sm"))
+
+	return cmd
+}
+
+// deprecatedAlias hides a relocated command and warns on use.
+func deprecatedAlias(cmd *cobra.Command, ios *iostreams.IOStreams, newPath string) *cobra.Command {
+	cmd.Hidden = true
+	cmd.PersistentPreRun = func(c *cobra.Command, args []string) {
+		fmt.Fprintf(ios.ErrOut, "warning: 'atl %s' is deprecated, use 'atl %s' instead\n", cmd.Name(), newPath)
+	}
 	return cmd
 }
 

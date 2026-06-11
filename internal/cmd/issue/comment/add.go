@@ -39,22 +39,22 @@ func NewCmdAdd(ios *iostreams.IOStreams) *cobra.Command {
 Supports visibility restrictions to limit who can see the comment,
 and replying to existing comments with automatic quoting.`,
 		Example: `  # Add a comment
-  atl issue comment add PROJ-1234 --body "This is my comment"
+  atl jira issue comment add PROJ-1234 --body "This is my comment"
 
   # Add an internal comment (visible only to a role)
-  atl issue comment add PROJ-1234 --body "Internal note" --visibility-type role --visibility-name "Developers"
+  atl jira issue comment add PROJ-1234 --body "Internal note" --visibility-type role --visibility-name "Developers"
 
   # Add a comment visible only to a group
-  atl issue comment add PROJ-1234 --body "Team note" --visibility-type group --visibility-name "jira-developers"
+  atl jira issue comment add PROJ-1234 --body "Team note" --visibility-type group --visibility-name "jira-developers"
 
   # Reply to a specific comment (quotes the original)
-  atl issue comment add PROJ-1234 --body "I agree!" --reply-to 12345
+  atl jira issue comment add PROJ-1234 --body "I agree!" --reply-to 12345
 
   # Read comment body from a file
-  atl issue comment add PROJ-1234 --body-file comment.md
+  atl jira issue comment add PROJ-1234 --body-file comment.md
 
   # Output as JSON
-  atl issue comment add PROJ-1234 --body "Comment" --json`,
+  atl jira issue comment add PROJ-1234 --body "Comment" --json`,
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			opts.IssueKey = args[0]

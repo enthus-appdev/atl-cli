@@ -43,7 +43,7 @@ func ParseCustomField(ctx context.Context, jira *api.JiraService, raw string) (s
 			return "", nil, fmt.Errorf("failed to look up field '%s': %w", key, err)
 		}
 		if resolvedField == nil {
-			return "", nil, fmt.Errorf("field not found: %s\n\nUse 'atl issue fields --search \"%s\"' to find available fields", key, key)
+			return "", nil, fmt.Errorf("field not found: %s\n\nUse 'atl jira issue fields --search \"%s\"' to find available fields", key, key)
 		}
 		key = resolvedField.ID
 	}

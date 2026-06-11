@@ -37,19 +37,19 @@ func NewCmdWebLink(ios *iostreams.IOStreams) *cobra.Command {
 Web links connect issues to external URLs like documentation,
 pull requests, or related resources.`,
 		Example: `  # Add a web link
-  atl issue weblink PROJ-123 --url "https://example.com/doc" --title "Documentation"
+  atl jira issue weblink PROJ-123 --url "https://example.com/doc" --title "Documentation"
 
   # Add a web link with description
-  atl issue weblink PROJ-123 --url "https://github.com/org/repo/pull/123" --title "PR #123" --summary "Fix for the bug"
+  atl jira issue weblink PROJ-123 --url "https://github.com/org/repo/pull/123" --title "PR #123" --summary "Fix for the bug"
 
   # List all web links on an issue
-  atl issue weblink PROJ-123 --list
+  atl jira issue weblink PROJ-123 --list
 
   # Delete a web link by ID
-  atl issue weblink PROJ-123 --delete 12345
+  atl jira issue weblink PROJ-123 --delete 12345
 
   # Output as JSON
-  atl issue weblink PROJ-123 --list --json`,
+  atl jira issue weblink PROJ-123 --list --json`,
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			opts.IssueKey = args[0]
@@ -157,7 +157,7 @@ func runWebLinkList(opts *WebLinkOptions) error {
 		fmt.Fprintln(opts.IO.Out)
 	}
 
-	fmt.Fprintf(opts.IO.Out, "To delete a link: atl issue weblink %s --delete <id>\n", opts.IssueKey)
+	fmt.Fprintf(opts.IO.Out, "To delete a link: atl jira issue weblink %s --delete <id>\n", opts.IssueKey)
 
 	return nil
 }

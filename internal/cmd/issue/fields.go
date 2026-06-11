@@ -34,16 +34,16 @@ func NewCmdFields(ios *iostreams.IOStreams) *cobra.Command {
 Use this command to discover field IDs for custom fields like "Story Points"
 which are needed when using the --field flag with create or edit commands.`,
 		Example: `  # List all fields
-  atl issue fields
+  atl jira issue fields
 
   # List only custom fields
-  atl issue fields --custom
+  atl jira issue fields --custom
 
   # Search for a specific field
-  atl issue fields --search "story points"
+  atl jira issue fields --search "story points"
 
   # Output as JSON
-  atl issue fields --json`,
+  atl jira issue fields --json`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return runFields(opts)
 		},
@@ -161,7 +161,7 @@ func runFields(opts *FieldsOptions) error {
 	output.SimpleTable(opts.IO.Out, headers, rows)
 
 	if opts.CustomOnly || opts.Search != "" {
-		fmt.Fprintf(opts.IO.Out, "\nUse field ID with: atl issue edit ISSUE-123 --field %s=VALUE\n", fieldsOutput.Fields[0].ID)
+		fmt.Fprintf(opts.IO.Out, "\nUse field ID with: atl jira issue edit ISSUE-123 --field %s=VALUE\n", fieldsOutput.Fields[0].ID)
 	}
 
 	return nil

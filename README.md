@@ -30,7 +30,7 @@ atl auth setup
 atl auth login
 
 # 3. Start using the CLI
-atl issue list --assignee @me
+atl jira issue list --assignee @me
 atl confluence space list
 ```
 
@@ -53,13 +53,13 @@ export ATLASSIAN_CLIENT_SECRET="your-client-secret"
 
 ```bash
 # View an issue
-atl issue view PROJ-1234
+atl jira issue view PROJ-1234
 
 # List your assigned issues
-atl issue list --assignee @me
+atl jira issue list --assignee @me
 
 # Output as JSON for LLM processing
-atl issue view PROJ-1234 --json
+atl jira issue view PROJ-1234 --json
 
 # View a Confluence page
 atl confluence page view --space DOCS --title "Getting Started"
@@ -71,10 +71,10 @@ All commands support `--json` flag for structured JSON output, making it easy to
 
 ```bash
 # Get issue data as JSON
-atl issue view PROJ-1234 --json
+atl jira issue view PROJ-1234 --json
 
 # List issues as JSON
-atl issue list --project PROJ --json
+atl jira issue list --project PROJ --json
 
 # Get spaces as JSON
 atl confluence space list --json
@@ -88,7 +88,7 @@ Issue descriptions and comments support **Markdown syntax**, which is automatica
 
 ```bash
 # Create issue with markdown description
-atl issue create --project PROJ --type Task --summary "Feature" --description "## Goals
+atl jira issue create --project PROJ --type Task --summary "Feature" --description "## Goals
 
 - Goal 1
 - Goal 2
@@ -96,7 +96,7 @@ atl issue create --project PROJ --type Task --summary "Feature" --description "#
 **Important**: See [docs](https://example.com) for details."
 
 # Add comment with markdown
-atl issue comment PROJ-1234 --body "## Summary
+atl jira issue comment PROJ-1234 --body "## Summary
 
 Fixed the **critical** bug in \`main.go\`.
 
@@ -125,6 +125,10 @@ func main() {
 
 ## Commands
 
+> Jira commands live under `atl jira` (e.g. `atl jira issue`, `atl jira board`, `atl jira sm`).
+> The old top-level forms (`atl issue`, `atl board`, `atl sm`) still work as deprecated aliases
+> but print a warning and will be removed in a future release.
+
 ### Authentication
 
 ```bash
@@ -136,79 +140,79 @@ atl auth status       # View authentication status
 ### Jira Issues
 
 ```bash
-atl issue view <key>                    # View an issue
-atl issue view <key> --json             # View as JSON
-atl issue view <key> --web              # Open in browser
+atl jira issue view <key>                    # View an issue
+atl jira issue view <key> --json             # View as JSON
+atl jira issue view <key> --web              # Open in browser
 
-atl issue list                          # List recent issues
-atl issue list --assignee @me           # Your assigned issues
-atl issue list --project PROJ           # Issues in project
-atl issue list --jql "status = Open"    # Custom JQL query
-atl issue list --json                   # Output as JSON
+atl jira issue list                          # List recent issues
+atl jira issue list --assignee @me           # Your assigned issues
+atl jira issue list --project PROJ           # Issues in project
+atl jira issue list --jql "status = Open"    # Custom JQL query
+atl jira issue list --json                   # Output as JSON
 
-atl issue create --project PROJ --type Bug --summary "Title"
-atl issue create --project PROJ --type Task --summary "Title" --description "Details"
-atl issue create --project PROJ --type Story --summary "Title" --field "Story Points=5"
-atl issue create --project PROJ --type Task --summary "Title" --field-file fields.json
-atl issue create --project PROJ --parent PROJ-123 --summary "Subtask"  # Auto-discovers subtask type
+atl jira issue create --project PROJ --type Bug --summary "Title"
+atl jira issue create --project PROJ --type Task --summary "Title" --description "Details"
+atl jira issue create --project PROJ --type Story --summary "Title" --field "Story Points=5"
+atl jira issue create --project PROJ --type Task --summary "Title" --field-file fields.json
+atl jira issue create --project PROJ --parent PROJ-123 --summary "Subtask"  # Auto-discovers subtask type
 
-atl issue edit <key> --summary "New summary"
-atl issue edit <key> --assignee @me
-atl issue edit <key> --add-label bug --remove-label wontfix
-atl issue edit <key> --field "Story Points=8"    # Set custom field by name
-atl issue edit <key> --field-file fields.json    # Complex fields from JSON file
+atl jira issue edit <key> --summary "New summary"
+atl jira issue edit <key> --assignee @me
+atl jira issue edit <key> --add-label bug --remove-label wontfix
+atl jira issue edit <key> --field "Story Points=8"    # Set custom field by name
+atl jira issue edit <key> --field-file fields.json    # Complex fields from JSON file
 
-atl issue transition <key> "In Progress"
-atl issue transition <key> --list       # List available transitions
+atl jira issue transition <key> "In Progress"
+atl jira issue transition <key> --list       # List available transitions
 
-atl issue comment <key> --body "Comment text"
-atl issue comment <key> --list          # List comments
-atl issue comment <key> --edit --comment-id 12345 --body "Updated text"
-atl issue comment <key> --delete --comment-id 12345
-atl issue comment <key> --reply-to 12345 --body "Reply text"
-atl issue comment <key> --body "Internal note" --visibility-type role --visibility-name Developers
+atl jira issue comment <key> --body "Comment text"
+atl jira issue comment <key> --list          # List comments
+atl jira issue comment <key> --edit --comment-id 12345 --body "Updated text"
+atl jira issue comment <key> --delete --comment-id 12345
+atl jira issue comment <key> --reply-to 12345 --body "Reply text"
+atl jira issue comment <key> --body "Internal note" --visibility-type role --visibility-name Developers
 
-atl issue assign <key> --assignee @me
-atl issue assign <key> --assignee -     # Unassign
+atl jira issue assign <key> --assignee @me
+atl jira issue assign <key> --assignee -     # Unassign
 
-atl issue link <key> <target-key>                    # Link issues (default: Relates)
-atl issue link <key> <target-key> --type Blocks      # Link with specific type
-atl issue link <key> --list-types                    # List available link types
+atl jira issue link <key> <target-key>                    # Link issues (default: Relates)
+atl jira issue link <key> <target-key> --type Blocks      # Link with specific type
+atl jira issue link <key> --list-types                    # List available link types
 
-atl issue weblink <key> --url "https://..." --title "Title"  # Add web link
-atl issue weblink <key> --list                       # List web links
-atl issue weblink <key> --delete 12345               # Delete web link by ID
+atl jira issue weblink <key> --url "https://..." --title "Title"  # Add web link
+atl jira issue weblink <key> --list                       # List web links
+atl jira issue weblink <key> --delete 12345               # Delete web link by ID
 
-atl issue types --project PROJ           # List issue types (shows subtask types)
+atl jira issue types --project PROJ           # List issue types (shows subtask types)
 
-atl issue fields                        # List all fields
-atl issue fields --custom               # List custom fields only
-atl issue fields --search "story"       # Search for fields by name
+atl jira issue fields                        # List all fields
+atl jira issue fields --custom               # List custom fields only
+atl jira issue fields --search "story"       # Search for fields by name
 
-atl issue sprint <key> --sprint-id 123  # Move issue to sprint
-atl issue sprint <key> --backlog        # Move issue to backlog
-atl issue sprint <key> --list-sprints --board-id 1   # List sprints
+atl jira issue sprint <key> --sprint-id 123  # Move issue to sprint
+atl jira issue sprint <key> --backlog        # Move issue to backlog
+atl jira issue sprint <key> --list-sprints --board-id 1   # List sprints
 
-atl issue flag <key>                    # Flag issue (mark as blocked)
-atl issue flag <key> --unflag           # Remove flag
-atl issue flag <key> --status           # Check if flagged
+atl jira issue flag <key>                    # Flag issue (mark as blocked)
+atl jira issue flag <key> --unflag           # Remove flag
+atl jira issue flag <key> --status           # Check if flagged
 
-atl issue attachment <key> --list       # List attachments
-atl issue attachment <key> --download --id 12345  # Download specific file
-atl issue attachment <key> --download-all         # Download all attachments
-atl issue attachment <key> --download-all -o ./dir  # Download to directory
+atl jira issue attachment <key> --list       # List attachments
+atl jira issue attachment <key> --download --id 12345  # Download specific file
+atl jira issue attachment <key> --download-all         # Download all attachments
+atl jira issue attachment <key> --download-all -o ./dir  # Download to directory
 ```
 
 ### Boards
 
 ```bash
-atl board list                          # List all boards
-atl board list --project PROJ           # List boards for a project
+atl jira board list                          # List all boards
+atl jira board list --project PROJ           # List boards for a project
 
-atl board rank PROJ-123 --before PROJ-456   # Rank issue before another
-atl board rank PROJ-123 --after PROJ-456    # Rank issue after another
-atl board rank PROJ-1 PROJ-2 PROJ-3 --before PROJ-4  # Rank multiple issues in order
-atl board rank PROJ-123 --top --board-id 42    # Move to top of backlog
+atl jira board rank PROJ-123 --before PROJ-456   # Rank issue before another
+atl jira board rank PROJ-123 --after PROJ-456    # Rank issue after another
+atl jira board rank PROJ-1 PROJ-2 PROJ-3 --before PROJ-4  # Rank multiple issues in order
+atl jira board rank PROJ-123 --top --board-id 42    # Move to top of backlog
 ```
 
 ### Confluence

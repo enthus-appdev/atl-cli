@@ -32,13 +32,13 @@ func NewCmdTypes(ios *iostreams.IOStreams) *cobra.Command {
 Shows which types are regular issues vs subtasks. Use this to find
 the correct issue type name when creating subtasks.`,
 		Example: `  # List issue types for a project
-  atl issue types --project PROJ
+  atl jira issue types --project PROJ
 
   # Output as JSON
-  atl issue types --project PROJ --json`,
+  atl jira issue types --project PROJ --json`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if opts.Project == "" {
-				return fmt.Errorf("--project is required\n\nExample: atl issue types --project PROJ")
+				return fmt.Errorf("--project is required\n\nExample: atl jira issue types --project PROJ")
 			}
 			return runTypes(opts)
 		},
@@ -131,7 +131,7 @@ func runTypes(opts *TypesOptions) error {
 	for _, t := range typesOutput.Types {
 		if t.Subtask {
 			fmt.Fprintf(opts.IO.Out, "\nTo create a subtask:\n")
-			fmt.Fprintf(opts.IO.Out, "  atl issue create --project %s --type \"%s\" --parent PROJ-123 --summary \"Subtask\"\n", opts.Project, t.Name)
+			fmt.Fprintf(opts.IO.Out, "  atl jira issue create --project %s --type \"%s\" --parent PROJ-123 --summary \"Subtask\"\n", opts.Project, t.Name)
 			break
 		}
 	}

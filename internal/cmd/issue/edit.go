@@ -41,37 +41,37 @@ func NewCmdEdit(ios *iostreams.IOStreams) *cobra.Command {
 		Short: "Edit a Jira issue",
 		Long:  `Edit fields of an existing Jira issue.`,
 		Example: `  # Edit issue summary
-  atl issue edit PROJ-1234 --summary "Updated summary"
+  atl jira issue edit PROJ-1234 --summary "Updated summary"
 
   # Set new description (replaces existing)
-  atl issue edit PROJ-1234 --description "New description content"
+  atl jira issue edit PROJ-1234 --description "New description content"
 
   # Append to existing description (preserves embedded media)
-  atl issue edit PROJ-1234 --description "Additional notes" --append
+  atl jira issue edit PROJ-1234 --description "Additional notes" --append
 
   # Add labels
-  atl issue edit PROJ-1234 --add-label bug --add-label urgent
+  atl jira issue edit PROJ-1234 --add-label bug --add-label urgent
 
   # Remove labels
-  atl issue edit PROJ-1234 --remove-label wontfix
+  atl jira issue edit PROJ-1234 --remove-label wontfix
 
   # Change assignee
-  atl issue edit PROJ-1234 --assignee john.doe
+  atl jira issue edit PROJ-1234 --assignee john.doe
 
   # Change priority
-  atl issue edit PROJ-1234 --priority High
+  atl jira issue edit PROJ-1234 --priority High
 
   # Set custom fields by name (Story Points, etc.)
-  atl issue edit PROJ-1234 --field "Story Points=8"
+  atl jira issue edit PROJ-1234 --field "Story Points=8"
 
   # Or use field ID directly
-  atl issue edit PROJ-1234 --field customfield_10016=8
+  atl jira issue edit PROJ-1234 --field customfield_10016=8
 
   # Use a JSON file for complex field values (like ADF rich text)
-  atl issue edit PROJ-1234 --field-file fields.json
+  atl jira issue edit PROJ-1234 --field-file fields.json
 
   # Output result as JSON
-  atl issue edit PROJ-1234 --summary "New summary" --json`,
+  atl jira issue edit PROJ-1234 --summary "New summary" --json`,
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			opts.IssueKey = args[0]
@@ -213,7 +213,7 @@ func runEdit(opts *EditOptions) error {
 					return fmt.Errorf("failed to look up field '%s': %w", key, err)
 				}
 				if resolvedField == nil {
-					return fmt.Errorf("field not found: %s\n\nUse 'atl issue fields --search \"%s\"' to find available fields", key, key)
+					return fmt.Errorf("field not found: %s\n\nUse 'atl jira issue fields --search \"%s\"' to find available fields", key, key)
 				}
 				key = resolvedField.ID
 			}

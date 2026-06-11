@@ -35,19 +35,19 @@ func NewCmdTransition(ios *iostreams.IOStreams) *cobra.Command {
 		Short:   "Transition an issue to a new status",
 		Long:    `Move a Jira issue to a different status in its workflow.`,
 		Example: `  # List available transitions
-  atl issue transition PROJ-1234 --list
+  atl jira issue transition PROJ-1234 --list
 
   # Move issue to In Progress
-  atl issue transition PROJ-1234 "In Progress"
+  atl jira issue transition PROJ-1234 "In Progress"
 
   # Move issue to Done with a comment
-  atl issue transition PROJ-1234 Done --comment "Completed the implementation"
+  atl jira issue transition PROJ-1234 Done --comment "Completed the implementation"
 
   # Transition with required fields
-  atl issue transition PROJ-1234 "Done" --field "Resolution=Fixed"
+  atl jira issue transition PROJ-1234 "Done" --field "Resolution=Fixed"
 
   # Output result as JSON
-  atl issue transition PROJ-1234 Done --json`,
+  atl jira issue transition PROJ-1234 Done --json`,
 		Args: cobra.RangeArgs(1, 2),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			opts.IssueKey = args[0]

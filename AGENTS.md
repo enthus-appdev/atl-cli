@@ -6,6 +6,8 @@ This document provides guidance for LLM agents using the `atl` CLI tool.
 
 `atl` is a command-line tool for Jira and Confluence. All commands support `--json` for structured output, making it ideal for programmatic use.
 
+Jira commands live under `atl jira` (`atl jira issue`, `atl jira board`, `atl jira sm`). The old top-level forms (`atl issue`, `atl board`, `atl sm`) still work as deprecated aliases but print a warning and will be removed in a future release.
+
 ## Authentication
 
 ```bash
@@ -44,38 +46,38 @@ Aliases also work with `--hostname` flags: `atl auth status --hostname prod`
 ### View Issues
 
 ```bash
-atl issue view PROJ-1234                  # View issue details (includes custom fields)
-atl issue view PROJ-1234 --json           # View as JSON (includes custom_fields section)
-atl issue view PROJ-1234 --web            # Open in browser
+atl jira issue view PROJ-1234                  # View issue details (includes custom fields)
+atl jira issue view PROJ-1234 --json           # View as JSON (includes custom_fields section)
+atl jira issue view PROJ-1234 --web            # Open in browser
 ```
 
 ### List Issues
 
 ```bash
-atl issue list --assignee @me           # Your assigned issues
-atl issue list --project PROJ             # Issues in project
-atl issue list --jql "status = Open"    # Custom JQL query
-atl issue list --jql "sprint in openSprints() AND assignee = currentUser()"
+atl jira issue list --assignee @me           # Your assigned issues
+atl jira issue list --project PROJ             # Issues in project
+atl jira issue list --jql "status = Open"    # Custom JQL query
+atl jira issue list --jql "sprint in openSprints() AND assignee = currentUser()"
 ```
 
 ### Create Issues
 
 ```bash
-atl issue create --project PROJ --type Bug --summary "Title"
-atl issue create --project PROJ --type Task --summary "Title" --description "Details"
-atl issue create --project PROJ --parent PROJ-123 --summary "Subtask"
+atl jira issue create --project PROJ --type Bug --summary "Title"
+atl jira issue create --project PROJ --type Task --summary "Title" --description "Details"
+atl jira issue create --project PROJ --parent PROJ-123 --summary "Subtask"
 ```
 
 ### Edit Issues
 
 ```bash
-atl issue edit PROJ-1234 --summary "New summary"
-atl issue edit PROJ-1234 --description "New description content"
-atl issue edit PROJ-1234 --description "Additional notes" --append  # Append to existing
-atl issue edit PROJ-1234 --assignee @me
-atl issue edit PROJ-1234 --add-label bug --remove-label wontfix
-atl issue edit PROJ-1234 --field "Story Points=8"
-atl issue edit PROJ-1234 --field "Custom Field=Some **markdown** text"  # Auto-converts to ADF
+atl jira issue edit PROJ-1234 --summary "New summary"
+atl jira issue edit PROJ-1234 --description "New description content"
+atl jira issue edit PROJ-1234 --description "Additional notes" --append  # Append to existing
+atl jira issue edit PROJ-1234 --assignee @me
+atl jira issue edit PROJ-1234 --add-label bug --remove-label wontfix
+atl jira issue edit PROJ-1234 --field "Story Points=8"
+atl jira issue edit PROJ-1234 --field "Custom Field=Some **markdown** text"  # Auto-converts to ADF
 ```
 
 **Notes**:
@@ -85,68 +87,68 @@ atl issue edit PROJ-1234 --field "Custom Field=Some **markdown** text"  # Auto-c
 ### Transitions and Workflow
 
 ```bash
-atl issue transition PROJ-1234 "In Progress"
-atl issue transition PROJ-1234 --list     # List available transitions
-atl issue transition PROJ-1234 "Done" --field "Resolution=Fixed"  # With required fields
+atl jira issue transition PROJ-1234 "In Progress"
+atl jira issue transition PROJ-1234 --list     # List available transitions
+atl jira issue transition PROJ-1234 "Done" --field "Resolution=Fixed"  # With required fields
 ```
 
 ### Comments
 
 ```bash
-atl issue comment list PROJ-1234                    # List comments
-atl issue comment add PROJ-1234 --body "Comment"    # Add comment
-atl issue comment add PROJ-1234 --body-file msg.md  # Add from file (avoids shell escaping)
-atl issue comment edit PROJ-1234 --id 123 --body "Updated"
-atl issue comment edit PROJ-1234 --id 123 --body-file msg.md
-atl issue comment delete PROJ-1234 --id 123
+atl jira issue comment list PROJ-1234                    # List comments
+atl jira issue comment add PROJ-1234 --body "Comment"    # Add comment
+atl jira issue comment add PROJ-1234 --body-file msg.md  # Add from file (avoids shell escaping)
+atl jira issue comment edit PROJ-1234 --id 123 --body "Updated"
+atl jira issue comment edit PROJ-1234 --id 123 --body-file msg.md
+atl jira issue comment delete PROJ-1234 --id 123
 ```
 
 ### Issue Links
 
 ```bash
-atl issue link PROJ-1234 PROJ-5678                    # Link issues (default: Relates)
-atl issue link PROJ-1234 PROJ-5678 --type Blocks      # Link with specific type
+atl jira issue link PROJ-1234 PROJ-5678                    # Link issues (default: Relates)
+atl jira issue link PROJ-1234 PROJ-5678 --type Blocks      # Link with specific type
 ```
 
 ### Web Links
 
 ```bash
-atl issue weblink PROJ-1234 --url "https://..." --title "Title"
+atl jira issue weblink PROJ-1234 --url "https://..." --title "Title"
 ```
 
 ### Sprint Management
 
 ```bash
-atl issue sprint PROJ-1234 --sprint-id 123          # Move to sprint
-atl issue sprint PROJ-1234 --backlog                # Move to backlog
+atl jira issue sprint PROJ-1234 --sprint-id 123          # Move to sprint
+atl jira issue sprint PROJ-1234 --backlog                # Move to backlog
 ```
 
 ### Attachments
 
 ```bash
-atl issue attachment PROJ-1234 --list               # List attachments
-atl issue attachment PROJ-1234 --download <id>      # Download attachment
+atl jira issue attachment PROJ-1234 --list               # List attachments
+atl jira issue attachment PROJ-1234 --download <id>      # Download attachment
 ```
 
 ### Metadata Discovery
 
 ```bash
-atl issue types --project PROJ                      # List issue types
-atl issue priorities                                # List available priorities
-atl issue fields                                    # List all fields
-atl issue fields --search "story points"            # Search for field by name
-atl issue field-options --project PROJ --type Bug   # Show allowed values for fields
-atl issue field-options --project PROJ --type Bug --field "Priority"  # Specific field
+atl jira issue types --project PROJ                      # List issue types
+atl jira issue priorities                                # List available priorities
+atl jira issue fields                                    # List all fields
+atl jira issue fields --search "story points"            # Search for field by name
+atl jira issue field-options --project PROJ --type Bug   # Show allowed values for fields
+atl jira issue field-options --project PROJ --type Bug --field "Priority"  # Specific field
 ```
 
 ## Jira Boards
 
 ```bash
-atl board list                                    # List all boards
-atl board list --project PROJ                       # List boards for project
-atl board rank PROJ-123 --before PROJ-456             # Rank issue before another
-atl board rank PROJ-123 --after PROJ-456              # Rank issue after another
-atl board rank PROJ-123 --top --board-id 42         # Move to top of backlog
+atl jira board list                                    # List all boards
+atl jira board list --project PROJ                       # List boards for project
+atl jira board rank PROJ-123 --before PROJ-456             # Rank issue before another
+atl jira board rank PROJ-123 --after PROJ-456              # Rank issue after another
+atl jira board rank PROJ-123 --top --board-id 42         # Move to top of backlog
 ```
 
 ## Confluence
@@ -248,10 +250,10 @@ Use `--json` flag for structured output suitable for parsing:
 
 ```bash
 # Get issue data as JSON
-atl issue view PROJ-1234 --json | jq '.status'
+atl jira issue view PROJ-1234 --json | jq '.status'
 
 # List issues and extract keys
-atl issue list --assignee @me --json | jq '.[].key'
+atl jira issue list --assignee @me --json | jq '.[].key'
 
 # Get page content
 atl confluence page view 12345 --json | jq '.body'
@@ -263,25 +265,25 @@ atl confluence page view 12345 --json | jq '.body'
 
 ```bash
 # Find the issue
-atl issue list --jql "summary ~ 'login bug'" --json
+atl jira issue list --jql "summary ~ 'login bug'" --json
 
 # View details
-atl issue view PROJ-1234
+atl jira issue view PROJ-1234
 
 # Update it
-atl issue edit PROJ-1234 --assignee @me
-atl issue transition PROJ-1234 "In Progress"
-atl issue comment PROJ-1234 --body "Starting work on this"
+atl jira issue edit PROJ-1234 --assignee @me
+atl jira issue transition PROJ-1234 "In Progress"
+atl jira issue comment PROJ-1234 --body "Starting work on this"
 ```
 
 ### Create a Linked Issue
 
 ```bash
 # Create the issue
-atl issue create --project PROJ --type Task --summary "Implement feature X"
+atl jira issue create --project PROJ --type Task --summary "Implement feature X"
 
 # Link it to a parent story
-atl issue link PROJ-1235 PROJ-1000 --type "is part of"
+atl jira issue link PROJ-1235 PROJ-1000 --type "is part of"
 ```
 
 ### Update Confluence Documentation
