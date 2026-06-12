@@ -30,10 +30,10 @@ func NewCmdPriorities(ios *iostreams.IOStreams) *cobra.Command {
 
 Use this to find the correct priority name when creating or editing issues.`,
 		Example: `  # List all priorities
-  atl issue priorities
+  atl jira issue priorities
 
   # Output as JSON
-  atl issue priorities --json`,
+  atl jira issue priorities --json`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return runPriorities(opts)
 		},
@@ -114,8 +114,8 @@ func runPriorities(opts *PrioritiesOptions) error {
 
 	// Show usage hint
 	fmt.Fprintf(opts.IO.Out, "\nUsage:\n")
-	fmt.Fprintf(opts.IO.Out, "  atl issue create --project PROJ --type Bug --summary \"Title\" --priority \"%s\"\n", prioritiesOutput.Priorities[0].Name)
-	fmt.Fprintf(opts.IO.Out, "  atl issue edit PROJ-1234 --priority \"%s\"\n", prioritiesOutput.Priorities[0].Name)
+	fmt.Fprintf(opts.IO.Out, "  atl jira issue create --project PROJ --type Bug --summary \"Title\" --priority \"%s\"\n", prioritiesOutput.Priorities[0].Name)
+	fmt.Fprintf(opts.IO.Out, "  atl jira issue edit PROJ-1234 --priority \"%s\"\n", prioritiesOutput.Priorities[0].Name)
 
 	return nil
 }

@@ -43,19 +43,19 @@ Common link types:
 
 Use --list-types to see all available link types for your Jira instance.`,
 		Example: `  # Link PROJ-1 blocks PROJ-2
-  atl issue link PROJ-1 PROJ-2 --type Blocks
+  atl jira issue link PROJ-1 PROJ-2 --type Blocks
 
   # Link PROJ-1 relates to PROJ-2
-  atl issue link PROJ-1 PROJ-2 --type Relates
+  atl jira issue link PROJ-1 PROJ-2 --type Relates
 
   # List links on an issue
-  atl issue link PROJ-1 --list
+  atl jira issue link PROJ-1 --list
 
   # Delete a link by ID
-  atl issue link PROJ-1 --delete 12345
+  atl jira issue link PROJ-1 --delete 12345
 
   # List available link types
-  atl issue link --list-types`,
+  atl jira issue link --list-types`,
 		Args: func(cmd *cobra.Command, args []string) error {
 			if opts.ListTypes {
 				return nil
@@ -86,7 +86,7 @@ Use --list-types to see all available link types for your Jira instance.`,
 			opts.InwardKey = args[0]
 			opts.OutwardKey = args[1]
 			if opts.LinkType == "" {
-				return fmt.Errorf("--type flag is required\n\nUse 'atl issue link --list-types' to see available link types")
+				return fmt.Errorf("--type flag is required\n\nUse 'atl jira issue link --list-types' to see available link types")
 			}
 			return runLink(opts)
 		},
@@ -164,7 +164,7 @@ func runLink(opts *LinkOptions) error {
 	}
 
 	if matchedType == nil {
-		return fmt.Errorf("link type not found: %s\n\nUse 'atl issue link --list-types' to see available types", opts.LinkType)
+		return fmt.Errorf("link type not found: %s\n\nUse 'atl jira issue link --list-types' to see available types", opts.LinkType)
 	}
 
 	// Create the link
@@ -277,7 +277,7 @@ func runDeleteLink(opts *LinkOptions) error {
 	}
 
 	if found == nil {
-		return fmt.Errorf("link ID %s not found on %s\n\nUse 'atl issue link %s --list' to see links", opts.DeleteID, opts.InwardKey, opts.InwardKey)
+		return fmt.Errorf("link ID %s not found on %s\n\nUse 'atl jira issue link %s --list' to see links", opts.DeleteID, opts.InwardKey, opts.InwardKey)
 	}
 
 	err = jira.DeleteIssueLink(ctx, opts.DeleteID)

@@ -34,19 +34,19 @@ func NewCmdFieldOptions(ios *iostreams.IOStreams) *cobra.Command {
 		Short: "Show allowed values for issue fields",
 		Long:  `Display field metadata and allowed values for a project and issue type. Useful for discovering valid values for select, radio, and other constrained fields.`,
 		Example: `  # Show all fields with allowed values for bugs
-  atl issue field-options --project NX --type Bug
+  atl jira issue field-options --project NX --type Bug
 
   # Show options for a specific field
-  atl issue field-options --project NX --type Bug --field "Fehlverhalten"
+  atl jira issue field-options --project NX --type Bug --field "Fehlverhalten"
 
   # Output as JSON
-  atl issue field-options --project NX --type Bug --json`,
+  atl jira issue field-options --project NX --type Bug --json`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if opts.Project == "" {
-				return fmt.Errorf("--project flag is required\n\nUse 'atl issue types --project PROJ' to list available projects")
+				return fmt.Errorf("--project flag is required\n\nUse 'atl jira issue types --project PROJ' to list available projects")
 			}
 			if opts.IssueType == "" {
-				return fmt.Errorf("--type flag is required\n\nUse 'atl issue types --project %s' to list available issue types", opts.Project)
+				return fmt.Errorf("--type flag is required\n\nUse 'atl jira issue types --project %s' to list available issue types", opts.Project)
 			}
 			return runFieldOptions(opts)
 		},

@@ -40,19 +40,19 @@ func NewCmdSprint(ios *iostreams.IOStreams) *cobra.Command {
 
 Use --list-boards to find board IDs, then --list-sprints to find sprint IDs.`,
 		Example: `  # List boards in a project
-  atl issue sprint --list-boards --project PROJ
+  atl jira issue sprint --list-boards --project PROJ
 
   # List sprints for a board
-  atl issue sprint --list-sprints --board 123
+  atl jira issue sprint --list-sprints --board 123
 
   # Move issues to a sprint by ID
-  atl issue sprint PROJ-1 PROJ-2 --sprint-id 456
+  atl jira issue sprint PROJ-1 PROJ-2 --sprint-id 456
 
   # Move issues to a sprint by name (requires --board)
-  atl issue sprint PROJ-1 --sprint "Sprint 5" --board 123
+  atl jira issue sprint PROJ-1 --sprint "Sprint 5" --board 123
 
   # Move issues to backlog
-  atl issue sprint PROJ-1 --backlog`,
+  atl jira issue sprint PROJ-1 --backlog`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if opts.ListBoards {
 				return runListBoards(opts)
@@ -290,7 +290,7 @@ func runMoveSprint(opts *SprintOptions) error {
 		}
 
 		if found == nil {
-			return fmt.Errorf("sprint not found: %s\n\nUse 'atl issue sprint --list-sprints --board %d' to see available sprints", opts.SprintName, opts.BoardID)
+			return fmt.Errorf("sprint not found: %s\n\nUse 'atl jira issue sprint --list-sprints --board %d' to see available sprints", opts.SprintName, opts.BoardID)
 		}
 
 		sprintID = found.ID

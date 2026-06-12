@@ -34,16 +34,16 @@ func NewCmdFlag(ios *iostreams.IOStreams) *cobra.Command {
 Flagged issues are marked as having an impediment and are highlighted
 in sprint boards and backlogs. Use flags to indicate blocked work.`,
 		Example: `  # Flag an issue
-  atl issue flag PROJ-123
+  atl jira issue flag PROJ-123
 
   # Unflag an issue
-  atl issue flag PROJ-123 --unflag
+  atl jira issue flag PROJ-123 --unflag
 
   # Check flag status
-  atl issue flag PROJ-123 --status
+  atl jira issue flag PROJ-123 --status
 
   # Output as JSON
-  atl issue flag PROJ-123 --json`,
+  atl jira issue flag PROJ-123 --json`,
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			opts.IssueKey = args[0]

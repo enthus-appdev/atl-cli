@@ -43,31 +43,31 @@ func NewCmdCreate(ios *iostreams.IOStreams) *cobra.Command {
 		Short: "Create a new Jira issue",
 		Long:  `Create a new Jira issue in a project.`,
 		Example: `  # Create a bug
-  atl issue create --project PROJ --type Bug --summary "Fix login issue"
+  atl jira issue create --project PROJ --type Bug --summary "Fix login issue"
 
   # Create a task with description
-  atl issue create --project PROJ --type Task --summary "New feature" --description "Implement new feature"
+  atl jira issue create --project PROJ --type Task --summary "New feature" --description "Implement new feature"
 
   # Create and open in browser
-  atl issue create --project PROJ --type Task --summary "New feature" --web
+  atl jira issue create --project PROJ --type Task --summary "New feature" --web
 
   # Create a subtask (auto-discovers subtask type)
-  atl issue create --project PROJ --parent PROJ-123 --summary "Subtask"
+  atl jira issue create --project PROJ --parent PROJ-123 --summary "Subtask"
 
   # Or specify the subtask type explicitly
-  atl issue create --project PROJ --type "Sub-task" --parent PROJ-123 --summary "Subtask"
+  atl jira issue create --project PROJ --type "Sub-task" --parent PROJ-123 --summary "Subtask"
 
   # Create with custom fields by name (Story Points, etc.)
-  atl issue create --project PROJ --type Story --summary "New story" --field "Story Points=5"
+  atl jira issue create --project PROJ --type Story --summary "New story" --field "Story Points=5"
 
   # Or use field ID directly
-  atl issue create --project PROJ --type Story --summary "New story" --field customfield_10016=5
+  atl jira issue create --project PROJ --type Story --summary "New story" --field customfield_10016=5
 
   # Use a JSON file for complex field values (like ADF rich text)
-  atl issue create --project PROJ --type Task --summary "Task" --field-file fields.json
+  atl jira issue create --project PROJ --type Task --summary "Task" --field-file fields.json
 
   # Output as JSON
-  atl issue create --project PROJ --type Bug --summary "Bug report" --json`,
+  atl jira issue create --project PROJ --type Bug --summary "Bug report" --json`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			var missing []string
 			if opts.Project == "" {
@@ -81,7 +81,7 @@ func NewCmdCreate(ios *iostreams.IOStreams) *cobra.Command {
 				missing = append(missing, "--summary")
 			}
 			if len(missing) > 0 {
-				return fmt.Errorf("required flags not set: %v\n\nExample: atl issue create --project PROJ --type Bug --summary \"Issue title\"", missing)
+				return fmt.Errorf("required flags not set: %v\n\nExample: atl jira issue create --project PROJ --type Bug --summary \"Issue title\"", missing)
 			}
 			return runCreate(opts)
 		},
@@ -152,7 +152,7 @@ func runCreate(opts *CreateOptions) error {
 			return fmt.Errorf("failed to discover subtask type: %w", err)
 		}
 		if subtaskType == nil {
-			return fmt.Errorf("no subtask type found for project %s\n\nUse 'atl issue types --project %s' to list available types", opts.Project, opts.Project)
+			return fmt.Errorf("no subtask type found for project %s\n\nUse 'atl jira issue types --project %s' to list available types", opts.Project, opts.Project)
 		}
 		issueTypeName = subtaskType.Name
 	}
@@ -207,7 +207,7 @@ func runCreate(opts *CreateOptions) error {
 					return fmt.Errorf("failed to look up field '%s': %w", key, err)
 				}
 				if resolvedField == nil {
-					return fmt.Errorf("field not found: %s\n\nUse 'atl issue fields --search \"%s\"' to find available fields", key, key)
+					return fmt.Errorf("field not found: %s\n\nUse 'atl jira issue fields --search \"%s\"' to find available fields", key, key)
 				}
 				key = resolvedField.ID
 			}

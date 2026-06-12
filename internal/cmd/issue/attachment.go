@@ -40,25 +40,25 @@ func NewCmdAttachment(ios *iostreams.IOStreams) *cobra.Command {
 Use this to manage files attached to tickets, such as error logs,
 screenshots, or documents.`,
 		Example: `  # List attachments on an issue
-  atl issue attachment PROJ-123 --list
+  atl jira issue attachment PROJ-123 --list
 
   # Download a specific attachment by ID
-  atl issue attachment PROJ-123 --download --id 12345
+  atl jira issue attachment PROJ-123 --download --id 12345
 
   # Download all attachments from an issue
-  atl issue attachment PROJ-123 --download-all
+  atl jira issue attachment PROJ-123 --download-all
 
   # Download to a specific directory
-  atl issue attachment PROJ-123 --download-all --output ./downloads
+  atl jira issue attachment PROJ-123 --download-all --output ./downloads
 
   # Upload a file to an issue
-  atl issue attachment PROJ-123 --upload ./screenshot.png
+  atl jira issue attachment PROJ-123 --upload ./screenshot.png
 
   # Upload multiple files
-  atl issue attachment PROJ-123 --upload file1.pdf --upload file2.png
+  atl jira issue attachment PROJ-123 --upload file1.pdf --upload file2.png
 
   # Output attachment list as JSON
-  atl issue attachment PROJ-123 --list --json`,
+  atl jira issue attachment PROJ-123 --list --json`,
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			opts.IssueKey = args[0]
@@ -212,8 +212,8 @@ func listAttachments(opts *AttachmentOptions, attachments []*api.Attachment) err
 
 	output.SimpleTable(opts.IO.Out, headers, rows)
 
-	fmt.Fprintf(opts.IO.Out, "\nTo download: atl issue attachment %s --download --id <ID>\n", opts.IssueKey)
-	fmt.Fprintf(opts.IO.Out, "To download all: atl issue attachment %s --download-all\n", opts.IssueKey)
+	fmt.Fprintf(opts.IO.Out, "\nTo download: atl jira issue attachment %s --download --id <ID>\n", opts.IssueKey)
+	fmt.Fprintf(opts.IO.Out, "To download all: atl jira issue attachment %s --download-all\n", opts.IssueKey)
 
 	return nil
 }

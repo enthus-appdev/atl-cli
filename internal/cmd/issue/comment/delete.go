@@ -32,21 +32,21 @@ func NewCmdDelete(ios *iostreams.IOStreams) *cobra.Command {
 		Short:   "Delete a comment from an issue",
 		Long: `Delete an existing comment from a Jira issue.
 
-Requires the comment ID which can be found using 'atl issue comment list'.`,
+Requires the comment ID which can be found using 'atl jira issue comment list'.`,
 		Example: `  # Delete a comment (prompts for confirmation)
-  atl issue comment delete PROJ-1234 --id 12345
+  atl jira issue comment delete PROJ-1234 --id 12345
 
   # Delete without confirmation
-  atl issue comment delete PROJ-1234 --id 12345 --force
+  atl jira issue comment delete PROJ-1234 --id 12345 --force
 
   # Output as JSON
-  atl issue comment delete PROJ-1234 --id 12345 --json`,
+  atl jira issue comment delete PROJ-1234 --id 12345 --json`,
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			opts.IssueKey = args[0]
 
 			if opts.CommentID == "" {
-				return fmt.Errorf("--id is required\n\nUse 'atl issue comment list %s' to see comment IDs", args[0])
+				return fmt.Errorf("--id is required\n\nUse 'atl jira issue comment list %s' to see comment IDs", args[0])
 			}
 
 			return runDelete(opts)

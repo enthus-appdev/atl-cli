@@ -30,16 +30,16 @@ func NewCmdAssign(ios *iostreams.IOStreams) *cobra.Command {
 		Short: "Assign an issue to a user",
 		Long:  `Assign a Jira issue to a user or unassign it.`,
 		Example: `  # Assign to yourself
-  atl issue assign PROJ-1234 --assignee @me
+  atl jira issue assign PROJ-1234 --assignee @me
 
   # Assign to another user
-  atl issue assign PROJ-1234 --assignee john.doe
+  atl jira issue assign PROJ-1234 --assignee john.doe
 
   # Unassign
-  atl issue assign PROJ-1234 --assignee -
+  atl jira issue assign PROJ-1234 --assignee -
 
   # Output as JSON
-  atl issue assign PROJ-1234 --assignee @me --json`,
+  atl jira issue assign PROJ-1234 --assignee @me --json`,
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			opts.IssueKey = args[0]
