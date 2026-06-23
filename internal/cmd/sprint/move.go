@@ -74,7 +74,7 @@ func runMove(opts *moveOptions) error {
 		var found *api.Sprint
 		nameLower := strings.ToLower(opts.SprintName)
 		for _, s := range sprints {
-			if strings.ToLower(s.Name) == nameLower {
+			if strings.ToLower(s.Name) == nameLower || strings.Contains(strings.ToLower(s.Name), nameLower) {
 				found = s
 				break
 			}
