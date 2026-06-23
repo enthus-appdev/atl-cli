@@ -6,6 +6,7 @@ import (
 	boardCmd "github.com/enthus-appdev/atl-cli/internal/cmd/board"
 	issueCmd "github.com/enthus-appdev/atl-cli/internal/cmd/issue"
 	smCmd "github.com/enthus-appdev/atl-cli/internal/cmd/sm"
+	sprintCmd "github.com/enthus-appdev/atl-cli/internal/cmd/sprint"
 	"github.com/enthus-appdev/atl-cli/internal/iostreams"
 )
 
@@ -21,6 +22,7 @@ func NewCmdJira(ios *iostreams.IOStreams) *cobra.Command {
 	cmd.AddCommand(issueCmd.NewCmdIssue(ios))
 	cmd.AddCommand(boardCmd.NewCmdBoard(ios))
 	cmd.AddCommand(smCmd.NewCmdSM(ios))
+	cmd.AddCommand(sprintCmd.NewCmdSprint(ios))
 
 	return cmd
 }
