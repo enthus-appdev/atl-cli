@@ -55,6 +55,24 @@ func newCmdCreate(ios *iostreams.IOStreams) *cobra.Command {
 }
 
 func runCreate(opts *createOptions) error {
+	// Validate and resolve --start dates before any server-side mutation so that
+	// a bad --duration or --end-date does not leave an orphaned unstarted sprint.
+	var (
+		activateStart time.Time
+		activateEnd   time.Time
+	)
+	if opts.Start {
+		dur, err := parseDuration(opts.Duration)
+		if err != nil {
+			return err
+		}
+		s, e, err := resolveActiveDates(opts.StartDate, opts.EndDate, dur, time.Now())
+		if err != nil {
+			return err
+		}
+		activateStart, activateEnd = s, e
+	}
+
 	client, err := api.NewClientFromConfig()
 	if err != nil {
 		return err
@@ -72,16 +90,8 @@ func runCreate(opts *createOptions) error {
 	}
 
 	if opts.Start {
-		dur, err := parseDuration(opts.Duration)
-		if err != nil {
-			return err
-		}
-		start, end, err := resolveActiveDates(opts.StartDate, opts.EndDate, dur, time.Now())
-		if err != nil {
-			return err
-		}
 		createdID := sprint.ID // UpdateSprint returns nil on error; keep the ID for the message
-		started, err := jira.UpdateSprint(ctx, createdID, buildActivateBody(start, end))
+		started, err := jira.UpdateSprint(ctx, createdID, buildActivateBody(activateStart, activateEnd))
 		if err != nil {
 			return fmt.Errorf("sprint created (ID %d) but failed to start: %w", createdID, err)
 		}
