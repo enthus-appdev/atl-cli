@@ -1258,6 +1258,38 @@ func (s *JiraService) RemoveIssuesFromSprint(ctx context.Context, issueKeys []st
 	return s.client.Post(ctx, path, body, nil)
 }
 
+// CreateSprint creates a new sprint. The body must include name and
+// originBoardId; goal/startDate/endDate are optional. Returns the created sprint.
+func (s *JiraService) CreateSprint(ctx context.Context, body map[string]any) (*Sprint, error) {
+	path := fmt.Sprintf("%s/sprint", s.client.AgileBaseURL())
+	var result Sprint
+	if err := s.client.Post(ctx, path, body, &result); err != nil {
+		return nil, err
+	}
+	return &result, nil
+}
+
+// UpdateSprint partially updates a sprint (name, goal, dates, or state).
+// Only the fields present in body are modified.
+func (s *JiraService) UpdateSprint(ctx context.Context, sprintID int, body map[string]any) (*Sprint, error) {
+	path := fmt.Sprintf("%s/sprint/%d", s.client.AgileBaseURL(), sprintID)
+	var result Sprint
+	if err := s.client.Put(ctx, path, body, &result); err != nil {
+		return nil, err
+	}
+	return &result, nil
+}
+
+// GetSprint fetches a single sprint by ID.
+func (s *JiraService) GetSprint(ctx context.Context, sprintID int) (*Sprint, error) {
+	path := fmt.Sprintf("%s/sprint/%d", s.client.AgileBaseURL(), sprintID)
+	var result Sprint
+	if err := s.client.Get(ctx, path, &result); err != nil {
+		return nil, err
+	}
+	return &result, nil
+}
+
 // RankIssuesBefore ranks issues before a target issue.
 // The issues will be placed directly before rankBeforeIssue in the backlog/board order.
 func (s *JiraService) RankIssuesBefore(ctx context.Context, issueKeys []string, rankBeforeIssue string) error {
