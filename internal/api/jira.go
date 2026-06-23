@@ -1225,9 +1225,12 @@ func (s *JiraService) GetSprints(ctx context.Context, boardID int, state string)
 	// The Agile sprint endpoint paginates and caps the page size server-side
 	// (typically 50), so a board with many sprints requires following startAt
 	// until isLast. Accumulate every page to return the full set.
-	const pageSize = 50
+	const (
+		pageSize = 50
+		maxPages = 1000 // safety bound: >> any real board, guards a non-advancing server
+	)
 	var all []*Sprint
-	for startAt := 0; ; {
+	for startAt, page := 0, 0; page < maxPages; page++ {
 		params := url.Values{}
 		if state != "" {
 			params.Set("state", state)
@@ -1241,9 +1244,10 @@ func (s *JiraService) GetSprints(ctx context.Context, boardID int, state string)
 		}
 		all = append(all, result.Values...)
 
-		// Stop when the server marks the last page or returns nothing further.
-		// The empty-page guard also bounds the loop if isLast is ever absent.
-		if result.IsLast || len(result.Values) == 0 {
+		// Terminate on the last page. A short page (fewer than requested) also
+		// means the last page, which guards the loop even if a non-conformant
+		// server omits isLast or fails to advance on startAt.
+		if result.IsLast || len(result.Values) < pageSize {
 			break
 		}
 		// Advance by the count actually returned, not the requested size, so a

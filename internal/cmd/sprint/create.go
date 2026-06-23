@@ -99,7 +99,11 @@ func runCreate(opts *createOptions) error {
 	}
 
 	if !opts.JSON {
-		fmt.Fprintf(opts.IO.Out, "Created sprint %d\n", sprint.ID)
+		verb := "Created"
+		if opts.Start {
+			verb = "Created and started"
+		}
+		fmt.Fprintf(opts.IO.Out, "%s sprint %d\n", verb, sprint.ID)
 	}
 	return printSprint(opts.IO, sprint, opts.JSON)
 }

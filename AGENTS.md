@@ -156,7 +156,7 @@ atl jira board rank PROJ-123 --top --board-id 42         # Move to top of backlo
 Full sprint lifecycle under `atl jira sprint`.
 
 **Dates and duration (`start`, and `create --start`):**
-- `create` without `--start` makes an undated future sprint. With `--start` it is also activated.
+- `create` without `--start` makes a future sprint — undated unless you explicitly pass `--start-date`/`--end-date`. With `--start` it is also activated.
 - Start date defaults to now; end date is `start + --duration` (default `14d`). Explicit `--start-date`/`--end-date` (ISO `YYYY-MM-DD`) override.
 - `--duration` accepts `Nd` (days) and `Nw` (weeks); `48h`-style Go durations also parse but days/weeks are clearer.
 - Explicit `--start-date`/`--end-date` are interpreted as midnight UTC. If you need an exact calendar day in a west-of-UTC timezone, verify the result in Jira and adjust by a day if necessary.
