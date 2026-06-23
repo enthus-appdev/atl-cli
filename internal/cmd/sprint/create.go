@@ -66,7 +66,7 @@ func runCreate(opts *createOptions) error {
 		if err != nil {
 			return err
 		}
-		s, e, err := resolveActiveDates(opts.StartDate, opts.EndDate, dur, time.Now())
+		s, e, err := resolveActiveDates(opts.StartDate, opts.EndDate, dur, time.Now().UTC())
 		if err != nil {
 			return err
 		}

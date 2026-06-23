@@ -50,7 +50,7 @@ func runStart(opts *startOptions) error {
 	if err != nil {
 		return err
 	}
-	start, end, err := resolveActiveDates(opts.StartDate, opts.EndDate, dur, time.Now())
+	start, end, err := resolveActiveDates(opts.StartDate, opts.EndDate, dur, time.Now().UTC())
 	if err != nil {
 		return err
 	}

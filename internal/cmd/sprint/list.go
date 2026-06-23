@@ -58,10 +58,14 @@ func runList(opts *listOptions) error {
 		return fmt.Errorf("failed to get sprints: %w", err)
 	}
 
-	out := &sprintListOutput{BoardID: opts.BoardID, Sprints: make([]*sprintDetail, 0, len(sprints)), Total: len(sprints)}
+	out := &sprintListOutput{BoardID: opts.BoardID, Sprints: make([]*sprintDetail, 0, len(sprints))}
 	for _, s := range sprints {
+		if s == nil {
+			continue
+		}
 		out.Sprints = append(out.Sprints, newSprintDetail(s))
 	}
+	out.Total = len(out.Sprints)
 
 	if opts.JSON {
 		return output.JSON(opts.IO.Out, out)

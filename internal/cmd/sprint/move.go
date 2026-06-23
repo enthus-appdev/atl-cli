@@ -73,10 +73,21 @@ func runMove(opts *moveOptions) error {
 		}
 		var found *api.Sprint
 		nameLower := strings.ToLower(opts.SprintName)
+		// Prefer an exact (case-insensitive) name match so a substring match
+		// never shadows it; fall back to substring only when no exact match
+		// exists (consistent with `atl jira issue sprint`).
 		for _, s := range sprints {
-			if strings.ToLower(s.Name) == nameLower || strings.Contains(strings.ToLower(s.Name), nameLower) {
+			if s != nil && strings.ToLower(s.Name) == nameLower {
 				found = s
 				break
+			}
+		}
+		if found == nil {
+			for _, s := range sprints {
+				if s != nil && strings.Contains(strings.ToLower(s.Name), nameLower) {
+					found = s
+					break
+				}
 			}
 		}
 		if found == nil {

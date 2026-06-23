@@ -44,6 +44,9 @@ type sprintDetail struct {
 }
 
 func newSprintDetail(s *api.Sprint) *sprintDetail {
+	if s == nil {
+		return nil
+	}
 	return &sprintDetail{
 		ID:        s.ID,
 		Name:      s.Name,
@@ -57,6 +60,9 @@ func newSprintDetail(s *api.Sprint) *sprintDetail {
 
 // printSprint renders a single sprint as JSON or a short text block.
 func printSprint(ios *iostreams.IOStreams, s *api.Sprint, asJSON bool) error {
+	if s == nil {
+		return fmt.Errorf("no sprint returned")
+	}
 	d := newSprintDetail(s)
 	if asJSON {
 		return output.JSON(ios.Out, d)
