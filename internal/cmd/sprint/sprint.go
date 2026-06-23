@@ -76,9 +76,6 @@ func printSprint(ios *iostreams.IOStreams, s *api.Sprint, asJSON bool) error {
 }
 
 // --- temporary stubs (removed as each command is implemented) ---
-func newCmdMove(ios *iostreams.IOStreams) *cobra.Command {
-	return &cobra.Command{Use: "move", Hidden: true, RunE: func(*cobra.Command, []string) error { return nil }}
-}
 func newCmdBacklog(ios *iostreams.IOStreams) *cobra.Command {
 	return &cobra.Command{Use: "backlog", Hidden: true, RunE: func(*cobra.Command, []string) error { return nil }}
 }
