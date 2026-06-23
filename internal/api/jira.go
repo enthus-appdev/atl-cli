@@ -1220,20 +1220,38 @@ func (s *JiraService) GetBoards(ctx context.Context, projectKey string) ([]*Boar
 
 // GetSprints gets sprints for a board.
 func (s *JiraService) GetSprints(ctx context.Context, boardID int, state string) ([]*Sprint, error) {
-	path := fmt.Sprintf("%s/board/%d/sprint", s.client.AgileBaseURL(), boardID)
+	basePath := fmt.Sprintf("%s/board/%d/sprint", s.client.AgileBaseURL(), boardID)
 
-	params := url.Values{}
-	if state != "" {
-		params.Set("state", state)
+	// The Agile sprint endpoint paginates and caps the page size server-side
+	// (typically 50), so a board with many sprints requires following startAt
+	// until isLast. Accumulate every page to return the full set.
+	const pageSize = 50
+	var all []*Sprint
+	for startAt := 0; ; {
+		params := url.Values{}
+		if state != "" {
+			params.Set("state", state)
+		}
+		params.Set("startAt", strconv.Itoa(startAt))
+		params.Set("maxResults", strconv.Itoa(pageSize))
+
+		var result SprintsResponse
+		if err := s.client.Get(ctx, basePath+"?"+params.Encode(), &result); err != nil {
+			return nil, err
+		}
+		all = append(all, result.Values...)
+
+		// Stop when the server marks the last page or returns nothing further.
+		// The empty-page guard also bounds the loop if isLast is ever absent.
+		if result.IsLast || len(result.Values) == 0 {
+			break
+		}
+		// Advance by the count actually returned, not the requested size, so a
+		// short non-final page never skips records.
+		startAt += len(result.Values)
 	}
-	params.Set("maxResults", "100")
 
-	var result SprintsResponse
-	if err := s.client.Get(ctx, path+"?"+params.Encode(), &result); err != nil {
-		return nil, err
-	}
-
-	return result.Values, nil
+	return all, nil
 }
 
 // MoveIssuesToSprint moves issues to a sprint.
