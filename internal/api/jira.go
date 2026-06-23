@@ -1270,11 +1270,13 @@ func (s *JiraService) CreateSprint(ctx context.Context, body map[string]any) (*S
 }
 
 // UpdateSprint partially updates a sprint (name, goal, dates, or state).
-// Only the fields present in body are modified.
+// It uses the Agile partial-update verb (POST): only fields present in body are
+// modified. PUT performs a full replace that nulls any omitted field, which
+// would wipe unrelated sprint data when sending a partial body (e.g. state-only).
 func (s *JiraService) UpdateSprint(ctx context.Context, sprintID int, body map[string]any) (*Sprint, error) {
 	path := fmt.Sprintf("%s/sprint/%d", s.client.AgileBaseURL(), sprintID)
 	var result Sprint
-	if err := s.client.Put(ctx, path, body, &result); err != nil {
+	if err := s.client.Post(ctx, path, body, &result); err != nil {
 		return nil, err
 	}
 	return &result, nil
