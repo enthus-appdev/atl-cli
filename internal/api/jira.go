@@ -1220,20 +1220,42 @@ func (s *JiraService) GetBoards(ctx context.Context, projectKey string) ([]*Boar
 
 // GetSprints gets sprints for a board.
 func (s *JiraService) GetSprints(ctx context.Context, boardID int, state string) ([]*Sprint, error) {
-	path := fmt.Sprintf("%s/board/%d/sprint", s.client.AgileBaseURL(), boardID)
+	basePath := fmt.Sprintf("%s/board/%d/sprint", s.client.AgileBaseURL(), boardID)
 
-	params := url.Values{}
-	if state != "" {
-		params.Set("state", state)
+	// The Agile sprint endpoint paginates and caps the page size server-side
+	// (typically 50), so a board with many sprints requires following startAt
+	// until isLast. Accumulate every page to return the full set.
+	const (
+		pageSize = 50
+		maxPages = 1000 // safety bound: >> any real board, guards a non-advancing server
+	)
+	var all []*Sprint
+	for startAt, page := 0, 0; page < maxPages; page++ {
+		params := url.Values{}
+		if state != "" {
+			params.Set("state", state)
+		}
+		params.Set("startAt", strconv.Itoa(startAt))
+		params.Set("maxResults", strconv.Itoa(pageSize))
+
+		var result SprintsResponse
+		if err := s.client.Get(ctx, basePath+"?"+params.Encode(), &result); err != nil {
+			return nil, err
+		}
+		all = append(all, result.Values...)
+
+		// Terminate on the last page. A short page (fewer than requested) also
+		// means the last page, which guards the loop even if a non-conformant
+		// server omits isLast or fails to advance on startAt.
+		if result.IsLast || len(result.Values) < pageSize {
+			break
+		}
+		// Advance by the count actually returned, not the requested size, so a
+		// short non-final page never skips records.
+		startAt += len(result.Values)
 	}
-	params.Set("maxResults", "100")
 
-	var result SprintsResponse
-	if err := s.client.Get(ctx, path+"?"+params.Encode(), &result); err != nil {
-		return nil, err
-	}
-
-	return result.Values, nil
+	return all, nil
 }
 
 // MoveIssuesToSprint moves issues to a sprint.
@@ -1256,6 +1278,40 @@ func (s *JiraService) RemoveIssuesFromSprint(ctx context.Context, issueKeys []st
 	}
 
 	return s.client.Post(ctx, path, body, nil)
+}
+
+// CreateSprint creates a new sprint. The body must include name and
+// originBoardId; goal/startDate/endDate are optional. Returns the created sprint.
+func (s *JiraService) CreateSprint(ctx context.Context, body map[string]any) (*Sprint, error) {
+	path := fmt.Sprintf("%s/sprint", s.client.AgileBaseURL())
+	var result Sprint
+	if err := s.client.Post(ctx, path, body, &result); err != nil {
+		return nil, err
+	}
+	return &result, nil
+}
+
+// UpdateSprint partially updates a sprint (name, goal, dates, or state).
+// It uses the Agile partial-update verb (POST): only fields present in body are
+// modified. PUT performs a full replace that nulls any omitted field, which
+// would wipe unrelated sprint data when sending a partial body (e.g. state-only).
+func (s *JiraService) UpdateSprint(ctx context.Context, sprintID int, body map[string]any) (*Sprint, error) {
+	path := fmt.Sprintf("%s/sprint/%d", s.client.AgileBaseURL(), sprintID)
+	var result Sprint
+	if err := s.client.Post(ctx, path, body, &result); err != nil {
+		return nil, err
+	}
+	return &result, nil
+}
+
+// GetSprint fetches a single sprint by ID.
+func (s *JiraService) GetSprint(ctx context.Context, sprintID int) (*Sprint, error) {
+	path := fmt.Sprintf("%s/sprint/%d", s.client.AgileBaseURL(), sprintID)
+	var result Sprint
+	if err := s.client.Get(ctx, path, &result); err != nil {
+		return nil, err
+	}
+	return &result, nil
 }
 
 // RankIssuesBefore ranks issues before a target issue.

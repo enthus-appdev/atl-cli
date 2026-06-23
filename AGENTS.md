@@ -151,6 +151,56 @@ atl jira board rank PROJ-123 --after PROJ-456              # Rank issue after an
 atl jira board rank PROJ-123 --top --board-id 42         # Move to top of backlog
 ```
 
+## Jira Sprints
+
+Full sprint lifecycle under `atl jira sprint`.
+
+**Dates and duration (`start`, and `create --start`):**
+- `create` without `--start` makes a future sprint — undated unless you explicitly pass `--start-date`/`--end-date`. With `--start` it is also activated.
+- Start date defaults to now; end date is `start + --duration` (default `14d`). Explicit `--start-date`/`--end-date` (ISO `YYYY-MM-DD`) override.
+- `--duration` accepts `Nd` (days) and `Nw` (weeks); `48h`-style Go durations also parse but days/weeks are clearer.
+- Explicit `--start-date`/`--end-date` are interpreted as midnight UTC. If you need an exact calendar day in a west-of-UTC timezone, verify the result in Jira and adjust by a day if necessary.
+- Editing dates on an active/closed sprint may be rejected by Jira. Sprint deletion is not supported (close instead).
+
+**Moving issues:** prefer `--to <sprint-id>` for an exact target. `--sprint "<name>"` resolves by name (exact, else substring — same matching as `atl jira issue sprint`), so it can be ambiguous when names overlap; use `atl jira sprint list --board <id>` to find the ID.
+
+```bash
+# Create a sprint as undated future sprint (required: --board, --name)
+atl jira sprint create --board 42 --name "Sprint 30" --goal "Ship MI cutover"
+
+# Create and start immediately (--start applies default 14d duration; override with --duration)
+atl jira sprint create --board 42 --name "Sprint 31" --start
+atl jira sprint create --board 42 --name "Sprint 32" --start --duration 3w
+
+# Edit sprint name, goal, or dates (date changes may fail for active/closed sprints)
+# Date format: YYYY-MM-DD
+atl jira sprint edit 123 --goal "Updated goal"
+atl jira sprint edit 123 --name "Sprint 30 (extended)" --start-date 2026-06-23 --end-date 2026-07-14
+
+# Start a sprint (only future sprints; sets dates via duration OR explicit dates)
+# Duration-based (calculates end date; default 14d)
+atl jira sprint start 123
+atl jira sprint start 123 --duration 2w
+# Or use explicit dates (YYYY-MM-DD)
+atl jira sprint start 123 --start-date 2026-06-23 --end-date 2026-07-07
+
+# Close a sprint (only active sprints; incomplete issues move to backlog; prompts unless --force)
+atl jira sprint close 123
+atl jira sprint close 123 --force
+
+# List sprints on a board (required: --board; state: active|future|closed, default: active,future)
+atl jira sprint list --board 42
+atl jira sprint list --board 42 --state closed
+atl jira sprint list --board 42 --state active,future,closed
+
+# Move issues by sprint ID (RECOMMENDED: unambiguous, safe)
+# Note: Issues must belong to target sprint's board; Jira will error if they don't
+atl jira sprint move NX-1 NX-2 --to 123
+
+# Move issues to their native board backlogs (works cross-board; independent of sprint)
+atl jira sprint backlog NX-1 NX-2
+```
+
 ## Confluence
 
 ### Spaces
