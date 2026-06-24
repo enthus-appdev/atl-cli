@@ -39,19 +39,21 @@ func (o *commonOptions) client() (*api.AssetsClient, error) {
 		workspace = os.Getenv("ATLASSIAN_ASSETS_WORKSPACE")
 	}
 
+	cfg, err := config.Load()
+	if err != nil {
+		return nil, fmt.Errorf("loading atl config: %w", err)
+	}
 	siteBase := ""
-	if cfg, err := config.Load(); err == nil {
-		if hc := cfg.CurrentHostConfig(); hc != nil {
-			if email == "" {
-				email = hc.User
-			}
-			proto := hc.Protocol
-			if proto == "" {
-				proto = "https"
-			}
-			if hc.Hostname != "" {
-				siteBase = proto + "://" + hc.Hostname
-			}
+	if hc := cfg.CurrentHostConfig(); hc != nil {
+		if email == "" {
+			email = hc.User
+		}
+		proto := hc.Protocol
+		if proto == "" {
+			proto = "https"
+		}
+		if hc.Hostname != "" {
+			siteBase = proto + "://" + hc.Hostname
 		}
 	}
 

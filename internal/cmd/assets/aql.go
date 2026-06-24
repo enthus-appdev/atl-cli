@@ -1,7 +1,6 @@
 package assets
 
 import (
-	"context"
 	"fmt"
 	"strings"
 
@@ -38,7 +37,7 @@ Otherwise the first matching objects are listed.`,
 			if err != nil {
 				return err
 			}
-			ctx := context.Background()
+			ctx := cmd.Context()
 
 			if countOnly {
 				n, err := client.AQLCount(ctx, ql)

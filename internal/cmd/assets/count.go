@@ -1,7 +1,6 @@
 package assets
 
 import (
-	"context"
 	"fmt"
 
 	"github.com/spf13/cobra"
@@ -27,7 +26,7 @@ Assets object limit.`,
 				return err
 			}
 
-			schemas, err := client.Schemas(context.Background())
+			schemas, err := client.Schemas(cmd.Context())
 			if err != nil {
 				return err
 			}

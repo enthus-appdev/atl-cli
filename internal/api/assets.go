@@ -1,9 +1,11 @@
 package api
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"net/url"
 	"strings"
@@ -41,11 +43,9 @@ func NewAssetsClient(siteBase, email, token, workspaceID string) *AssetsClient {
 }
 
 func (c *AssetsClient) do(ctx context.Context, method, fullURL string, body []byte, out interface{}) error {
-	var rdr *strings.Reader
+	var rdr io.Reader
 	if body != nil {
-		rdr = strings.NewReader(string(body))
-	} else {
-		rdr = strings.NewReader("")
+		rdr = bytes.NewReader(body)
 	}
 	req, err := http.NewRequestWithContext(ctx, method, fullURL, rdr)
 	if err != nil {
