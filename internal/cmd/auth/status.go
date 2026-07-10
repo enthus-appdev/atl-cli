@@ -64,6 +64,18 @@ func runStatus(opts *StatusOptions) error {
 		return fmt.Errorf("failed to load config: %w", err)
 	}
 
+	// Show which layer supplies the OAuth app credentials (env > keychain >
+	// config). Text output only — the JSON shape is a stable array of hosts.
+	// A source counts only when BOTH halves resolved; a lone client ID or
+	// secret is unusable and must read as not configured.
+	if !opts.JSON {
+		if id, secret, source := resolveClientCredentials(cfg); id != "" && secret != "" {
+			fmt.Fprintf(opts.IO.Out, "OAuth credentials: %s\n\n", source)
+		} else {
+			fmt.Fprintf(opts.IO.Out, "OAuth credentials: %s\n\n", output.Warning.Render("not configured"))
+		}
+	}
+
 	if len(cfg.Hosts) == 0 {
 		if opts.JSON {
 			return output.JSON(opts.IO.Out, []AuthStatus{})

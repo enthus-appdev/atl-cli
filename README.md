@@ -36,14 +36,41 @@ atl confluence space list
 
 ## OAuth Setup
 
-The `atl auth setup` command will guide you through creating an OAuth app. Here's what it does:
+`atl auth login` needs OAuth app credentials (a client ID and secret). The
+client ID and secret are a coupled pair, so they are taken **together from the
+first layer that provides both** — the halves are never mixed across layers:
+
+1. **Environment variables** — `ATLASSIAN_CLIENT_ID` **and** `ATLASSIAN_CLIENT_SECRET` (both must be set; handy for CI)
+2. **OS keychain** — stored via `atl auth set-credentials` (recommended, especially for a shared app)
+3. **Config file** — `~/.config/atlassian/config.yaml`, written by `atl auth setup`
+
+If a layer supplies only one half (e.g. `ATLASSIAN_CLIENT_ID` alone), it is
+skipped and the next layer is tried.
+
+### Option A — store credentials in the OS keychain (recommended)
+
+Keeps the secret out of plaintext config. Works with a shared/organization app
+or your own. The secret can be piped in so it never hits your shell history:
+
+```bash
+atl auth set-credentials --client-id YOUR_ID --client-secret YOUR_SECRET
+# or pipe the secret (e.g. straight from a secret manager)
+printf '%s' "$SECRET" | atl auth set-credentials --client-id YOUR_ID --from-stdin
+```
+
+Remove them with `atl auth set-credentials --delete`.
+
+### Option B — create your own OAuth app
+
+`atl auth setup` guides you through it:
 
 1. Opens https://developer.atlassian.com/console/myapps/
 2. Walks you through creating an OAuth 2.0 integration
 3. Helps you configure the callback URL: `http://localhost:8085/callback`
-4. Stores your Client ID and Secret securely in `~/.config/atlassian/config.yaml`
+4. Stores your Client ID and Secret in `~/.config/atlassian/config.yaml`
 
-Alternatively, you can set environment variables (useful for CI/CD):
+### Option C — environment variables (useful for CI/CD)
+
 ```bash
 export ATLASSIAN_CLIENT_ID="your-client-id"
 export ATLASSIAN_CLIENT_SECRET="your-client-secret"
@@ -290,8 +317,8 @@ default_output_format: text
 
 ## Environment Variables
 
-- `ATLASSIAN_CLIENT_ID` - OAuth client ID (required for login)
-- `ATLASSIAN_CLIENT_SECRET` - OAuth client secret (required for login)
+- `ATLASSIAN_CLIENT_ID` - OAuth client ID (highest-precedence source for login; otherwise OS keychain, then config file)
+- `ATLASSIAN_CLIENT_SECRET` - OAuth client secret (highest-precedence source for login; otherwise OS keychain, then config file)
 - `ATLASSIAN_TOKEN` - Override access token
 - `ATLASSIAN_HOST` - Override default host
 - `ATLASSIAN_CONFIG_DIR` - Override config directory

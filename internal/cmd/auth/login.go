@@ -3,7 +3,6 @@ package auth
 import (
 	"context"
 	"fmt"
-	"os"
 	"strings"
 	"time"
 
@@ -60,22 +59,10 @@ func runLogin(opts *LoginOptions) error {
 		return fmt.Errorf("failed to load config: %w", err)
 	}
 
-	// Get OAuth credentials: env vars take precedence, then config file
-	clientID := os.Getenv("ATLASSIAN_CLIENT_ID")
-	clientSecret := os.Getenv("ATLASSIAN_CLIENT_SECRET")
-
-	// If not in env, try config file
-	if cfg.OAuth != nil {
-		if clientID == "" {
-			clientID = cfg.OAuth.ClientID
-		}
-		if clientSecret == "" {
-			clientSecret = cfg.OAuth.ClientSecret
-		}
-	}
-
-	if clientID == "" || clientSecret == "" {
-		return fmt.Errorf("oauth credentials not configured: run 'atl auth setup' to configure your OAuth app credentials, or set ATLASSIAN_CLIENT_ID and ATLASSIAN_CLIENT_SECRET environment variables")
+	// Resolve OAuth credentials: env vars > OS keychain > config file
+	clientID, clientSecret, _, err := requireClientCredentials(cfg)
+	if err != nil {
+		return err
 	}
 
 	// Get default scopes (granular Confluence + classic Jira)

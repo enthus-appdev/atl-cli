@@ -15,6 +15,7 @@ func NewCmdAuth(ios *iostreams.IOStreams) *cobra.Command {
 	}
 
 	cmd.AddCommand(NewCmdSetup(ios))
+	cmd.AddCommand(NewCmdSetCredentials(ios))
 	cmd.AddCommand(NewCmdLogin(ios))
 	cmd.AddCommand(NewCmdLogout(ios))
 	cmd.AddCommand(NewCmdStatus(ios))

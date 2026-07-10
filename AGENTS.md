@@ -463,9 +463,15 @@ fmt.Fprintf(opts.IO.Out, "Result: %s\n", value)
 
 ## OAuth Configuration
 
-OAuth 2.0 credentials can be configured two ways:
+`atl auth login`/`refresh` and the API client's auto-refresh resolve the OAuth
+app credentials as a **complete pair from the first layer that supplies both**
+halves — never mixed across layers (see `auth.ResolveClientCredentials`):
 
-1. **Interactive setup**: `atl auth setup` - walks through creating OAuth app
-2. **Environment variables**: `ATLASSIAN_CLIENT_ID` and `ATLASSIAN_CLIENT_SECRET`
+1. **Environment variables**: `ATLASSIAN_CLIENT_ID` **and** `ATLASSIAN_CLIENT_SECRET` (both required, else this layer is skipped)
+2. **OS keychain**: `atl auth set-credentials [--client-id X] [--client-secret Y | --from-stdin]` (recommended; `--delete` removes)
+3. **Config file** `~/.config/atlassian/config.yaml`: written by `atl auth setup` (interactive own-app wizard)
 
-Credentials stored in `~/.config/atlassian/config.yaml`. Tokens stored in system keyring.
+Client credentials in the keychain live under service `atlassian-cli-oauth` as a
+single JSON entry (`internal/auth/credentials.go`). Per-user access/refresh **tokens** are stored
+as files under `~/.config/atlassian/tokens/` (not the keychain — token blobs can
+exceed keychain size limits).

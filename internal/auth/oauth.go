@@ -17,11 +17,13 @@ import (
 const (
 	// AtlassianAuthURL is the authorization endpoint for Atlassian OAuth.
 	AtlassianAuthURL = "https://auth.atlassian.com/authorize"
-	// AtlassianTokenURL is the token endpoint for Atlassian OAuth.
-	AtlassianTokenURL = "https://auth.atlassian.com/oauth/token"
 	// AtlassianAPIURL is the base URL for Atlassian API requests.
 	AtlassianAPIURL = "https://api.atlassian.com"
 )
+
+// AtlassianTokenURL is the token endpoint for the OAuth code/refresh exchange.
+// It is a var, not a const, so a test can point the exchange at a local server.
+var AtlassianTokenURL = "https://auth.atlassian.com/oauth/token"
 
 // DefaultScopes returns the default OAuth scopes.
 // Includes both classic and granular scopes as the CLI uses both v1 and v2 APIs:
@@ -71,8 +73,10 @@ func DefaultScopes() []string {
 		// Confluence template scopes (v1 API)
 		"read:template:confluence",
 		"write:template:confluence",
-		// Jira Service Management scopes - for JSM REST API (read-only)
-		"read:servicedesk",
+		// Jira Service Management scopes - for JSM REST API (read-only).
+		// read:servicedesk-request already covers reading service desks and
+		// request types (what the sm commands call); a bare read:servicedesk is
+		// not a grantable Atlassian scope and is silently dropped from the token.
 		"read:servicedesk-request",
 		// Token refresh
 		"offline_access",
