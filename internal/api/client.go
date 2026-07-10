@@ -191,23 +191,17 @@ func (c *Client) ensureValidToken(ctx context.Context) error {
 		return nil
 	}
 
-	// Token is expired, try to refresh
-	clientID := os.Getenv("ATLASSIAN_CLIENT_ID")
-	clientSecret := os.Getenv("ATLASSIAN_CLIENT_SECRET")
-
-	if clientID == "" || clientSecret == "" {
-		if c.config != nil && c.config.OAuth != nil {
-			if clientID == "" {
-				clientID = c.config.OAuth.ClientID
-			}
-			if clientSecret == "" {
-				clientSecret = c.config.OAuth.ClientSecret
-			}
-		}
+	// Token is expired, try to refresh. Resolve credentials via the shared
+	// resolver (env > keychain > config) so auto-refresh works for keychain-only
+	// users, not just those with env vars or a config file.
+	var configID, configSecret string
+	if c.config != nil && c.config.OAuth != nil {
+		configID, configSecret = c.config.OAuth.ClientID, c.config.OAuth.ClientSecret
 	}
+	clientID, clientSecret, _ := auth.ResolveClientCredentials(configID, configSecret)
 
 	if clientID == "" || clientSecret == "" {
-		return fmt.Errorf("access token expired and cannot refresh: OAuth credentials not configured")
+		return fmt.Errorf("access token expired and cannot refresh: OAuth credentials not configured\nRun 'atl auth login', or provide credentials via ATLASSIAN_CLIENT_ID/SECRET, 'atl auth set-credentials', or 'atl auth setup'")
 	}
 
 	newTokens, err := auth.RefreshAccessToken(ctx, c.hostname, &auth.RefreshConfig{

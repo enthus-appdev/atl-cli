@@ -8,7 +8,10 @@ import (
 	"testing"
 	"time"
 
+	"github.com/zalando/go-keyring"
+
 	"github.com/enthus-appdev/atl-cli/internal/auth"
+	"github.com/enthus-appdev/atl-cli/internal/config"
 )
 
 // TestBuildQueryString tests the URL query string builder.
@@ -355,4 +358,59 @@ func containsAt(s, substr string, start int) bool {
 		}
 	}
 	return false
+}
+
+// TestEnsureValidTokenUsesKeychainCredentials drives the automatic token-refresh
+// path end to end with no env or config-file credentials, proving the refresh
+// resolves the OAuth client credentials from the OS keychain. A local server
+// stands in for Atlassian's token endpoint and records the client_id it received.
+func TestEnsureValidTokenUsesKeychainCredentials(t *testing.T) {
+	keyring.MockInit()
+	t.Setenv("ATLASSIAN_CLIENT_ID", "")
+	t.Setenv("ATLASSIAN_CLIENT_SECRET", "")
+	if err := auth.StoreClientCredentials(auth.ClientCredentials{ClientID: "kc-id", ClientSecret: "kc-secret"}); err != nil {
+		t.Fatalf("seed keychain: %v", err)
+	}
+
+	var gotClientID string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_ = r.ParseForm()
+		gotClientID = r.FormValue("client_id")
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(map[string]any{
+			"access_token":  "fresh-access",
+			"refresh_token": "fresh-refresh",
+			"token_type":    "Bearer",
+			"expires_in":    3600,
+			"scope":         "read:jira-work",
+		})
+	}))
+	defer srv.Close()
+
+	origURL := auth.AtlassianTokenURL
+	auth.AtlassianTokenURL = srv.URL
+	t.Cleanup(func() { auth.AtlassianTokenURL = origURL })
+
+	const host = "keychain-refresh-test.atlassian.net"
+	// RefreshAccessToken loads the refresh token from the file store, so seed it.
+	if err := auth.StoreToken(host, &auth.TokenSet{RefreshToken: "old-refresh", ExpiresAt: time.Now().Add(-time.Hour)}); err != nil {
+		t.Fatalf("seed token: %v", err)
+	}
+	t.Cleanup(func() { _ = auth.DeleteToken(host) })
+
+	c := &Client{
+		hostname: host,
+		tokens:   &auth.TokenSet{AccessToken: "expired", ExpiresAt: time.Now().Add(-time.Hour)},
+		config:   &config.Config{},
+	}
+
+	if err := c.ensureValidToken(context.Background()); err != nil {
+		t.Fatalf("ensureValidToken: %v", err)
+	}
+	if gotClientID != "kc-id" {
+		t.Fatalf("refresh used client_id %q, want kc-id (from keychain)", gotClientID)
+	}
+	if c.tokens.AccessToken != "fresh-access" {
+		t.Fatalf("token not refreshed, got %q", c.tokens.AccessToken)
+	}
 }

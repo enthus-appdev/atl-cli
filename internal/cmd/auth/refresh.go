@@ -3,7 +3,6 @@ package auth
 import (
 	"context"
 	"fmt"
-	"os"
 	"time"
 
 	"github.com/spf13/cobra"
@@ -73,23 +72,10 @@ func runRefresh(opts *RefreshOptions) error {
 		return fmt.Errorf("no configuration found for host %s\n\nRun 'atl auth login --hostname %s' first", hostname, hostname)
 	}
 
-	// Get OAuth credentials
-	clientID := os.Getenv("ATLASSIAN_CLIENT_ID")
-	clientSecret := os.Getenv("ATLASSIAN_CLIENT_SECRET")
-
-	if clientID == "" || clientSecret == "" {
-		if cfg.OAuth != nil {
-			if clientID == "" {
-				clientID = cfg.OAuth.ClientID
-			}
-			if clientSecret == "" {
-				clientSecret = cfg.OAuth.ClientSecret
-			}
-		}
-	}
-
-	if clientID == "" || clientSecret == "" {
-		return fmt.Errorf("OAuth credentials not configured\n\nRun 'atl auth setup' to configure your OAuth app credentials")
+	// Resolve OAuth credentials: env vars > OS keychain > config file
+	clientID, clientSecret, _, err := requireClientCredentials(cfg)
+	if err != nil {
+		return err
 	}
 
 	// Check current token status
