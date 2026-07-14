@@ -6,6 +6,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/AlecAivazis/survey/v2"
 	"github.com/spf13/cobra"
 
 	"github.com/enthus-appdev/atl-cli/internal/api"
@@ -145,21 +146,30 @@ func runLogin(opts *LoginOptions) error {
 		opts.Hostname = config.NormalizeHostname(opts.Hostname)
 	}
 
-	// Select resource (use first one or match hostname)
+	// Select the site to authenticate against. The OAuth callback never carries
+	// the site chosen in the browser consent screen — the token is account-wide
+	// and accessible-resources lists every site the account can reach. So when
+	// the target is ambiguous we ask rather than defaulting to an arbitrary
+	// resources[0], which silently lands on the wrong site.
 	var selectedResource *api.AccessibleResource
-	for _, r := range resources {
-		hostname := strings.TrimPrefix(r.URL, "https://")
-		if opts.Hostname == "" || hostname == opts.Hostname {
-			selectedResource = r
-			break
+	switch {
+	case opts.Hostname != "":
+		for _, r := range resources {
+			if strings.TrimPrefix(r.URL, "https://") == opts.Hostname {
+				selectedResource = r
+				break
+			}
 		}
-	}
-
-	if selectedResource == nil {
-		if opts.Hostname != "" {
+		if selectedResource == nil {
 			return fmt.Errorf("site %s not found in accessible resources", opts.Hostname)
 		}
+	case len(resources) == 1:
 		selectedResource = resources[0]
+	default:
+		selectedResource, err = selectResource(opts.IO, resources)
+		if err != nil {
+			return err
+		}
 	}
 
 	hostname := strings.TrimPrefix(selectedResource.URL, "https://")
@@ -187,4 +197,30 @@ func runLogin(opts *LoginOptions) error {
 	fmt.Fprintf(opts.IO.Out, "Cloud ID: %s\n", selectedResource.ID)
 
 	return nil
+}
+
+// selectResource asks the user which accessible site to authenticate against.
+// Non-interactive stdin errors out with guidance rather than guessing, so a
+// scripted login can never silently land on the wrong site.
+func selectResource(io *iostreams.IOStreams, resources []*api.AccessibleResource) (*api.AccessibleResource, error) {
+	if !io.IsStdinTTY {
+		return nil, fmt.Errorf("account can access %d Atlassian sites; re-run with --hostname to choose one (e.g. --hostname %s)",
+			len(resources), strings.TrimPrefix(resources[0].URL, "https://"))
+	}
+
+	options := make([]string, len(resources))
+	for i, r := range resources {
+		options[i] = fmt.Sprintf("%s (%s)", strings.TrimPrefix(r.URL, "https://"), r.Name)
+	}
+
+	var idx int
+	prompt := &survey.Select{
+		Message: "Select the Atlassian site to log in to:",
+		Options: options,
+	}
+	if err := survey.AskOne(prompt, &idx); err != nil {
+		return nil, fmt.Errorf("site selection canceled: %w", err)
+	}
+
+	return resources[idx], nil
 }
