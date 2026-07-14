@@ -51,5 +51,21 @@ func GetAccessibleResources(ctx context.Context, accessToken string) ([]*Accessi
 		return nil, fmt.Errorf("failed to parse response: %w", err)
 	}
 
-	return resources, nil
+	return dedupeResources(resources), nil
+}
+
+// dedupeResources collapses repeated sites to one entry per cloud ID, preserving
+// first-seen order. Atlassian can list the same site more than once — one entry
+// per overlapping scope grant — which would otherwise surface as duplicate rows.
+func dedupeResources(resources []*AccessibleResource) []*AccessibleResource {
+	seen := make(map[string]struct{}, len(resources))
+	unique := make([]*AccessibleResource, 0, len(resources))
+	for _, r := range resources {
+		if _, dup := seen[r.ID]; dup {
+			continue
+		}
+		seen[r.ID] = struct{}{}
+		unique = append(unique, r)
+	}
+	return unique
 }
