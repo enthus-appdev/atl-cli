@@ -219,7 +219,7 @@ func selectResource(io *iostreams.IOStreams, resources []*api.AccessibleResource
 		Options: options,
 	}
 	if err := survey.AskOne(prompt, &idx); err != nil {
-		return nil, fmt.Errorf("site selection cancelled: %w", err)
+		return nil, fmt.Errorf("site selection canceled: %w", err)
 	}
 
 	return resources[idx], nil
