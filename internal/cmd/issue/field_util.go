@@ -24,9 +24,10 @@ func isSystemField(name string) bool {
 }
 
 // projectKeyFromIssueKey returns the project key portion of an issue key
-// (e.g. "NX-1234" -> "NX"). Returns "" when the key has no "-" separator.
+// (e.g. "NX-1234" -> "NX"). Jira project keys contain no hyphens, so the key is
+// everything before the first hyphen. Returns "" when there is no hyphen.
 func projectKeyFromIssueKey(issueKey string) string {
-	if idx := strings.LastIndex(issueKey, "-"); idx > 0 {
+	if idx := strings.Index(issueKey, "-"); idx > 0 {
 		return issueKey[:idx]
 	}
 	return ""

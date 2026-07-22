@@ -43,7 +43,7 @@ func TestProjectKeyFromIssueKey(t *testing.T) {
 	}{
 		{"NX-1234", "NX"},
 		{"PROJ-1", "PROJ"},
-		{"ABC-DEF-5", "ABC-DEF"}, // split on the last hyphen
+		{"ABC-DEF-5", "ABC"}, // project key is before the first hyphen
 		{"NX", ""},
 		{"", ""},
 		{"-5", ""},

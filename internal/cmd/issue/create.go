@@ -27,6 +27,7 @@ type CreateOptions struct {
 	Priority     string
 	Parent       string
 	Security     string
+	SecuritySet  bool
 	CustomFields []string
 	FieldFile    string
 	Web          bool
@@ -87,6 +88,7 @@ func NewCmdCreate(ios *iostreams.IOStreams) *cobra.Command {
 			if len(missing) > 0 {
 				return fmt.Errorf("required flags not set: %v\n\nExample: atl jira issue create --project PROJ --type Bug --summary \"Issue title\"", missing)
 			}
+			opts.SecuritySet = cmd.Flags().Changed("security")
 			return runCreate(opts)
 		},
 	}
@@ -197,6 +199,11 @@ func runCreate(opts *CreateOptions) error {
 			return err
 		}
 		req.Fields.Security = &api.SecurityID{ID: levelID}
+	} else if opts.SecuritySet {
+		// Fail loudly rather than silently ignoring --security "" on create: a
+		// new issue takes the project's default level, and clearing it is an
+		// edit operation (see the --security "" branch of `edit`).
+		return fmt.Errorf("clearing the security level is not supported on create; create the issue, then: atl jira issue edit <key> --security \"\"")
 	}
 
 	// Parse custom fields from file first (if provided)
