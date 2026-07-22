@@ -597,15 +597,14 @@ type SecurityLevel struct {
 	Description string `json:"description,omitempty"`
 }
 
-// projectSecurityLevelsResponse is the response from the project securitylevel endpoint.
 type projectSecurityLevelsResponse struct {
 	Levels []*SecurityLevel `json:"levels"`
 }
 
-// GetProjectSecurityLevels returns the issue security levels available in a
-// project. The security-level field is absent from createmeta (it is not on the
-// create screen), so this dedicated endpoint is the source for discovering and
-// resolving levels. A project with no issue-security scheme returns an empty list.
+// GetProjectSecurityLevels returns a project's available issue security
+// levels. Since the security-level field is absent from createmeta (not on
+// the create screen), this endpoint is the source to discover and resolve
+// levels. A project with no issue-security scheme returns an empty list.
 func (s *JiraService) GetProjectSecurityLevels(ctx context.Context, projectKey string) ([]*SecurityLevel, error) {
 	path := fmt.Sprintf("%s/project/%s/securitylevel", s.client.JiraBaseURL(), url.PathEscape(projectKey))
 

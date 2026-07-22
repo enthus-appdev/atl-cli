@@ -29,9 +29,9 @@ func TestProjectKeyFromIssueKey(t *testing.T) {
 		{"NX-1234", "NX"},
 		{"PROJ-1", "PROJ"},
 		{"ABC-DEF-5", "ABC-DEF"}, // split on the last hyphen
-		{"NX", ""},               // no hyphen
+		{"NX", ""},
 		{"", ""},
-		{"-5", ""}, // leading hyphen has no project part
+		{"-5", ""},
 	}
 	for _, tt := range tests {
 		if got := projectKeyFromIssueKey(tt.in); got != tt.want {

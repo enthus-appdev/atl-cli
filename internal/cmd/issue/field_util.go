@@ -32,10 +32,10 @@ func projectKeyFromIssueKey(issueKey string) string {
 	return ""
 }
 
-// matchSecurityLevel resolves a user-supplied name or numeric id against a
-// project's available issue security levels. Numeric input matches by id;
-// otherwise matching is by name, case-insensitive. Returns an error naming the
-// available levels when the input is unknown, so the caller can surface them.
+// matchSecurityLevel resolves a user-supplied name or numeric id against
+// a project's issue security levels. Numeric input matches by id; others
+// match by case-insensitive name. If unknown, returns an error listing
+// available levels for the caller to surface.
 func matchSecurityLevel(levels []*api.SecurityLevel, input string) (*api.SecurityLevel, error) {
 	trimmed := strings.TrimSpace(input)
 	for _, l := range levels {

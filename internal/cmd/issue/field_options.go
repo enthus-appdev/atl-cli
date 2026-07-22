@@ -144,9 +144,9 @@ func runFieldOptions(opts *FieldOptionsOptions) error {
 		results = append(results, result)
 	}
 
-	// The issue security level is project-scoped and absent from createmeta (it
-	// is not on the create screen), so surface it as a synthetic field here —
-	// this is the discovery path for the --security flag on create/edit.
+	// The issue security level is project-scoped and absent from createmeta (not
+	// on the create screen); surface it here as a synthetic field — the discovery
+	// path for the --security flag on create/edit.
 	if opts.Field == "" || strings.Contains("security level", fieldLower) {
 		levels, err := jira.GetProjectSecurityLevels(ctx, opts.Project)
 		if err != nil {

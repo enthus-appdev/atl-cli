@@ -180,9 +180,8 @@ func runEdit(opts *EditOptions) error {
 		editOutput.FieldsUpdated = append(editOutput.FieldsUpdated, "priority")
 	}
 
-	// A passed --security flag sets the level; an empty value clears it (JSON
-	// null). Distinguished from "not passed" via SecuritySet so an edit of other
-	// fields never touches security.
+	// The --security flag sets the level; empty clears it (JSON null).
+	// SecuritySet distinguishes "not passed" so other field edits never touch security.
 	if opts.SecuritySet {
 		if opts.Security == "" {
 			req.Fields["security"] = nil
