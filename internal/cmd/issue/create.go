@@ -26,6 +26,8 @@ type CreateOptions struct {
 	Labels       []string
 	Priority     string
 	Parent       string
+	Security     string
+	SecuritySet  bool
 	CustomFields []string
 	FieldFile    string
 	Web          bool
@@ -63,6 +65,9 @@ func NewCmdCreate(ios *iostreams.IOStreams) *cobra.Command {
   # Or use field ID directly
   atl jira issue create --project PROJ --type Story --summary "New story" --field customfield_10016=5
 
+  # Restrict visibility with an issue security level (by name; see field-options)
+  atl jira issue create --project PROJ --type Bug --summary "Sensitive" --security "Developer only"
+
   # Use a JSON file for complex field values (like ADF rich text)
   atl jira issue create --project PROJ --type Task --summary "Task" --field-file fields.json
 
@@ -83,6 +88,13 @@ func NewCmdCreate(ios *iostreams.IOStreams) *cobra.Command {
 			if len(missing) > 0 {
 				return fmt.Errorf("required flags not set: %v\n\nExample: atl jira issue create --project PROJ --type Bug --summary \"Issue title\"", missing)
 			}
+			opts.SecuritySet = cmd.Flags().Changed("security")
+			if opts.SecuritySet && opts.Security == "" {
+				// Fail loudly rather than silently ignoring --security "" on
+				// create: a new issue takes the project's default level, and
+				// clearing it is an edit operation (see edit's --security "").
+				return fmt.Errorf("clearing the security level is not supported on create; create the issue, then: atl jira issue edit <key> --security \"\"")
+			}
 			return runCreate(opts)
 		},
 	}
@@ -95,6 +107,7 @@ func NewCmdCreate(ios *iostreams.IOStreams) *cobra.Command {
 	cmd.Flags().StringSliceVarP(&opts.Labels, "label", "l", nil, "Labels to add")
 	cmd.Flags().StringVar(&opts.Priority, "priority", "", "Priority level")
 	cmd.Flags().StringVar(&opts.Parent, "parent", "", "Parent issue key (for subtasks)")
+	cmd.Flags().StringVar(&opts.Security, "security", "", "Issue security level by name or id (see 'field-options')")
 	cmd.Flags().StringArrayVarP(&opts.CustomFields, "field", "f", nil, "Custom field in key=value format (can be repeated)")
 	cmd.Flags().StringVar(&opts.FieldFile, "field-file", "", "JSON file with field values (for complex types like ADF)")
 	cmd.Flags().BoolVarP(&opts.Web, "web", "w", false, "Open created issue in browser")
@@ -184,6 +197,14 @@ func runCreate(opts *CreateOptions) error {
 
 	if opts.Parent != "" {
 		req.Fields.Parent = &api.ParentID{Key: opts.Parent}
+	}
+
+	if opts.Security != "" {
+		levelID, err := resolveSecurityLevelID(ctx, jira, opts.Project, opts.Security)
+		if err != nil {
+			return err
+		}
+		req.Fields.Security = &api.SecurityID{ID: levelID}
 	}
 
 	// Parse custom fields from file first (if provided)

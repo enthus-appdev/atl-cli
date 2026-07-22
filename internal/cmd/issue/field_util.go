@@ -18,8 +18,72 @@ func isSystemField(name string) bool {
 		"fixversions": true, "versions": true, "duedate": true,
 		"environment": true, "resolution": true, "status": true,
 		"created": true, "updated": true, "parent": true,
+		"security": true,
 	}
 	return systemFields[strings.ToLower(name)]
+}
+
+// projectKeyFromIssueKey returns the project key portion of an issue key
+// (e.g. "NX-1234" -> "NX"). Jira project keys contain no hyphens, so the key is
+// everything before the first hyphen. Returns "" when there is no hyphen.
+func projectKeyFromIssueKey(issueKey string) string {
+	if idx := strings.Index(issueKey, "-"); idx > 0 {
+		return issueKey[:idx]
+	}
+	return ""
+}
+
+// securityFilterMatches reports whether a lowercased --field filter should
+// surface the synthetic "Security Level" row. The filter must be a prefix of
+// "securitylevel" (min 3 chars) after stripping spaces/hyphens/underscores, so
+// "sec", "security", "security level", and "securitylevel" match while a short
+// common letter ("s") or an unrelated substring ("level") does not — a prefix
+// is how a user narrows toward this field, and it keeps a stray one-letter
+// filter from triggering the (explicit-request) security fetch.
+func securityFilterMatches(fieldLower string) bool {
+	norm := strings.NewReplacer(" ", "", "-", "", "_", "").Replace(fieldLower)
+	return len(norm) >= 3 && strings.HasPrefix("securitylevel", norm)
+}
+
+// matchSecurityLevel resolves a user-supplied name or numeric id against
+// a project's issue security levels. Numeric input matches by id; others
+// match by case-insensitive name. If unknown, returns an error listing
+// available levels for the caller to surface.
+func matchSecurityLevel(levels []*api.SecurityLevel, input string) (*api.SecurityLevel, error) {
+	trimmed := strings.TrimSpace(input)
+	for _, l := range levels {
+		if l.ID == trimmed {
+			return l, nil
+		}
+	}
+	for _, l := range levels {
+		if strings.EqualFold(l.Name, trimmed) {
+			return l, nil
+		}
+	}
+
+	available := make([]string, 0, len(levels))
+	for _, l := range levels {
+		available = append(available, l.Name)
+	}
+	if len(available) == 0 {
+		return nil, fmt.Errorf("security level %q not found: project has no issue security scheme", input)
+	}
+	return nil, fmt.Errorf("security level %q not found\n\nAvailable levels: %s", input, strings.Join(available, ", "))
+}
+
+// resolveSecurityLevelID fetches a project's security levels and resolves the
+// input (name or id) to its numeric id, ready for the "security" field.
+func resolveSecurityLevelID(ctx context.Context, jira *api.JiraService, projectKey, input string) (string, error) {
+	levels, err := jira.GetProjectSecurityLevels(ctx, projectKey)
+	if err != nil {
+		return "", fmt.Errorf("failed to get security levels for project %s: %w", projectKey, err)
+	}
+	level, err := matchSecurityLevel(levels, input)
+	if err != nil {
+		return "", err
+	}
+	return level.ID, nil
 }
 
 // ParseCustomField resolves a key=value pair into a field ID and properly

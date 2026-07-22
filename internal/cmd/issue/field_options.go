@@ -144,6 +144,39 @@ func runFieldOptions(opts *FieldOptionsOptions) error {
 		results = append(results, result)
 	}
 
+	// The issue security level is project-scoped and absent from createmeta (not
+	// on the create screen); surface it here as a synthetic field — the discovery
+	// path for the --security flag on create/edit.
+	explicitSecurity := opts.Field != "" && securityFilterMatches(fieldLower)
+	if opts.Field == "" || explicitSecurity {
+		levels, err := jira.GetProjectSecurityLevels(ctx, opts.Project)
+		if err != nil {
+			if explicitSecurity {
+				// The user asked specifically for the security field; a fetch
+				// failure must surface, not masquerade as "no levels exist" and
+				// exit 0 — a script can't tell that apart from an empty result.
+				return fmt.Errorf("failed to get security levels: %w", err)
+			}
+			// Unfiltered listing: a missing scheme or lacking permission is
+			// expected and must not fail the whole command (field metadata above
+			// already succeeded). Warn so a genuine failure isn't hidden, drop the row.
+			fmt.Fprintf(opts.IO.ErrOut, "warning: could not fetch security levels: %v\n", err)
+			levels = nil
+		}
+		if len(levels) > 0 {
+			names := make([]string, 0, len(levels))
+			for _, l := range levels {
+				names = append(names, l.Name)
+			}
+			results = append(results, &FieldOptionOutput{
+				FieldID:       "security",
+				Name:          "Security Level",
+				Type:          "securitylevel",
+				AllowedValues: names,
+			})
+		}
+	}
+
 	// Sort by name
 	sort.Slice(results, func(i, j int) bool {
 		return results[i].Name < results[j].Name

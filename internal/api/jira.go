@@ -410,7 +410,13 @@ type CreateIssueFields struct {
 	Priority     *PriorityID            `json:"priority,omitempty"`
 	Labels       []string               `json:"labels,omitempty"`
 	Parent       *ParentID              `json:"parent,omitempty"`
+	Security     *SecurityID            `json:"security,omitempty"`
 	CustomFields map[string]interface{} `json:"-"` // Merged during marshaling
+}
+
+// SecurityID sets an issue security level by its numeric id.
+type SecurityID struct {
+	ID string `json:"id"`
 }
 
 // MarshalJSON implements custom JSON marshaling to include custom fields.
@@ -436,6 +442,9 @@ func (r *CreateIssueRequest) MarshalJSON() ([]byte, error) {
 	}
 	if r.Fields.Parent != nil {
 		fields["parent"] = r.Fields.Parent
+	}
+	if r.Fields.Security != nil {
+		fields["security"] = r.Fields.Security
 	}
 
 	// Merge custom fields
@@ -579,6 +588,87 @@ func (s *JiraService) GetFieldOptions(ctx context.Context, projectKey, issueType
 	}
 
 	return allFields, nil
+}
+
+// SecurityLevel represents an issue security level available in a project.
+type SecurityLevel struct {
+	ID          string `json:"id"`
+	Name        string `json:"name"`
+	Description string `json:"description,omitempty"`
+}
+
+type projectSecurityLevelsResponse struct {
+	Levels []*SecurityLevel `json:"levels"`
+}
+
+// GetProjectSecurityLevels returns a project's available issue security
+// levels. Since the security-level field is absent from createmeta (not on
+// the create screen), this endpoint is the source to discover and resolve
+// levels. A project with no issue-security scheme returns an empty list.
+func (s *JiraService) GetProjectSecurityLevels(ctx context.Context, projectKey string) ([]*SecurityLevel, error) {
+	path := fmt.Sprintf("%s/project/%s/securitylevel", s.client.JiraBaseURL(), url.PathEscape(projectKey))
+
+	var result projectSecurityLevelsResponse
+	if err := s.client.Get(ctx, path, &result); err != nil {
+		return nil, err
+	}
+
+	return result.Levels, nil
+}
+
+// validateRawPath confines a passthrough path to the REST v3 base. The path
+// component is required to be plain — no scheme/host (which would point at
+// another host), and no "%", ";", or "\" (percent-encoding, Tomcat path
+// parameters, and backslashes each smuggle a decoded ".." past a segment scan
+// and out of /rest/api/3, and double-encoding defeats any decode-then-scan).
+// An allowlist ("plain segments only") closes that whole bypass class where a
+// blocklist would chase each encoding. Encoded values belong in the query
+// string, which is left untouched. This is a namespace guardrail, not an authz
+// boundary: the caller is already authenticated as themselves and could reach
+// any endpoint their own credentials permit — the guard only keeps the command
+// behaving as documented.
+func validateRawPath(apiPath string) error {
+	u, err := url.Parse(apiPath)
+	if err != nil {
+		return fmt.Errorf("invalid path %q: %w", apiPath, err)
+	}
+	if u.IsAbs() || u.Host != "" {
+		return fmt.Errorf("path must be relative to the Jira REST base, not an absolute URL: %q", apiPath)
+	}
+
+	// Path component only (before any "?" query or "#" fragment).
+	rawPath := apiPath
+	if i := strings.IndexAny(rawPath, "?#"); i >= 0 {
+		rawPath = rawPath[:i]
+	}
+	if strings.ContainsAny(rawPath, `%;\`) {
+		return fmt.Errorf("path must be plain (no %%-encoding, ';', or '\\'); put encoded values in the query string: %q", apiPath)
+	}
+	for _, seg := range strings.Split(u.Path, "/") {
+		if seg == ".." {
+			return fmt.Errorf("path must not contain %q segments: %q", "..", apiPath)
+		}
+	}
+	return nil
+}
+
+// RawGet performs a read-only GET against a path relative to the Jira REST base
+// (e.g. "issue/NX-1/editmeta") and returns the raw JSON body. It is the escape
+// hatch for endpoints atl does not model as first-class commands; the path is
+// confined to the REST base via validateRawPath so it cannot reach another host
+// or climb above /rest/api/3.
+func (s *JiraService) RawGet(ctx context.Context, apiPath string) (json.RawMessage, error) {
+	if err := validateRawPath(apiPath); err != nil {
+		return nil, err
+	}
+	path := fmt.Sprintf("%s/%s", s.client.JiraBaseURL(), strings.TrimPrefix(apiPath, "/"))
+
+	var result json.RawMessage
+	if err := s.client.Get(ctx, path, &result); err != nil {
+		return nil, err
+	}
+
+	return result, nil
 }
 
 // GetPriorities gets all available priorities in the Jira instance.

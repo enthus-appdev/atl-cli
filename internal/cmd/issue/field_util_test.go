@@ -2,10 +2,117 @@ package issue
 
 import (
 	"reflect"
+	"strings"
 	"testing"
 
 	"github.com/enthus-appdev/atl-cli/internal/api"
 )
+
+// TestIsSystemField_Security guards that "security" resolves as a system field.
+// If it were treated as a custom field, a field-file keyed on "security" would
+// be sent through name-to-ID lookup and rejected (the security field is absent
+// from the field list), which was the original friction this work removes.
+func TestIsSystemField_Security(t *testing.T) {
+	if !isSystemField("security") {
+		t.Error("isSystemField(\"security\") = false, want true")
+	}
+	if !isSystemField("Security") {
+		t.Error("isSystemField(\"Security\") = false, want true (case-insensitive)")
+	}
+}
+
+func TestSecurityFilterMatches(t *testing.T) {
+	match := []string{"security level", "security", "securitylevel", "security-level", "security_level", "sec"}
+	for _, f := range match {
+		if !securityFilterMatches(f) {
+			t.Errorf("securityFilterMatches(%q) = false, want true", f)
+		}
+	}
+	// "level" is not a prefix of "securitylevel"; "s"/"se" are below the min
+	// length — none should trigger the (explicit-request) security fetch.
+	noMatch := []string{"", "s", "se", "level", "story points", "priority", "assignee"}
+	for _, f := range noMatch {
+		if securityFilterMatches(f) {
+			t.Errorf("securityFilterMatches(%q) = true, want false", f)
+		}
+	}
+}
+
+func TestProjectKeyFromIssueKey(t *testing.T) {
+	tests := []struct {
+		in   string
+		want string
+	}{
+		{"NX-1234", "NX"},
+		{"PROJ-1", "PROJ"},
+		{"ABC-DEF-5", "ABC"}, // project key is before the first hyphen
+		{"NX", ""},
+		{"", ""},
+		{"-5", ""},
+	}
+	for _, tt := range tests {
+		if got := projectKeyFromIssueKey(tt.in); got != tt.want {
+			t.Errorf("projectKeyFromIssueKey(%q) = %q, want %q", tt.in, got, tt.want)
+		}
+	}
+}
+
+func TestMatchSecurityLevel(t *testing.T) {
+	levels := []*api.SecurityLevel{
+		{ID: "10000", Name: "Developer only"},
+		{ID: "10001", Name: "Managers"},
+	}
+
+	t.Run("by exact name", func(t *testing.T) {
+		got, err := matchSecurityLevel(levels, "Developer only")
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if got.ID != "10000" {
+			t.Errorf("ID = %q, want 10000", got.ID)
+		}
+	})
+
+	t.Run("by name case-insensitive", func(t *testing.T) {
+		got, err := matchSecurityLevel(levels, "developer ONLY")
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if got.ID != "10000" {
+			t.Errorf("ID = %q, want 10000", got.ID)
+		}
+	})
+
+	t.Run("by numeric id", func(t *testing.T) {
+		got, err := matchSecurityLevel(levels, "10001")
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if got.Name != "Managers" {
+			t.Errorf("Name = %q, want Managers", got.Name)
+		}
+	})
+
+	t.Run("unknown lists available", func(t *testing.T) {
+		_, err := matchSecurityLevel(levels, "Nope")
+		if err == nil {
+			t.Fatal("expected error for unknown level")
+		}
+		if !strings.Contains(err.Error(), "Developer only") || !strings.Contains(err.Error(), "Managers") {
+			t.Errorf("error should list available levels, got: %v", err)
+		}
+	})
+
+	t.Run("no scheme", func(t *testing.T) {
+		_, err := matchSecurityLevel(nil, "Developer only")
+		if err == nil {
+			t.Fatal("expected error when project has no levels")
+		}
+		if !strings.Contains(err.Error(), "no issue security scheme") {
+			t.Errorf("error should mention missing scheme, got: %v", err)
+		}
+	})
+}
 
 // TestCoerceFieldValue_LabelsCustomField reproduces a bug where label-typed
 // custom fields (e.g. NX `Repo`, `Application`) were rejected by Jira because

@@ -66,7 +66,12 @@ atl jira issue list --jql "sprint in openSprints() AND assignee = currentUser()"
 atl jira issue create --project PROJ --type Bug --summary "Title"
 atl jira issue create --project PROJ --type Task --summary "Title" --description "Details"
 atl jira issue create --project PROJ --parent PROJ-123 --summary "Subtask"
+atl jira issue create --project PROJ --type Bug --summary "Title" --security "Developer only"
 ```
+
+**`--security`**: restricts issue visibility to an issue security level, by name
+(case-insensitive) or numeric id. Discover valid levels with
+`atl jira issue field-options --project PROJ --type Bug` (the "Security Level" row).
 
 ### Edit Issues
 
@@ -78,11 +83,14 @@ atl jira issue edit PROJ-1234 --assignee @me
 atl jira issue edit PROJ-1234 --add-label bug --remove-label wontfix
 atl jira issue edit PROJ-1234 --field "Story Points=8"
 atl jira issue edit PROJ-1234 --field "Custom Field=Some **markdown** text"  # Auto-converts to ADF
+atl jira issue edit PROJ-1234 --security "Developer only"   # Set issue security level
+atl jira issue edit PROJ-1234 --security ""                 # Clear issue security level
 ```
 
 **Notes**:
 - `--append` preserves existing description content (including embedded media) and adds new content at the end
 - Textarea custom fields automatically convert Markdown to ADF format
+- `--security` sets an issue security level by name or id; pass `--security ""` to clear it. Not passing the flag leaves the level untouched. Discover valid levels with `field-options` (below).
 
 ### Transitions and Workflow
 
@@ -140,6 +148,25 @@ atl jira issue fields --search "story points"            # Search for field by n
 atl jira issue field-options --project PROJ --type Bug   # Show allowed values for fields
 atl jira issue field-options --project PROJ --type Bug --field "Priority"  # Specific field
 ```
+
+`field-options` also lists the project's issue **security levels** as a synthetic
+"Security Level" row (feed the value to `--security` on create/edit). Security
+levels are project-scoped, so the row is identical across issue types.
+
+### Read-only API passthrough
+
+For read-only endpoints atl does not model as first-class commands (editmeta,
+project metadata, and similar lookups), use the GET passthrough. Only GET is
+supported — there is no write passthrough by design.
+
+```bash
+atl jira api GET issue/PROJ-1234/editmeta     # Allowed fields + values for an edit
+atl jira api project/PROJ/securitylevel       # Method arg optional; defaults to GET
+atl jira api GET issue/PROJ-1234/editmeta | jq '.fields | keys'
+```
+
+The `<path>` is relative to the Jira REST v3 base (`.../rest/api/3`), with or
+without a leading slash. The JSON response is pretty-printed.
 
 ## Jira Boards
 

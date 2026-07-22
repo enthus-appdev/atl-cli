@@ -649,3 +649,109 @@ func TestGetChangelog(t *testing.T) {
 		t.Errorf("ToString = %q, want %q", result.Values[0].Items[0].ToString, "In Progress")
 	}
 }
+
+// TestCreateIssueRequest_MarshalJSON_Security verifies the security level is
+// emitted under the "security" field key as {"id": ...} — the shape Jira's
+// create endpoint expects for an issue security level.
+func TestCreateIssueRequest_MarshalJSON_Security(t *testing.T) {
+	req := &CreateIssueRequest{
+		Fields: CreateIssueFields{
+			Project:   &ProjectID{Key: "NX"},
+			Summary:   "s",
+			IssueType: &IssueTypeID{Name: "Bug"},
+			Security:  &SecurityID{ID: "10000"},
+		},
+	}
+	data, err := json.Marshal(req)
+	if err != nil {
+		t.Fatalf("marshal failed: %v", err)
+	}
+	var decoded struct {
+		Fields struct {
+			Security *struct {
+				ID string `json:"id"`
+			} `json:"security"`
+		} `json:"fields"`
+	}
+	if err := json.Unmarshal(data, &decoded); err != nil {
+		t.Fatalf("unmarshal failed: %v (%s)", err, data)
+	}
+	if decoded.Fields.Security == nil {
+		t.Fatalf("security field missing from payload: %s", data)
+	}
+	if decoded.Fields.Security.ID != "10000" {
+		t.Errorf("security.id = %q, want 10000", decoded.Fields.Security.ID)
+	}
+}
+
+// TestCreateIssueRequest_MarshalJSON_NoSecurity verifies the security key is
+// omitted entirely when no level is set (Jira must not receive a null/empty
+// security object on an ordinary create).
+func TestCreateIssueRequest_MarshalJSON_NoSecurity(t *testing.T) {
+	req := &CreateIssueRequest{
+		Fields: CreateIssueFields{
+			Project:   &ProjectID{Key: "NX"},
+			Summary:   "s",
+			IssueType: &IssueTypeID{Name: "Bug"},
+		},
+	}
+	data, err := json.Marshal(req)
+	if err != nil {
+		t.Fatalf("marshal failed: %v", err)
+	}
+	if strings.Contains(string(data), "security") {
+		t.Errorf("unset security should be omitted, got: %s", data)
+	}
+}
+
+func TestValidateRawPath(t *testing.T) {
+	valid := []string{
+		"issue/NX-1/editmeta",
+		"/project/NX/securitylevel",
+		"issue/NX-1234/editmeta",
+		"field",
+	}
+	for _, p := range valid {
+		if err := validateRawPath(p); err != nil {
+			t.Errorf("validateRawPath(%q) = %v, want nil", p, err)
+		}
+	}
+
+	invalid := []string{
+		"../../admin",
+		"issue/../../rest/api/2/x",
+		"https://evil.example/x",
+		"http://api.atlassian.com/x",
+		"%2e%2e/%2e%2e/admin",        // percent-encoded ".."
+		"issue%2f..%2f..%2fadmin",    // encoded slashes hiding ".."
+		`..\..\admin`,                // backslash traversal
+		"issue/NX-1/..;jsessionid/x", // Tomcat semicolon path parameter
+		"%252e%252e/admin",           // double-encoded ".."
+		"issue/%2Aall",               // stray percent-encoding in path
+	}
+	for _, p := range invalid {
+		if err := validateRawPath(p); err == nil {
+			t.Errorf("validateRawPath(%q) = nil, want error", p)
+		}
+	}
+
+	// A query value containing "/../" is legitimate (it is data, not a path
+	// segment) and must not be a false positive.
+	if err := validateRawPath("search?jql=text~\"a/../b\""); err != nil {
+		t.Errorf("validateRawPath with /../ in query = %v, want nil", err)
+	}
+}
+
+// TestRawGet_ValidationBeforeNetwork verifies RawGet rejects an unsafe path via
+// validateRawPath before constructing any request — the security barrier must
+// hold even with a client that has no usable transport.
+func TestRawGet_ValidationBeforeNetwork(t *testing.T) {
+	jira := NewJiraService(&Client{})
+	_, err := jira.RawGet(context.Background(), "../../admin")
+	if err == nil {
+		t.Fatal("expected validation error for traversal path, got nil")
+	}
+	if !strings.Contains(err.Error(), "..") {
+		t.Errorf("error = %q, want a traversal-rejection message", err.Error())
+	}
+}

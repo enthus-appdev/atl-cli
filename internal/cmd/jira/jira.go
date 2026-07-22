@@ -25,6 +25,7 @@ func NewCmdJira(ios *iostreams.IOStreams) *cobra.Command {
 	cmd.AddCommand(smCmd.NewCmdSM(ios))
 	cmd.AddCommand(sprintCmd.NewCmdSprint(ios))
 	cmd.AddCommand(assetsCmd.NewCmdAssets(ios))
+	cmd.AddCommand(NewCmdAPI(ios))
 
 	return cmd
 }
