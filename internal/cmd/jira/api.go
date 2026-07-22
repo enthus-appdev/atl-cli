@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"strings"
 
 	"github.com/spf13/cobra"
@@ -82,17 +83,23 @@ func runAPI(opts *APIOptions) error {
 		return fmt.Errorf("request failed: %w", err)
 	}
 
-	// Indent the raw bytes rather than decoding into interface{} and re-encoding:
-	// a round-trip through interface{} coerces every JSON number to float64,
-	// silently corrupting integers above 2^53 (Jira ids can exceed it). json.Indent
-	// reflows whitespace without touching the values.
+	return writeIndentedJSON(opts.IO.Out, raw)
+}
+
+// writeIndentedJSON pretty-prints raw JSON bytes, falling back to verbatim
+// output when the body is not JSON. It indents the raw bytes rather than
+// decoding into interface{} and re-encoding: a round-trip through interface{}
+// coerces every JSON number to float64, silently corrupting integers above 2^53
+// (Jira ids can exceed it). json.Indent reflows whitespace without touching the
+// values.
+func writeIndentedJSON(w io.Writer, raw json.RawMessage) error {
 	var buf bytes.Buffer
 	if err := json.Indent(&buf, raw, "", "  "); err != nil {
 		// Not JSON (unexpected for the REST API) — emit the raw bytes verbatim.
-		fmt.Fprintln(opts.IO.Out, string(raw))
+		fmt.Fprintln(w, string(raw))
 		return nil
 	}
 	buf.WriteByte('\n')
-	_, err = opts.IO.Out.Write(buf.Bytes())
+	_, err := w.Write(buf.Bytes())
 	return err
 }

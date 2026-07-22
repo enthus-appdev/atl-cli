@@ -21,6 +21,21 @@ func TestIsSystemField_Security(t *testing.T) {
 	}
 }
 
+func TestSecurityFilterMatches(t *testing.T) {
+	match := []string{"security level", "security", "level", "securitylevel", "security-level", "security_level", "sec"}
+	for _, f := range match {
+		if !securityFilterMatches(f) {
+			t.Errorf("securityFilterMatches(%q) = false, want true", f)
+		}
+	}
+	noMatch := []string{"", "story points", "priority", "assignee"}
+	for _, f := range noMatch {
+		if securityFilterMatches(f) {
+			t.Errorf("securityFilterMatches(%q) = true, want false", f)
+		}
+	}
+}
+
 func TestProjectKeyFromIssueKey(t *testing.T) {
 	tests := []struct {
 		in   string

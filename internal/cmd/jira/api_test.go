@@ -1,6 +1,8 @@
 package jira
 
 import (
+	"bytes"
+	"encoding/json"
 	"strings"
 	"testing"
 
@@ -37,5 +39,32 @@ func TestNewCmdAPI_ArgGuards(t *testing.T) {
 				t.Errorf("error = %q, want it to contain %q", err.Error(), tt.wantErr)
 			}
 		})
+	}
+}
+
+// TestWriteIndentedJSON_PreservesLargeIntegers is the regression guard for the
+// interface{} round-trip: a JSON integer above 2^53 must survive verbatim, not
+// be coerced to float64 and re-rendered.
+func TestWriteIndentedJSON_PreservesLargeIntegers(t *testing.T) {
+	var buf bytes.Buffer
+	raw := json.RawMessage(`{"id":9007199254740993}`)
+	if err := writeIndentedJSON(&buf, raw); err != nil {
+		t.Fatalf("writeIndentedJSON error: %v", err)
+	}
+	if !strings.Contains(buf.String(), "9007199254740993") {
+		t.Errorf("large integer not preserved; got: %s", buf.String())
+	}
+}
+
+// TestWriteIndentedJSON_NonJSONFallback verifies a non-JSON body is emitted
+// verbatim rather than erroring.
+func TestWriteIndentedJSON_NonJSONFallback(t *testing.T) {
+	var buf bytes.Buffer
+	raw := json.RawMessage("not json at all")
+	if err := writeIndentedJSON(&buf, raw); err != nil {
+		t.Fatalf("writeIndentedJSON error: %v", err)
+	}
+	if !strings.Contains(buf.String(), "not json at all") {
+		t.Errorf("non-JSON body not echoed; got: %s", buf.String())
 	}
 }

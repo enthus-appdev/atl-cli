@@ -722,10 +722,19 @@ func TestValidateRawPath(t *testing.T) {
 		"issue/../../rest/api/2/x",
 		"https://evil.example/x",
 		"http://api.atlassian.com/x",
+		"%2e%2e/%2e%2e/admin",     // percent-encoded ".."
+		"issue%2f..%2f..%2fadmin", // encoded slashes hiding ".."
+		`..\..\admin`,             // backslash traversal
 	}
 	for _, p := range invalid {
 		if err := validateRawPath(p); err == nil {
 			t.Errorf("validateRawPath(%q) = nil, want error", p)
 		}
+	}
+
+	// A query value containing "/../" is legitimate (it is data, not a path
+	// segment) and must not be a false positive.
+	if err := validateRawPath("search?jql=text~\"a/../b\""); err != nil {
+		t.Errorf("validateRawPath with /../ in query = %v, want nil", err)
 	}
 }

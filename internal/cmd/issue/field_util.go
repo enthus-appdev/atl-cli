@@ -32,6 +32,15 @@ func projectKeyFromIssueKey(issueKey string) string {
 	return ""
 }
 
+// securityFilterMatches reports whether a lowercased --field filter should
+// surface the synthetic "Security Level" row. Spaces, hyphens, and underscores
+// are stripped from both sides so "securitylevel" (the type this row reports)
+// and "security-level" match, not only "security level".
+func securityFilterMatches(fieldLower string) bool {
+	norm := strings.NewReplacer(" ", "", "-", "", "_", "").Replace(fieldLower)
+	return norm != "" && strings.Contains("securitylevel", norm)
+}
+
 // matchSecurityLevel resolves a user-supplied name or numeric id against
 // a project's issue security levels. Numeric input matches by id; others
 // match by case-insensitive name. If unknown, returns an error listing

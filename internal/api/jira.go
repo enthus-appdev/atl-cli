@@ -617,13 +617,21 @@ func (s *JiraService) GetProjectSecurityLevels(ctx context.Context, projectKey s
 }
 
 // validateRawPath ensures a passthrough path stays within the REST v3 base:
-// no scheme (which would point at a different host) and no ".." segment
+// no scheme/host (which would point at a different host) and no ".." segment
 // (which would climb out of the /rest/api/3 namespace the command promises).
+// The path is url-decoded before the ".." check so an encoded traversal
+// ("%2e%2e", "issue%2f..") cannot slip past a raw-string scan; the query string
+// is excluded so a legitimate "?jql=.../.." value is not a false positive.
 func validateRawPath(apiPath string) error {
-	if strings.Contains(apiPath, "://") {
+	u, err := url.Parse(apiPath)
+	if err != nil {
+		return fmt.Errorf("invalid path %q: %w", apiPath, err)
+	}
+	if u.IsAbs() || u.Host != "" {
 		return fmt.Errorf("path must be relative to the Jira REST base, not an absolute URL: %q", apiPath)
 	}
-	for _, seg := range strings.Split(apiPath, "/") {
+	// u.Path is decoded; normalize backslashes since some servers treat "\" as "/".
+	for _, seg := range strings.Split(strings.ReplaceAll(u.Path, `\`, "/"), "/") {
 		if seg == ".." {
 			return fmt.Errorf("path must not contain %q segments: %q", "..", apiPath)
 		}
