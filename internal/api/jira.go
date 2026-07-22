@@ -616,10 +616,30 @@ func (s *JiraService) GetProjectSecurityLevels(ctx context.Context, projectKey s
 	return result.Levels, nil
 }
 
+// validateRawPath ensures a passthrough path stays within the REST v3 base:
+// no scheme (which would point at a different host) and no ".." segment
+// (which would climb out of the /rest/api/3 namespace the command promises).
+func validateRawPath(apiPath string) error {
+	if strings.Contains(apiPath, "://") {
+		return fmt.Errorf("path must be relative to the Jira REST base, not an absolute URL: %q", apiPath)
+	}
+	for _, seg := range strings.Split(apiPath, "/") {
+		if seg == ".." {
+			return fmt.Errorf("path must not contain %q segments: %q", "..", apiPath)
+		}
+	}
+	return nil
+}
+
 // RawGet performs a read-only GET against a path relative to the Jira REST base
 // (e.g. "issue/NX-1/editmeta") and returns the raw JSON body. It is the escape
-// hatch for endpoints atl does not model as first-class commands.
+// hatch for endpoints atl does not model as first-class commands; the path is
+// confined to the REST base via validateRawPath so it cannot reach another host
+// or climb above /rest/api/3.
 func (s *JiraService) RawGet(ctx context.Context, apiPath string) (json.RawMessage, error) {
+	if err := validateRawPath(apiPath); err != nil {
+		return nil, err
+	}
 	path := fmt.Sprintf("%s/%s", s.client.JiraBaseURL(), strings.TrimPrefix(apiPath, "/"))
 
 	var result json.RawMessage

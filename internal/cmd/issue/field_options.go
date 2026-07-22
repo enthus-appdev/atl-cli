@@ -146,11 +146,17 @@ func runFieldOptions(opts *FieldOptionsOptions) error {
 
 	// The issue security level is project-scoped and absent from createmeta (not
 	// on the create screen); surface it here as a synthetic field — the discovery
-	// path for the --security flag on create/edit.
-	if opts.Field == "" || strings.Contains("security level", fieldLower) {
+	// path for the --security flag on create/edit. The filter is matched with
+	// spaces/hyphens/underscores stripped so "securitylevel" (the type this row
+	// reports) and "security-level" match too, not only "security level".
+	normField := strings.NewReplacer(" ", "", "-", "", "_", "").Replace(fieldLower)
+	if opts.Field == "" || strings.Contains("securitylevel", normField) {
+		// Best-effort: a project with no issue-security scheme, or a caller without
+		// permission to view it, must not fail the whole command — the field
+		// metadata above already succeeded. Drop the row on error.
 		levels, err := jira.GetProjectSecurityLevels(ctx, opts.Project)
 		if err != nil {
-			return fmt.Errorf("failed to get security levels: %w", err)
+			levels = nil
 		}
 		if len(levels) > 0 {
 			names := make([]string, 0, len(levels))

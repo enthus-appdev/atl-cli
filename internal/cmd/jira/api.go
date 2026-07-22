@@ -1,6 +1,7 @@
 package jira
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -10,7 +11,6 @@ import (
 
 	"github.com/enthus-appdev/atl-cli/internal/api"
 	"github.com/enthus-appdev/atl-cli/internal/iostreams"
-	"github.com/enthus-appdev/atl-cli/internal/output"
 )
 
 // APIOptions holds the options for the api command.
@@ -56,6 +56,10 @@ is supported — atl deliberately does not expose write passthrough.
 				}
 				path = args[1]
 			}
+			// A lone "GET" is the method with no path, not a path named "GET".
+			if strings.EqualFold(path, "GET") {
+				return fmt.Errorf("missing <path>\n\nExample: atl jira api GET issue/NX-1234/editmeta")
+			}
 			opts.Path = path
 			return runAPI(opts)
 		},
@@ -78,14 +82,17 @@ func runAPI(opts *APIOptions) error {
 		return fmt.Errorf("request failed: %w", err)
 	}
 
-	// Re-decode so output.JSON re-indents the body consistently with other
-	// --json output rather than echoing the server's whitespace.
-	var body interface{}
-	if err := json.Unmarshal(raw, &body); err != nil {
+	// Indent the raw bytes rather than decoding into interface{} and re-encoding:
+	// a round-trip through interface{} coerces every JSON number to float64,
+	// silently corrupting integers above 2^53 (Jira ids can exceed it). json.Indent
+	// reflows whitespace without touching the values.
+	var buf bytes.Buffer
+	if err := json.Indent(&buf, raw, "", "  "); err != nil {
 		// Not JSON (unexpected for the REST API) — emit the raw bytes verbatim.
 		fmt.Fprintln(opts.IO.Out, string(raw))
 		return nil
 	}
-
-	return output.JSON(opts.IO.Out, body)
+	buf.WriteByte('\n')
+	_, err = opts.IO.Out.Write(buf.Bytes())
+	return err
 }
