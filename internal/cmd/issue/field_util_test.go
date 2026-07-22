@@ -22,13 +22,15 @@ func TestIsSystemField_Security(t *testing.T) {
 }
 
 func TestSecurityFilterMatches(t *testing.T) {
-	match := []string{"security level", "security", "level", "securitylevel", "security-level", "security_level", "sec"}
+	match := []string{"security level", "security", "securitylevel", "security-level", "security_level", "sec"}
 	for _, f := range match {
 		if !securityFilterMatches(f) {
 			t.Errorf("securityFilterMatches(%q) = false, want true", f)
 		}
 	}
-	noMatch := []string{"", "story points", "priority", "assignee"}
+	// "level" is not a prefix of "securitylevel"; "s"/"se" are below the min
+	// length — none should trigger the (explicit-request) security fetch.
+	noMatch := []string{"", "s", "se", "level", "story points", "priority", "assignee"}
 	for _, f := range noMatch {
 		if securityFilterMatches(f) {
 			t.Errorf("securityFilterMatches(%q) = true, want false", f)

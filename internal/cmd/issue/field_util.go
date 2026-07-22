@@ -34,12 +34,15 @@ func projectKeyFromIssueKey(issueKey string) string {
 }
 
 // securityFilterMatches reports whether a lowercased --field filter should
-// surface the synthetic "Security Level" row. Spaces, hyphens, and underscores
-// are stripped from both sides so "securitylevel" (the type this row reports)
-// and "security-level" match, not only "security level".
+// surface the synthetic "Security Level" row. The filter must be a prefix of
+// "securitylevel" (min 3 chars) after stripping spaces/hyphens/underscores, so
+// "sec", "security", "security level", and "securitylevel" match while a short
+// common letter ("s") or an unrelated substring ("level") does not — a prefix
+// is how a user narrows toward this field, and it keeps a stray one-letter
+// filter from triggering the (explicit-request) security fetch.
 func securityFilterMatches(fieldLower string) bool {
 	norm := strings.NewReplacer(" ", "", "-", "", "_", "").Replace(fieldLower)
-	return norm != "" && strings.Contains("securitylevel", norm)
+	return len(norm) >= 3 && strings.HasPrefix("securitylevel", norm)
 }
 
 // matchSecurityLevel resolves a user-supplied name or numeric id against
