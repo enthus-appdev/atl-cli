@@ -722,9 +722,12 @@ func TestValidateRawPath(t *testing.T) {
 		"issue/../../rest/api/2/x",
 		"https://evil.example/x",
 		"http://api.atlassian.com/x",
-		"%2e%2e/%2e%2e/admin",     // percent-encoded ".."
-		"issue%2f..%2f..%2fadmin", // encoded slashes hiding ".."
-		`..\..\admin`,             // backslash traversal
+		"%2e%2e/%2e%2e/admin",        // percent-encoded ".."
+		"issue%2f..%2f..%2fadmin",    // encoded slashes hiding ".."
+		`..\..\admin`,                // backslash traversal
+		"issue/NX-1/..;jsessionid/x", // Tomcat semicolon path parameter
+		"%252e%252e/admin",           // double-encoded ".."
+		"issue/%2Aall",               // stray percent-encoding in path
 	}
 	for _, p := range invalid {
 		if err := validateRawPath(p); err == nil {

@@ -616,12 +616,17 @@ func (s *JiraService) GetProjectSecurityLevels(ctx context.Context, projectKey s
 	return result.Levels, nil
 }
 
-// validateRawPath ensures a passthrough path stays within the REST v3 base:
-// no scheme/host (which would point at a different host) and no ".." segment
-// (which would climb out of the /rest/api/3 namespace the command promises).
-// The path is url-decoded before the ".." check so an encoded traversal
-// ("%2e%2e", "issue%2f..") cannot slip past a raw-string scan; the query string
-// is excluded so a legitimate "?jql=.../.." value is not a false positive.
+// validateRawPath confines a passthrough path to the REST v3 base. The path
+// component is required to be plain — no scheme/host (which would point at
+// another host), and no "%", ";", or "\" (percent-encoding, Tomcat path
+// parameters, and backslashes each smuggle a decoded ".." past a segment scan
+// and out of /rest/api/3, and double-encoding defeats any decode-then-scan).
+// An allowlist ("plain segments only") closes that whole bypass class where a
+// blocklist would chase each encoding. Encoded values belong in the query
+// string, which is left untouched. This is a namespace guardrail, not an authz
+// boundary: the caller is already authenticated as themselves and could reach
+// any endpoint their own credentials permit — the guard only keeps the command
+// behaving as documented.
 func validateRawPath(apiPath string) error {
 	u, err := url.Parse(apiPath)
 	if err != nil {
@@ -630,8 +635,16 @@ func validateRawPath(apiPath string) error {
 	if u.IsAbs() || u.Host != "" {
 		return fmt.Errorf("path must be relative to the Jira REST base, not an absolute URL: %q", apiPath)
 	}
-	// u.Path is decoded; normalize backslashes since some servers treat "\" as "/".
-	for _, seg := range strings.Split(strings.ReplaceAll(u.Path, `\`, "/"), "/") {
+
+	// Path component only (before any "?" query or "#" fragment).
+	rawPath := apiPath
+	if i := strings.IndexAny(rawPath, "?#"); i >= 0 {
+		rawPath = rawPath[:i]
+	}
+	if strings.ContainsAny(rawPath, `%;\`) {
+		return fmt.Errorf("path must be plain (no %%-encoding, ';', or '\\'); put encoded values in the query string: %q", apiPath)
+	}
+	for _, seg := range strings.Split(u.Path, "/") {
 		if seg == ".." {
 			return fmt.Errorf("path must not contain %q segments: %q", "..", apiPath)
 		}
