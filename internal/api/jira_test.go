@@ -741,3 +741,17 @@ func TestValidateRawPath(t *testing.T) {
 		t.Errorf("validateRawPath with /../ in query = %v, want nil", err)
 	}
 }
+
+// TestRawGet_ValidationBeforeNetwork verifies RawGet rejects an unsafe path via
+// validateRawPath before constructing any request — the security barrier must
+// hold even with a client that has no usable transport.
+func TestRawGet_ValidationBeforeNetwork(t *testing.T) {
+	jira := NewJiraService(&Client{})
+	_, err := jira.RawGet(context.Background(), "../../admin")
+	if err == nil {
+		t.Fatal("expected validation error for traversal path, got nil")
+	}
+	if !strings.Contains(err.Error(), "..") {
+		t.Errorf("error = %q, want a traversal-rejection message", err.Error())
+	}
+}

@@ -186,6 +186,11 @@ func runEdit(opts *EditOptions) error {
 		if opts.Security == "" {
 			req.Fields["security"] = nil
 		} else {
+			// Security levels are project-scoped, resolved from the key's project
+			// prefix. For an issue moved between projects (Jira keeps the old key
+			// working) this is the original project, not the current one — an
+			// accepted limitation for a rare case, versus an extra issue lookup on
+			// every edit.
 			projectKey := projectKeyFromIssueKey(opts.IssueKey)
 			if projectKey == "" {
 				return fmt.Errorf("cannot derive project from issue key %q", opts.IssueKey)
