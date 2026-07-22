@@ -25,6 +25,8 @@ type EditOptions struct {
 	AddLabels    []string
 	RemoveLabels []string
 	Priority     string
+	Security     string
+	SecuritySet  bool
 	CustomFields []string
 	FieldFile    string
 	JSON         bool
@@ -61,6 +63,12 @@ func NewCmdEdit(ios *iostreams.IOStreams) *cobra.Command {
   # Change priority
   atl jira issue edit PROJ-1234 --priority High
 
+  # Set an issue security level (by name or id; see field-options)
+  atl jira issue edit PROJ-1234 --security "Developer only"
+
+  # Clear the security level (pass an empty value)
+  atl jira issue edit PROJ-1234 --security ""
+
   # Set custom fields by name (Story Points, etc.)
   atl jira issue edit PROJ-1234 --field "Story Points=8"
 
@@ -75,6 +83,7 @@ func NewCmdEdit(ios *iostreams.IOStreams) *cobra.Command {
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			opts.IssueKey = args[0]
+			opts.SecuritySet = cmd.Flags().Changed("security")
 			return runEdit(opts)
 		},
 	}
@@ -86,6 +95,7 @@ func NewCmdEdit(ios *iostreams.IOStreams) *cobra.Command {
 	cmd.Flags().StringSliceVar(&opts.AddLabels, "add-label", nil, "Labels to add")
 	cmd.Flags().StringSliceVar(&opts.RemoveLabels, "remove-label", nil, "Labels to remove")
 	cmd.Flags().StringVar(&opts.Priority, "priority", "", "New priority")
+	cmd.Flags().StringVar(&opts.Security, "security", "", "Set issue security level by name or id; pass \"\" to clear")
 	cmd.Flags().StringArrayVarP(&opts.CustomFields, "field", "f", nil, "Custom field in key=value format (can be repeated)")
 	cmd.Flags().StringVar(&opts.FieldFile, "field-file", "", "JSON file with field values (for complex types like ADF)")
 	cmd.Flags().BoolVarP(&opts.JSON, "json", "j", false, "Output as JSON")
@@ -106,7 +116,7 @@ func runEdit(opts *EditOptions) error {
 	// Check that at least one field is being edited
 	if opts.Summary == "" && opts.Description == "" && opts.Assignee == "" &&
 		len(opts.AddLabels) == 0 && len(opts.RemoveLabels) == 0 && opts.Priority == "" &&
-		len(opts.CustomFields) == 0 && opts.FieldFile == "" {
+		len(opts.CustomFields) == 0 && opts.FieldFile == "" && !opts.SecuritySet {
 		return fmt.Errorf("at least one field must be specified to edit")
 	}
 
@@ -168,6 +178,26 @@ func runEdit(opts *EditOptions) error {
 	if opts.Priority != "" {
 		req.Fields["priority"] = map[string]string{"name": opts.Priority}
 		editOutput.FieldsUpdated = append(editOutput.FieldsUpdated, "priority")
+	}
+
+	// A passed --security flag sets the level; an empty value clears it (JSON
+	// null). Distinguished from "not passed" via SecuritySet so an edit of other
+	// fields never touches security.
+	if opts.SecuritySet {
+		if opts.Security == "" {
+			req.Fields["security"] = nil
+		} else {
+			projectKey := projectKeyFromIssueKey(opts.IssueKey)
+			if projectKey == "" {
+				return fmt.Errorf("cannot derive project from issue key %q", opts.IssueKey)
+			}
+			levelID, err := resolveSecurityLevelID(ctx, jira, projectKey, opts.Security)
+			if err != nil {
+				return err
+			}
+			req.Fields["security"] = map[string]string{"id": levelID}
+		}
+		editOutput.FieldsUpdated = append(editOutput.FieldsUpdated, "security")
 	}
 
 	// Handle labels

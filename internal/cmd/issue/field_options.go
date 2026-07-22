@@ -144,6 +144,28 @@ func runFieldOptions(opts *FieldOptionsOptions) error {
 		results = append(results, result)
 	}
 
+	// The issue security level is project-scoped and absent from createmeta (it
+	// is not on the create screen), so surface it as a synthetic field here —
+	// this is the discovery path for the --security flag on create/edit.
+	if opts.Field == "" || strings.Contains("security level", fieldLower) {
+		levels, err := jira.GetProjectSecurityLevels(ctx, opts.Project)
+		if err != nil {
+			return fmt.Errorf("failed to get security levels: %w", err)
+		}
+		if len(levels) > 0 {
+			names := make([]string, 0, len(levels))
+			for _, l := range levels {
+				names = append(names, l.Name)
+			}
+			results = append(results, &FieldOptionOutput{
+				FieldID:       "security",
+				Name:          "Security Level",
+				Type:          "securitylevel",
+				AllowedValues: names,
+			})
+		}
+	}
+
 	// Sort by name
 	sort.Slice(results, func(i, j int) bool {
 		return results[i].Name < results[j].Name

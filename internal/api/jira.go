@@ -410,7 +410,13 @@ type CreateIssueFields struct {
 	Priority     *PriorityID            `json:"priority,omitempty"`
 	Labels       []string               `json:"labels,omitempty"`
 	Parent       *ParentID              `json:"parent,omitempty"`
+	Security     *SecurityID            `json:"security,omitempty"`
 	CustomFields map[string]interface{} `json:"-"` // Merged during marshaling
+}
+
+// SecurityID sets an issue security level by its numeric id.
+type SecurityID struct {
+	ID string `json:"id"`
 }
 
 // MarshalJSON implements custom JSON marshaling to include custom fields.
@@ -436,6 +442,9 @@ func (r *CreateIssueRequest) MarshalJSON() ([]byte, error) {
 	}
 	if r.Fields.Parent != nil {
 		fields["parent"] = r.Fields.Parent
+	}
+	if r.Fields.Security != nil {
+		fields["security"] = r.Fields.Security
 	}
 
 	// Merge custom fields
@@ -579,6 +588,47 @@ func (s *JiraService) GetFieldOptions(ctx context.Context, projectKey, issueType
 	}
 
 	return allFields, nil
+}
+
+// SecurityLevel represents an issue security level available in a project.
+type SecurityLevel struct {
+	ID          string `json:"id"`
+	Name        string `json:"name"`
+	Description string `json:"description,omitempty"`
+}
+
+// projectSecurityLevelsResponse is the response from the project securitylevel endpoint.
+type projectSecurityLevelsResponse struct {
+	Levels []*SecurityLevel `json:"levels"`
+}
+
+// GetProjectSecurityLevels returns the issue security levels available in a
+// project. The security-level field is absent from createmeta (it is not on the
+// create screen), so this dedicated endpoint is the source for discovering and
+// resolving levels. A project with no issue-security scheme returns an empty list.
+func (s *JiraService) GetProjectSecurityLevels(ctx context.Context, projectKey string) ([]*SecurityLevel, error) {
+	path := fmt.Sprintf("%s/project/%s/securitylevel", s.client.JiraBaseURL(), url.PathEscape(projectKey))
+
+	var result projectSecurityLevelsResponse
+	if err := s.client.Get(ctx, path, &result); err != nil {
+		return nil, err
+	}
+
+	return result.Levels, nil
+}
+
+// RawGet performs a read-only GET against a path relative to the Jira REST base
+// (e.g. "issue/NX-1/editmeta") and returns the raw JSON body. It is the escape
+// hatch for endpoints atl does not model as first-class commands.
+func (s *JiraService) RawGet(ctx context.Context, apiPath string) (json.RawMessage, error) {
+	path := fmt.Sprintf("%s/%s", s.client.JiraBaseURL(), strings.TrimPrefix(apiPath, "/"))
+
+	var result json.RawMessage
+	if err := s.client.Get(ctx, path, &result); err != nil {
+		return nil, err
+	}
+
+	return result, nil
 }
 
 // GetPriorities gets all available priorities in the Jira instance.
