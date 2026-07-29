@@ -10,6 +10,7 @@ import (
 	boardCmd "github.com/enthus-appdev/atl-cli/internal/cmd/board"
 	configCmd "github.com/enthus-appdev/atl-cli/internal/cmd/config"
 	confluenceCmd "github.com/enthus-appdev/atl-cli/internal/cmd/confluence"
+	doctorCmd "github.com/enthus-appdev/atl-cli/internal/cmd/doctor"
 	issueCmd "github.com/enthus-appdev/atl-cli/internal/cmd/issue"
 	jiraCmd "github.com/enthus-appdev/atl-cli/internal/cmd/jira"
 	smCmd "github.com/enthus-appdev/atl-cli/internal/cmd/sm"
@@ -61,6 +62,7 @@ Environment variables:
 	cmd.AddCommand(jiraCmd.NewCmdJira(ios))
 	cmd.AddCommand(confluenceCmd.NewCmdConfluence(ios))
 	cmd.AddCommand(configCmd.NewCmdConfig(ios))
+	cmd.AddCommand(doctorCmd.NewCmdDoctor(ios))
 	cmd.AddCommand(newVersionCmd(ios, version, commit, date))
 	cmd.AddCommand(newCompletionCmd(ios))
 
