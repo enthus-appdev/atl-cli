@@ -25,12 +25,7 @@ func QuoteADF(original *ADF) *ADFContent {
 		return nil
 	}
 
-	children := make([]ADFContent, 0, len(original.Content))
-	for _, node := range original.Content {
-		if child, ok := quoteChild(node); ok {
-			children = append(children, child)
-		}
-	}
+	children := quoteNodes(original.Content)
 
 	if len(children) == 0 {
 		return nil
@@ -39,28 +34,42 @@ func QuoteADF(original *ADF) *ADFContent {
 	return &ADFContent{Type: "blockquote", Content: children}
 }
 
-// quoteChild returns the node as a legal blockquote child. Illegal nodes are
-// flattened to a paragraph of their rendered text; the bool is false when that
-// flattening yields nothing worth emitting.
-func quoteChild(node ADFContent) (ADFContent, bool) {
+// quoteNodes returns zero or more legal blockquote children from a slice of nodes.
+func quoteNodes(nodes []ADFContent) []ADFContent {
+	out := make([]ADFContent, 0, len(nodes))
+	for _, node := range nodes {
+		out = append(out, quoteNode(node)...)
+	}
+	return out
+}
+
+// quoteNode returns the node as zero or more legal blockquote children. A node
+// the content model rejects contributes its legal descendants instead, so media
+// and text nested inside a container survive; only a subtree with nothing legal
+// in it collapses to rendered text.
+func quoteNode(node ADFContent) []ADFContent {
 	if blockquoteAllowedChildren[node.Type] {
 		// The spec forbids node-level marks on a quoted paragraph. node is a
 		// copy, so the caller's slice is untouched.
 		if node.Type == "paragraph" {
 			node.Marks = nil
 		}
-		return node, true
+		return []ADFContent{node}
+	}
+
+	if hoisted := quoteNodes(node.Content); len(hoisted) > 0 {
+		return hoisted
 	}
 
 	text := ADFToText(&ADF{Type: "doc", Version: 1, Content: []ADFContent{node}})
 	if strings.TrimSpace(text) == "" {
-		return ADFContent{}, false
+		return nil
 	}
 
-	return ADFContent{
+	return []ADFContent{{
 		Type:    "paragraph",
 		Content: []ADFContent{{Type: "text", Text: text}},
-	}, true
+	}}
 }
 
 // AttributionParagraph builds the "Replying to <author>:" line that precedes a quote.

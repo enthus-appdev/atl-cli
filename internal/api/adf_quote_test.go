@@ -150,3 +150,204 @@ func TestAttributionParagraph(t *testing.T) {
 		t.Errorf("expected em mark, got %+v", text.Marks)
 	}
 }
+
+// Finding 1: Coverage for all legal pass-through types
+func TestQuoteADF_PreservesBulletList(t *testing.T) {
+	original := &ADF{
+		Type:    "doc",
+		Version: 1,
+		Content: []ADFContent{{
+			Type: "bulletList",
+			Content: []ADFContent{{
+				Type:    "listItem",
+				Content: []ADFContent{{Type: "paragraph", Content: []ADFContent{{Type: "text", Text: "item"}}}},
+			}},
+		}},
+	}
+
+	quote := QuoteADF(original)
+	if quote == nil {
+		t.Fatal("expected a blockquote node")
+	}
+	if len(quote.Content) != 1 || quote.Content[0].Type != "bulletList" {
+		t.Fatalf("expected bulletList preserved, got %q", quote.Content[0].Type)
+	}
+}
+
+func TestQuoteADF_PreservesOrderedList(t *testing.T) {
+	original := &ADF{
+		Type:    "doc",
+		Version: 1,
+		Content: []ADFContent{{
+			Type: "orderedList",
+			Content: []ADFContent{{
+				Type:    "listItem",
+				Content: []ADFContent{{Type: "paragraph", Content: []ADFContent{{Type: "text", Text: "item"}}}},
+			}},
+		}},
+	}
+
+	quote := QuoteADF(original)
+	if quote == nil {
+		t.Fatal("expected a blockquote node")
+	}
+	if len(quote.Content) != 1 || quote.Content[0].Type != "orderedList" {
+		t.Fatalf("expected orderedList preserved, got %q", quote.Content[0].Type)
+	}
+}
+
+func TestQuoteADF_PreservesCodeBlock(t *testing.T) {
+	original := &ADF{
+		Type:    "doc",
+		Version: 1,
+		Content: []ADFContent{{
+			Type:    "codeBlock",
+			Attrs:   &ADFAttrs{Language: "go"},
+			Content: []ADFContent{{Type: "text", Text: "func main() {}"}},
+		}},
+	}
+
+	quote := QuoteADF(original)
+	if quote == nil {
+		t.Fatal("expected a blockquote node")
+	}
+	if len(quote.Content) != 1 || quote.Content[0].Type != "codeBlock" {
+		t.Fatalf("expected codeBlock preserved, got %q", quote.Content[0].Type)
+	}
+}
+
+func TestQuoteADF_PreservesMediaGroup(t *testing.T) {
+	original := &ADF{
+		Type:    "doc",
+		Version: 1,
+		Content: []ADFContent{{
+			Type: "mediaGroup",
+			Content: []ADFContent{{
+				Type: "media",
+				Attrs: &ADFAttrs{
+					ID:         "media-xyz",
+					Type:       "file",
+					Collection: "coll-2",
+				},
+			}},
+		}},
+	}
+
+	quote := QuoteADF(original)
+	if quote == nil {
+		t.Fatal("expected a blockquote node")
+	}
+	if len(quote.Content) != 1 || quote.Content[0].Type != "mediaGroup" {
+		t.Fatalf("expected mediaGroup preserved, got %q", quote.Content[0].Type)
+	}
+}
+
+// Finding 2: Inline marks survive while node-level marks are cleared
+func TestQuoteADF_PreservesInlineMarksInParagraph(t *testing.T) {
+	original := &ADF{
+		Type:    "doc",
+		Version: 1,
+		Content: []ADFContent{{
+			Type:  "paragraph",
+			Marks: []ADFMark{{Type: "em"}}, // Node-level mark (should be cleared)
+			Content: []ADFContent{{
+				Type:  "text",
+				Text:  "bold text",
+				Marks: []ADFMark{{Type: "strong"}}, // Inline mark (should survive)
+			}},
+		}},
+	}
+
+	quote := QuoteADF(original)
+	if quote == nil {
+		t.Fatal("expected a blockquote node")
+	}
+	para := quote.Content[0]
+	if para.Marks != nil {
+		t.Errorf("expected node-level marks cleared, got %+v", para.Marks)
+	}
+	textNode := para.Content[0]
+	if len(textNode.Marks) != 1 || textNode.Marks[0].Type != "strong" {
+		t.Errorf("expected inline strong mark to survive, got %+v", textNode.Marks)
+	}
+	if textNode.Text != "bold text" {
+		t.Errorf("expected text to survive, got %q", textNode.Text)
+	}
+}
+
+// Finding 3: Media nested in illegal containers is hoisted
+func TestQuoteADF_HoistsMediaFromIllegalPanel(t *testing.T) {
+	original := &ADF{
+		Type:    "doc",
+		Version: 1,
+		Content: []ADFContent{{
+			Type:  "panel",
+			Attrs: &ADFAttrs{PanelType: "info"},
+			Content: []ADFContent{
+				{
+					Type:    "paragraph",
+					Content: []ADFContent{{Type: "text", Text: "info text"}},
+				},
+				{
+					Type: "mediaSingle",
+					Content: []ADFContent{{
+						Type: "media",
+						Attrs: &ADFAttrs{
+							ID:         "media-panel",
+							Type:       "file",
+							Collection: "panel-coll",
+						},
+					}},
+				},
+			},
+		}},
+	}
+
+	quote := QuoteADF(original)
+	if quote == nil {
+		t.Fatal("expected a blockquote node")
+	}
+	// Should hoist both paragraph and mediaSingle as direct blockquote children
+	if len(quote.Content) != 2 {
+		t.Fatalf("expected 2 hoisted children, got %d", len(quote.Content))
+	}
+	if quote.Content[0].Type != "paragraph" {
+		t.Fatalf("expected first child to be paragraph, got %q", quote.Content[0].Type)
+	}
+	if quote.Content[1].Type != "mediaSingle" {
+		t.Fatalf("expected second child to be mediaSingle, got %q", quote.Content[1].Type)
+	}
+	// Verify media attrs survived the hoisting
+	media := quote.Content[1].Content[0]
+	if media.Attrs == nil || media.Attrs.ID != "media-panel" || media.Attrs.Collection != "panel-coll" {
+		t.Errorf("media attrs lost during hoisting: %+v", media.Attrs)
+	}
+}
+
+// Finding 3: Illegal nodes with no legal descendants degrade to text
+func TestQuoteADF_DegradesIllegalWithoutLegalDescendants(t *testing.T) {
+	original := &ADF{
+		Type:    "doc",
+		Version: 1,
+		Content: []ADFContent{{
+			Type:    "panel",
+			Attrs:   &ADFAttrs{PanelType: "warning"},
+			Content: []ADFContent{{Type: "text", Text: "warning text"}},
+		}},
+	}
+
+	quote := QuoteADF(original)
+	if quote == nil {
+		t.Fatal("expected a blockquote node")
+	}
+	child := quote.Content[0]
+	if child.Type != "paragraph" {
+		t.Fatalf("expected degrade to paragraph, got %q", child.Type)
+	}
+	if len(child.Content) != 1 || child.Content[0].Type != "text" {
+		t.Fatalf("expected a single text child, got %+v", child.Content)
+	}
+	if child.Content[0].Text == "" {
+		t.Error("degraded paragraph must keep the text")
+	}
+}
