@@ -1,6 +1,7 @@
 package api
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -175,6 +176,13 @@ type ADFContent struct {
 	Text    string       `json:"text,omitempty"`
 	Attrs   *ADFAttrs    `json:"attrs,omitempty"`
 	Marks   []ADFMark    `json:"marks,omitempty"`
+
+	// RawAttrs holds the attrs object exactly as received. The typed Attrs
+	// struct models only a subset of ADF attributes and omits zero values, so
+	// re-serializing a node through it silently drops keys Jira requires
+	// (notably media's empty-but-mandatory "collection"). A node that carries
+	// RawAttrs emits it verbatim and ignores Attrs.
+	RawAttrs json.RawMessage `json:"-"`
 }
 
 // ADFAttrs represents attributes in ADF.
@@ -209,6 +217,109 @@ type ADFAttrs struct {
 type ADFMark struct {
 	Type  string    `json:"type"`
 	Attrs *ADFAttrs `json:"attrs,omitempty"`
+
+	// See ADFContent.RawAttrs.
+	RawAttrs json.RawMessage `json:"-"`
+}
+
+// UnmarshalJSON captures the raw attrs object alongside the typed fields so
+// that attributes the typed ADFAttrs struct does not model survive a
+// round-trip.
+func (c *ADFContent) UnmarshalJSON(data []byte) error {
+	type alias ADFContent
+	var a alias
+	if err := json.Unmarshal(data, &a); err != nil {
+		return err
+	}
+	*c = ADFContent(a)
+
+	var probe struct {
+		Attrs json.RawMessage `json:"attrs"`
+	}
+	if err := json.Unmarshal(data, &probe); err != nil {
+		return err
+	}
+	// A JSON null is captured as the 4 bytes "null", which is non-empty and so
+	// would be re-emitted as "attrs":null. Treat it as absent instead: the
+	// typed Attrs then governs, and a node with no attributes emits no key.
+	if !bytes.Equal(probe.Attrs, []byte("null")) {
+		c.RawAttrs = probe.Attrs
+	}
+	return nil
+}
+
+// MarshalJSON emits RawAttrs verbatim when present, since it came from Jira
+// and is authoritative over the typed Attrs field.
+func (c ADFContent) MarshalJSON() ([]byte, error) {
+	type alias ADFContent
+	a := alias(c)
+	if len(c.RawAttrs) > 0 {
+		a.Attrs = nil
+	}
+
+	data, err := json.Marshal(a)
+	if err != nil {
+		return nil, err
+	}
+	if len(c.RawAttrs) == 0 {
+		return data, nil
+	}
+
+	var fields map[string]json.RawMessage
+	if err := json.Unmarshal(data, &fields); err != nil {
+		return nil, err
+	}
+	fields["attrs"] = c.RawAttrs
+	return json.Marshal(fields)
+}
+
+// UnmarshalJSON captures the raw attrs object alongside the typed fields so
+// that attributes the typed ADFAttrs struct does not model survive a
+// round-trip.
+func (m *ADFMark) UnmarshalJSON(data []byte) error {
+	type alias ADFMark
+	var a alias
+	if err := json.Unmarshal(data, &a); err != nil {
+		return err
+	}
+	*m = ADFMark(a)
+
+	var probe struct {
+		Attrs json.RawMessage `json:"attrs"`
+	}
+	if err := json.Unmarshal(data, &probe); err != nil {
+		return err
+	}
+	// See ADFContent.UnmarshalJSON: a JSON null must not become "attrs":null.
+	if !bytes.Equal(probe.Attrs, []byte("null")) {
+		m.RawAttrs = probe.Attrs
+	}
+	return nil
+}
+
+// MarshalJSON emits RawAttrs verbatim when present, since it came from Jira
+// and is authoritative over the typed Attrs field.
+func (m ADFMark) MarshalJSON() ([]byte, error) {
+	type alias ADFMark
+	a := alias(m)
+	if len(m.RawAttrs) > 0 {
+		a.Attrs = nil
+	}
+
+	data, err := json.Marshal(a)
+	if err != nil {
+		return nil, err
+	}
+	if len(m.RawAttrs) == 0 {
+		return data, nil
+	}
+
+	var fields map[string]json.RawMessage
+	if err := json.Unmarshal(data, &fields); err != nil {
+		return nil, err
+	}
+	fields["attrs"] = m.RawAttrs
+	return json.Marshal(fields)
 }
 
 // Status represents an issue status.
@@ -752,8 +863,19 @@ type AddCommentRequest struct {
 // CommentOptions contains options for adding/editing comments.
 type CommentOptions struct {
 	Body           string
+	BodyADF        *ADF   // when non-nil, posted as-is; Body is ignored
 	VisibilityType string // "role" or "group"
 	VisibilityName string // role name or group name
+}
+
+// commentBodyADF resolves the ADF document to post. A caller that has already
+// built ADF supplies BodyADF; otherwise Body is treated as Markdown and mentions
+// are resolved against the Jira instance.
+func (s *JiraService) commentBodyADF(ctx context.Context, opts *CommentOptions) (*ADF, error) {
+	if opts.BodyADF != nil {
+		return opts.BodyADF, nil
+	}
+	return TextToADFWithResolver(ctx, opts.Body, s)
 }
 
 // AddComment adds a comment to an issue.
@@ -765,7 +887,7 @@ func (s *JiraService) AddComment(ctx context.Context, key string, body string) (
 func (s *JiraService) AddCommentWithOptions(ctx context.Context, key string, opts *CommentOptions) (*Comment, error) {
 	path := fmt.Sprintf("%s/issue/%s/comment", s.client.JiraBaseURL(), key)
 
-	body, err := TextToADFWithResolver(ctx, opts.Body, s)
+	body, err := s.commentBodyADF(ctx, opts)
 	if err != nil {
 		return nil, fmt.Errorf("failed to process mentions: %w", err)
 	}
@@ -817,7 +939,7 @@ func (s *JiraService) GetComments(ctx context.Context, key string) ([]*Comment, 
 func (s *JiraService) UpdateComment(ctx context.Context, key string, commentID string, opts *CommentOptions) (*Comment, error) {
 	path := fmt.Sprintf("%s/issue/%s/comment/%s", s.client.JiraBaseURL(), key, commentID)
 
-	body, err := TextToADFWithResolver(ctx, opts.Body, s)
+	body, err := s.commentBodyADF(ctx, opts)
 	if err != nil {
 		return nil, fmt.Errorf("failed to process mentions: %w", err)
 	}
