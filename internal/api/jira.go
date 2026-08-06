@@ -752,8 +752,19 @@ type AddCommentRequest struct {
 // CommentOptions contains options for adding/editing comments.
 type CommentOptions struct {
 	Body           string
+	BodyADF        *ADF   // when non-nil, posted as-is; Body is ignored
 	VisibilityType string // "role" or "group"
 	VisibilityName string // role name or group name
+}
+
+// commentBodyADF resolves the ADF document to post. A caller that has already
+// built ADF supplies BodyADF; otherwise Body is treated as Markdown and mentions
+// are resolved against the Jira instance.
+func (s *JiraService) commentBodyADF(ctx context.Context, opts *CommentOptions) (*ADF, error) {
+	if opts.BodyADF != nil {
+		return opts.BodyADF, nil
+	}
+	return TextToADFWithResolver(ctx, opts.Body, s)
 }
 
 // AddComment adds a comment to an issue.
@@ -765,7 +776,7 @@ func (s *JiraService) AddComment(ctx context.Context, key string, body string) (
 func (s *JiraService) AddCommentWithOptions(ctx context.Context, key string, opts *CommentOptions) (*Comment, error) {
 	path := fmt.Sprintf("%s/issue/%s/comment", s.client.JiraBaseURL(), key)
 
-	body, err := TextToADFWithResolver(ctx, opts.Body, s)
+	body, err := s.commentBodyADF(ctx, opts)
 	if err != nil {
 		return nil, fmt.Errorf("failed to process mentions: %w", err)
 	}
@@ -817,7 +828,7 @@ func (s *JiraService) GetComments(ctx context.Context, key string) ([]*Comment, 
 func (s *JiraService) UpdateComment(ctx context.Context, key string, commentID string, opts *CommentOptions) (*Comment, error) {
 	path := fmt.Sprintf("%s/issue/%s/comment/%s", s.client.JiraBaseURL(), key, commentID)
 
-	body, err := TextToADFWithResolver(ctx, opts.Body, s)
+	body, err := s.commentBodyADF(ctx, opts)
 	if err != nil {
 		return nil, fmt.Errorf("failed to process mentions: %w", err)
 	}
