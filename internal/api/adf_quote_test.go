@@ -154,7 +154,6 @@ func TestAttributionParagraph(t *testing.T) {
 	}
 }
 
-// Finding 1: Coverage for all legal pass-through types
 func TestQuoteADF_PreservesBulletList(t *testing.T) {
 	original := &ADF{
 		Type:    "doc",
@@ -245,7 +244,6 @@ func TestQuoteADF_PreservesMediaGroup(t *testing.T) {
 	}
 }
 
-// Finding 2: Inline marks survive while node-level marks are cleared
 func TestQuoteADF_PreservesInlineMarksInParagraph(t *testing.T) {
 	original := &ADF{
 		Type:    "doc",
@@ -278,7 +276,6 @@ func TestQuoteADF_PreservesInlineMarksInParagraph(t *testing.T) {
 	}
 }
 
-// Finding 3: Media nested in illegal containers is hoisted
 func TestQuoteADF_HoistsMediaFromIllegalPanel(t *testing.T) {
 	original := &ADF{
 		Type:    "doc",
@@ -310,7 +307,6 @@ func TestQuoteADF_HoistsMediaFromIllegalPanel(t *testing.T) {
 	if quote == nil {
 		t.Fatal("expected a blockquote node")
 	}
-	// Should hoist both paragraph and mediaSingle as direct blockquote children
 	if len(quote.Content) != 2 {
 		t.Fatalf("expected 2 hoisted children, got %d", len(quote.Content))
 	}
@@ -320,14 +316,12 @@ func TestQuoteADF_HoistsMediaFromIllegalPanel(t *testing.T) {
 	if quote.Content[1].Type != "mediaSingle" {
 		t.Fatalf("expected second child to be mediaSingle, got %q", quote.Content[1].Type)
 	}
-	// Verify media attrs survived the hoisting
 	media := quote.Content[1].Content[0]
 	if media.Attrs == nil || media.Attrs.ID != "media-panel" || media.Attrs.Collection != "panel-coll" {
 		t.Errorf("media attrs lost during hoisting: %+v", media.Attrs)
 	}
 }
 
-// Finding 3: Illegal nodes with no legal descendants degrade to text
 func TestQuoteADF_DegradesIllegalWithoutLegalDescendants(t *testing.T) {
 	original := &ADF{
 		Type:    "doc",
@@ -355,9 +349,6 @@ func TestQuoteADF_DegradesIllegalWithoutLegalDescendants(t *testing.T) {
 	}
 }
 
-// Finding 4: Inline-only containers must not fragment into separate paragraphs.
-// A heading with multiple inline children (text, mention, text) should produce
-// exactly ONE paragraph whose text contains all runs concatenated, not three.
 func TestQuoteADF_HeadingInlineRunsStayTogether(t *testing.T) {
 	original := &ADF{
 		Type:    "doc",
@@ -377,7 +368,6 @@ func TestQuoteADF_HeadingInlineRunsStayTogether(t *testing.T) {
 	if quote == nil {
 		t.Fatal("expected a blockquote node")
 	}
-	// Must be exactly one paragraph (not three)
 	if len(quote.Content) != 1 {
 		t.Fatalf("expected 1 child, got %d; heading should not fragment", len(quote.Content))
 	}
@@ -388,16 +378,12 @@ func TestQuoteADF_HeadingInlineRunsStayTogether(t *testing.T) {
 	if len(child.Content) != 1 || child.Content[0].Type != "text" {
 		t.Fatalf("expected a single text child, got %+v", child.Content)
 	}
-	// Text must contain all runs concatenated (not fragmented)
-	// ADFToText may add markdown syntax and normalize spacing, but the key is
-	// all inline runs are in ONE paragraph, not three separate ones
 	text := child.Content[0].Text
 	if !strings.Contains(text, "Hello") || !strings.Contains(text, "Bob") || !strings.Contains(text, "World") {
 		t.Errorf("expected all inline runs in one paragraph, got %q", text)
 	}
 }
 
-// Panel containing both a legal paragraph and a legal mediaSingle should hoist both.
 func TestQuoteADF_PanelWithMixedContentHoistsAll(t *testing.T) {
 	original := &ADF{
 		Type:    "doc",
@@ -440,8 +426,6 @@ func TestQuoteADF_PanelWithMixedContentHoistsAll(t *testing.T) {
 	}
 }
 
-// Panel containing a paragraph and a heading should hoist the paragraph and
-// flatten the heading to its own paragraph.
 func TestQuoteADF_PanelWithParagraphAndHeadingFlattenHeading(t *testing.T) {
 	original := &ADF{
 		Type:    "doc",
@@ -470,11 +454,9 @@ func TestQuoteADF_PanelWithParagraphAndHeadingFlattenHeading(t *testing.T) {
 	if len(quote.Content) != 2 {
 		t.Fatalf("expected 2 children, got %d", len(quote.Content))
 	}
-	// First child: hoisted paragraph
 	if quote.Content[0].Type != "paragraph" || quote.Content[0].Content[0].Text != "Paragraph text" {
 		t.Fatalf("expected hoisted paragraph as first child")
 	}
-	// Second child: heading flattened to paragraph
 	if quote.Content[1].Type != "paragraph" {
 		t.Fatalf("expected flattened paragraph as second child, got %q", quote.Content[1].Type)
 	}
@@ -483,8 +465,6 @@ func TestQuoteADF_PanelWithParagraphAndHeadingFlattenHeading(t *testing.T) {
 	}
 }
 
-// Deeply nested block nodes should be hoisted all the way up.
-// table > tableRow > tableCell > paragraph should reach and hoist the paragraph.
 func TestQuoteADF_DeeplyNestedBlockNodeHoisted(t *testing.T) {
 	original := &ADF{
 		Type:    "doc",
@@ -508,7 +488,6 @@ func TestQuoteADF_DeeplyNestedBlockNodeHoisted(t *testing.T) {
 	if quote == nil {
 		t.Fatal("expected a blockquote node")
 	}
-	// The deeply nested paragraph should be hoisted as a direct child
 	if len(quote.Content) != 1 {
 		t.Fatalf("expected 1 hoisted paragraph, got %d children", len(quote.Content))
 	}

@@ -44,8 +44,8 @@ func quoteNodes(nodes []ADFContent) []ADFContent {
 }
 
 // containsLegal reports whether a subtree holds any node the blockquote content
-// model accepts. It is what distinguishes a container worth descending into from
-// a node whose children are inline runs that must stay together on one line.
+// model accepts, distinguishing a container worth descending into from an
+// inline-run node whose children must stay together on one line.
 func containsLegal(nodes []ADFContent) bool {
 	for _, node := range nodes {
 		if blockquoteAllowedChildren[node.Type] || containsLegal(node.Content) {
@@ -56,8 +56,8 @@ func containsLegal(nodes []ADFContent) bool {
 }
 
 // quoteNode returns the node as zero or more legal blockquote children. A node
-// the content model rejects contributes its legal descendants instead, so media
-// and text nested inside a container survive; only a subtree with nothing legal
+// the content model rejects contributes its legal descendants, so media
+// and text nested in a container survive; only a subtree with nothing legal
 // in it collapses to rendered text.
 func quoteNode(node ADFContent) []ADFContent {
 	if blockquoteAllowedChildren[node.Type] {
