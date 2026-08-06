@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"os"
-	"strings"
 
 	"github.com/spf13/cobra"
 
@@ -149,30 +148,27 @@ func replyToComment(ctx context.Context, jira *api.JiraService, hostname string,
 		return fmt.Errorf("failed to get original comment: %w", err)
 	}
 
-	// Build the reply with a quote of the original
-	originalText := ""
-	if originalComment.Body != nil {
-		originalText = api.ADFToText(originalComment.Body)
-	}
 	originalAuthor := "Unknown"
 	if originalComment.Author != nil {
 		originalAuthor = originalComment.Author.DisplayName
 	}
 
-	// Create quoted reply using Markdown blockquote syntax
-	quotedLines := strings.Split(originalText, "\n")
-	var quoted strings.Builder
-	fmt.Fprintf(&quoted, "_Replying to %s:_\n\n", originalAuthor)
-	for _, line := range quotedLines {
-		quoted.WriteString("> ")
-		quoted.WriteString(line)
-		quoted.WriteString("\n")
+	// Build the reply as ADF. Quoting by copying nodes — rather than rendering
+	// the original to text and re-parsing it — is what keeps media, mentions and
+	// exact characters intact.
+	bodyADF, err := api.TextToADFWithResolver(ctx, opts.Body, jira)
+	if err != nil {
+		return fmt.Errorf("failed to process mentions: %w", err)
 	}
-	quoted.WriteString("\n")
-	quoted.WriteString(opts.Body)
+
+	content := []api.ADFContent{api.AttributionParagraph(originalAuthor)}
+	if quote := api.QuoteADF(originalComment.Body); quote != nil {
+		content = append(content, *quote)
+	}
+	content = append(content, bodyADF.Content...)
 
 	commentOpts := &api.CommentOptions{
-		Body:           quoted.String(),
+		BodyADF:        &api.ADF{Type: "doc", Version: 1, Content: content},
 		VisibilityType: opts.VisibilityType,
 		VisibilityName: opts.VisibilityName,
 	}
