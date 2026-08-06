@@ -175,6 +175,13 @@ type ADFContent struct {
 	Text    string       `json:"text,omitempty"`
 	Attrs   *ADFAttrs    `json:"attrs,omitempty"`
 	Marks   []ADFMark    `json:"marks,omitempty"`
+
+	// RawAttrs holds the attrs object exactly as received. The typed Attrs
+	// struct models only a subset of ADF attributes and omits zero values, so
+	// re-serializing a node through it silently drops keys Jira requires
+	// (notably media's empty-but-mandatory "collection"). A node that carries
+	// RawAttrs emits it verbatim and ignores Attrs.
+	RawAttrs json.RawMessage `json:"-"`
 }
 
 // ADFAttrs represents attributes in ADF.
@@ -209,6 +216,101 @@ type ADFAttrs struct {
 type ADFMark struct {
 	Type  string    `json:"type"`
 	Attrs *ADFAttrs `json:"attrs,omitempty"`
+
+	// See ADFContent.RawAttrs.
+	RawAttrs json.RawMessage `json:"-"`
+}
+
+// UnmarshalJSON captures the raw attrs object alongside the typed fields so
+// that attributes the typed ADFAttrs struct does not model survive a
+// round-trip.
+func (c *ADFContent) UnmarshalJSON(data []byte) error {
+	type alias ADFContent
+	var a alias
+	if err := json.Unmarshal(data, &a); err != nil {
+		return err
+	}
+	*c = ADFContent(a)
+
+	var probe struct {
+		Attrs json.RawMessage `json:"attrs"`
+	}
+	if err := json.Unmarshal(data, &probe); err != nil {
+		return err
+	}
+	c.RawAttrs = probe.Attrs
+	return nil
+}
+
+// MarshalJSON emits RawAttrs verbatim when present, since it came from Jira
+// and is authoritative over the typed Attrs field.
+func (c ADFContent) MarshalJSON() ([]byte, error) {
+	type alias ADFContent
+	a := alias(c)
+	if len(c.RawAttrs) > 0 {
+		a.Attrs = nil
+	}
+
+	data, err := json.Marshal(a)
+	if err != nil {
+		return nil, err
+	}
+	if len(c.RawAttrs) == 0 {
+		return data, nil
+	}
+
+	var fields map[string]json.RawMessage
+	if err := json.Unmarshal(data, &fields); err != nil {
+		return nil, err
+	}
+	fields["attrs"] = c.RawAttrs
+	return json.Marshal(fields)
+}
+
+// UnmarshalJSON captures the raw attrs object alongside the typed fields so
+// that attributes the typed ADFAttrs struct does not model survive a
+// round-trip.
+func (m *ADFMark) UnmarshalJSON(data []byte) error {
+	type alias ADFMark
+	var a alias
+	if err := json.Unmarshal(data, &a); err != nil {
+		return err
+	}
+	*m = ADFMark(a)
+
+	var probe struct {
+		Attrs json.RawMessage `json:"attrs"`
+	}
+	if err := json.Unmarshal(data, &probe); err != nil {
+		return err
+	}
+	m.RawAttrs = probe.Attrs
+	return nil
+}
+
+// MarshalJSON emits RawAttrs verbatim when present, since it came from Jira
+// and is authoritative over the typed Attrs field.
+func (m ADFMark) MarshalJSON() ([]byte, error) {
+	type alias ADFMark
+	a := alias(m)
+	if len(m.RawAttrs) > 0 {
+		a.Attrs = nil
+	}
+
+	data, err := json.Marshal(a)
+	if err != nil {
+		return nil, err
+	}
+	if len(m.RawAttrs) == 0 {
+		return data, nil
+	}
+
+	var fields map[string]json.RawMessage
+	if err := json.Unmarshal(data, &fields); err != nil {
+		return nil, err
+	}
+	fields["attrs"] = m.RawAttrs
+	return json.Marshal(fields)
 }
 
 // Status represents an issue status.
