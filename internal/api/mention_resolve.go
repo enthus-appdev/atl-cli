@@ -38,12 +38,17 @@ func resolveInContent(ctx context.Context, node *ADFContent, resolver MentionRes
 			}
 
 			if accountID != "" {
+				// RawAttrs, when set, wins over Attrs on marshal (see
+				// ADFContent.RawAttrs), so a node carrying it must drop it
+				// here or the resolved id would be silently discarded.
 				child.Attrs.ID = accountID
+				child.RawAttrs = nil
 			} else {
 				// Could not resolve - convert to plain text
 				child.Type = "text"
 				child.Text = child.Attrs.Text
 				child.Attrs = nil
+				child.RawAttrs = nil
 			}
 			continue
 		}
