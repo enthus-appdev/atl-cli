@@ -1,6 +1,7 @@
 package api
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -238,7 +239,12 @@ func (c *ADFContent) UnmarshalJSON(data []byte) error {
 	if err := json.Unmarshal(data, &probe); err != nil {
 		return err
 	}
-	c.RawAttrs = probe.Attrs
+	// A JSON null is captured as the 4 bytes "null", which is non-empty and so
+	// would be re-emitted as "attrs":null. Treat it as absent instead: the
+	// typed Attrs then governs, and a node with no attributes emits no key.
+	if !bytes.Equal(probe.Attrs, []byte("null")) {
+		c.RawAttrs = probe.Attrs
+	}
 	return nil
 }
 
@@ -284,7 +290,10 @@ func (m *ADFMark) UnmarshalJSON(data []byte) error {
 	if err := json.Unmarshal(data, &probe); err != nil {
 		return err
 	}
-	m.RawAttrs = probe.Attrs
+	// See ADFContent.UnmarshalJSON: a JSON null must not become "attrs":null.
+	if !bytes.Equal(probe.Attrs, []byte("null")) {
+		m.RawAttrs = probe.Attrs
+	}
 	return nil
 }
 

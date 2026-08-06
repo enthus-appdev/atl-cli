@@ -100,3 +100,31 @@ func TestADFMark_RoundTripPreservesAttrs(t *testing.T) {
 		t.Errorf("expected unmodelled mark attr to survive, got %s", out)
 	}
 }
+
+func TestADFContent_ExplicitNullAttrsEmitsNoAttrsKey(t *testing.T) {
+	var node ADFContent
+	if err := json.Unmarshal([]byte(`{"type":"paragraph","attrs":null}`), &node); err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
+	out, err := json.Marshal(node)
+	if err != nil {
+		t.Fatalf("marshal: %v", err)
+	}
+	if strings.Contains(string(out), "attrs") {
+		t.Errorf(`expected no attrs key for explicit null, got %s`, out)
+	}
+}
+
+func TestADFMark_ExplicitNullAttrsEmitsNoAttrsKey(t *testing.T) {
+	var mark ADFMark
+	if err := json.Unmarshal([]byte(`{"type":"em","attrs":null}`), &mark); err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
+	out, err := json.Marshal(mark)
+	if err != nil {
+		t.Fatalf("marshal: %v", err)
+	}
+	if strings.Contains(string(out), "attrs") {
+		t.Errorf(`expected no attrs key for explicit null, got %s`, out)
+	}
+}
