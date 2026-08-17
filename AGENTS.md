@@ -284,6 +284,7 @@ atl confluence page attachment <id> --upload a.pdf --upload b.png  # Upload mult
 The atl CLI accepts Markdown for descriptions AND comments, converting to Atlassian Document Format (ADF):
 
 - Standard Markdown: headings, bold, italic, strikethrough, code, lists, links
+- Task lists: `- [ ] open item`, `- [x] done item` — become real Jira action items (clickable checkboxes); their checked state round-trips through view/edit
 - Blockquotes: `> text`
 - Horizontal rules: `---` or `***` or `___`
 - GFM tables: `| Header | Header |` with `|---|---|` separator

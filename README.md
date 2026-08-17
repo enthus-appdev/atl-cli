@@ -146,6 +146,7 @@ func main() {
 | Code blocks | ` ``` ` with optional language |
 | Links | `[text](url)` |
 | Bullet lists | `- item` or `* item` |
+| Task lists | `- [ ] open` or `- [x] done` |
 | Numbered lists | `1. item` |
 | Blockquotes | `> quote` |
 | Horizontal rules | `---` or `***` |
