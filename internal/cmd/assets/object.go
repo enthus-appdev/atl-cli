@@ -6,9 +6,22 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/enthus-appdev/atl-cli/internal/api"
 	"github.com/enthus-appdev/atl-cli/internal/iostreams"
 	"github.com/enthus-appdev/atl-cli/internal/output"
 )
+
+func attributeValues(values []api.AssetAttributeValue) []string {
+	formatted := make([]string, 0, len(values))
+	for _, value := range values {
+		if value.DisplayValue != "" {
+			formatted = append(formatted, value.DisplayValue)
+		} else if value.Value != nil {
+			formatted = append(formatted, fmt.Sprint(value.Value))
+		}
+	}
+	return formatted
+}
 
 func newCmdObject(ios *iostreams.IOStreams, common *commonOptions) *cobra.Command {
 	var jsonOut bool
@@ -40,14 +53,7 @@ func newCmdObject(ios *iostreams.IOStreams, common *commonOptions) *cobra.Comman
 				if name == "" {
 					name = attribute.ObjectTypeAttributeID
 				}
-				values := make([]string, 0, len(attribute.ObjectAttributeValues))
-				for _, value := range attribute.ObjectAttributeValues {
-					if value.DisplayValue != "" {
-						values = append(values, value.DisplayValue)
-					} else {
-						values = append(values, fmt.Sprint(value.Value))
-					}
-				}
+				values := attributeValues(attribute.ObjectAttributeValues)
 				rows = append(rows, []string{name, strings.Join(values, ", ")})
 			}
 			output.SimpleTable(ios.Out, []string{"ATTRIBUTE", "VALUE"}, rows)
