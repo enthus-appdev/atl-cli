@@ -67,20 +67,11 @@ func TestDeprecationWarning(t *testing.T) {
 
 func TestContextFlagSetsInvocationOverride(t *testing.T) {
 	t.Setenv("ATLASSIAN_CONTEXT", "from-environment")
-	root := &cobra.Command{Use: "atl"}
-	var contextName string
-	root.PersistentFlags().StringVar(&contextName, "context", "", "")
 	var during string
-	root.AddCommand(&cobra.Command{
-		Use: "capture-context",
-		Run: func(cmd *cobra.Command, args []string) {
-			during = os.Getenv("ATLASSIAN_CONTEXT")
-		},
-	})
-	wrapInvocationContext(root, &contextName)
-	root.SetArgs([]string{"capture-context", "--context", "sandbox"})
-
-	if err := root.Execute(); err != nil {
+	if err := runWithInvocationContext(invocationContextArg([]string{"jira", "--context", "sandbox", "issue", "list"}), func() error {
+		during = os.Getenv("ATLASSIAN_CONTEXT")
+		return nil
+	}); err != nil {
 		t.Fatalf("execute with --context: %v", err)
 	}
 	if during != "sandbox" {
@@ -104,6 +95,22 @@ func TestContextFlagRestoresOverrideAfterError(t *testing.T) {
 	}
 	if got := os.Getenv("ATLASSIAN_CONTEXT"); got != "from-environment" {
 		t.Fatalf("ATLASSIAN_CONTEXT after error = %q, want restored value", got)
+	}
+}
+
+func TestInvocationContextArg(t *testing.T) {
+	for _, test := range []struct {
+		args []string
+		want string
+	}{
+		{args: []string{"--context", "prod", "jira", "issue", "list"}, want: "prod"},
+		{args: []string{"jira", "--context=sandbox", "assets", "count"}, want: "sandbox"},
+		{args: []string{"jira", "issue", "create", "--", "--context=positional"}, want: ""},
+		{args: []string{"jira", "issue", "list"}, want: ""},
+	} {
+		if got := invocationContextArg(test.args); got != test.want {
+			t.Errorf("invocationContextArg(%q) = %q, want %q", test.args, got, test.want)
+		}
 	}
 }
 

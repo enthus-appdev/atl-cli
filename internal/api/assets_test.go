@@ -20,6 +20,7 @@ func newTestAssetsClient(server *httptest.Server, workspaceID string) *AssetsCli
 		tokens: &auth.TokenSet{
 			AccessToken: "test-token",
 			ExpiresAt:   time.Now().Add(time.Hour),
+			Scopes:      []string{auth.AssetsObjectReadScope, auth.AssetsSchemaReadScope},
 		},
 	}
 	return &AssetsClient{
@@ -42,6 +43,33 @@ func TestNewAssetsClientUsesCloudGateway(t *testing.T) {
 
 	if got, want := assets.baseURL, "https://api.atlassian.com/ex/jira/cloud-123"; got != want {
 		t.Fatalf("baseURL = %q, want %q", got, want)
+	}
+}
+
+func TestAssetsScopesAreOperationSpecific(t *testing.T) {
+	client := &AssetsClient{client: &Client{
+		hostname: "test.atlassian.net",
+		tokens:   &auth.TokenSet{Scopes: []string{auth.AssetsObjectReadScope}},
+	}}
+	if err := client.requireScopes(auth.AssetsObjectReadScope); err != nil {
+		t.Fatalf("object scope rejected: %v", err)
+	}
+	if err := client.requireScopes(auth.AssetsSchemaReadScope); err == nil {
+		t.Fatal("missing schema scope accepted")
+	}
+}
+
+func TestAssetAttributeValuePreservesLargeNumber(t *testing.T) {
+	var value AssetAttributeValue
+	if err := json.Unmarshal([]byte(`{"value":9007199254740993}`), &value); err != nil {
+		t.Fatal(err)
+	}
+	data, err := json.Marshal(value)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got, want := string(data), `{"value":9007199254740993}`; got != want {
+		t.Fatalf("round trip = %s, want %s", got, want)
 	}
 }
 

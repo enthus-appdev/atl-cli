@@ -1,6 +1,7 @@
 package assets
 
 import (
+	"encoding/json"
 	"reflect"
 	"testing"
 
@@ -9,13 +10,20 @@ import (
 
 func TestAttributeValuesSkipsNullValues(t *testing.T) {
 	values := []api.AssetAttributeValue{
-		{DisplayValue: "Customer 145166", Value: "145166"},
-		{Value: float64(42)},
+		{DisplayValue: "Customer 145166", Value: json.RawMessage(`"145166"`)},
+		{Value: json.RawMessage(`42`)},
 		{},
 	}
 
 	want := []string{"Customer 145166", "42"}
 	if got := attributeValues(values); !reflect.DeepEqual(got, want) {
+		t.Fatalf("attributeValues() = %#v, want %#v", got, want)
+	}
+}
+
+func TestAttributeValuesPreservesLargeNumber(t *testing.T) {
+	values := []api.AssetAttributeValue{{Value: json.RawMessage(`9007199254740993`)}}
+	if got, want := attributeValues(values), []string{"9007199254740993"}; !reflect.DeepEqual(got, want) {
 		t.Fatalf("attributeValues() = %#v, want %#v", got, want)
 	}
 }

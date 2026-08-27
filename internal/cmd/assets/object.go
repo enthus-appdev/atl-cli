@@ -1,6 +1,7 @@
 package assets
 
 import (
+	"encoding/json"
 	"fmt"
 	"strings"
 	"unicode"
@@ -17,8 +18,12 @@ func attributeValues(values []api.AssetAttributeValue) []string {
 	for _, value := range values {
 		if value.DisplayValue != "" {
 			formatted = append(formatted, terminalText(value.DisplayValue))
-		} else if value.Value != nil {
-			formatted = append(formatted, terminalText(fmt.Sprint(value.Value)))
+		} else if len(value.Value) > 0 && string(value.Value) != "null" {
+			var text string
+			if err := json.Unmarshal(value.Value, &text); err != nil {
+				text = string(value.Value)
+			}
+			formatted = append(formatted, terminalText(text))
 		}
 	}
 	return formatted

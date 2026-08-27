@@ -124,7 +124,7 @@ atl --context prod jira issue create --project PROJ --type Task --summary "Featu
 **Important**: See [docs](https://example.com) for details."
 
 # Add comment with markdown
-atl --context prod jira issue comment PROJ-1234 --body "## Summary
+atl --context prod jira issue comment add PROJ-1234 --body "## Summary
 
 Fixed the **critical** bug in \`main.go\`.
 

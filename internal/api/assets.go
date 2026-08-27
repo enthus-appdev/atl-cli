@@ -2,9 +2,13 @@ package api
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"net/url"
+	"strings"
+
+	"github.com/enthus-appdev/atl-cli/internal/auth"
 )
 
 // AssetsClient talks to the Jira Service Management Assets (CMDB) REST API.
@@ -23,12 +27,21 @@ func NewAssetsClient(client *Client, workspaceID string) *AssetsClient {
 	return &AssetsClient{
 		client:      client,
 		workspaceID: workspaceID,
-		baseURL:     fmt.Sprintf("%s/ex/jira/%s", AtlassianAPIURL, client.CloudID()),
+		baseURL:     client.JiraGatewayBaseURL(),
 	}
 }
 
 func (c *AssetsClient) do(ctx context.Context, method, fullURL string, body, out interface{}) error {
 	return c.client.Request(ctx, method, fullURL, body, out)
+}
+
+func (c *AssetsClient) requireScopes(required ...string) error {
+	missing := c.client.MissingScopes(required...)
+	if len(missing) == 0 {
+		return nil
+	}
+	return fmt.Errorf("OAuth token is missing Assets scopes %s; re-authenticate with 'atl auth login --hostname %s'",
+		strings.Join(missing, ", "), c.client.Hostname())
 }
 
 // WorkspaceID returns the resolved workspace id, discovering it from the site if
@@ -71,6 +84,9 @@ type AssetSchema struct {
 
 // Schemas returns all object schemas in the workspace.
 func (c *AssetsClient) Schemas(ctx context.Context) ([]AssetSchema, error) {
+	if err := c.requireScopes(auth.AssetsSchemaReadScope); err != nil {
+		return nil, err
+	}
 	base, err := c.v1(ctx)
 	if err != nil {
 		return nil, err
@@ -112,9 +128,9 @@ type AssetAttribute struct {
 
 // AssetAttributeValue preserves both the API value and its display form.
 type AssetAttributeValue struct {
-	Value        interface{} `json:"value,omitempty"`
-	DisplayValue string      `json:"displayValue,omitempty"`
-	SearchValue  string      `json:"searchValue,omitempty"`
+	Value        json.RawMessage `json:"value,omitempty"`
+	DisplayValue string          `json:"displayValue,omitempty"`
+	SearchValue  string          `json:"searchValue,omitempty"`
 }
 
 type aqlPage struct {
@@ -124,6 +140,9 @@ type aqlPage struct {
 
 // AQLPage runs an AQL query and returns one page of objects.
 func (c *AssetsClient) AQLPage(ctx context.Context, ql string, startAt, maxResults int) ([]AssetObject, bool, error) {
+	if err := c.requireScopes(auth.AssetsObjectReadScope); err != nil {
+		return nil, false, err
+	}
 	base, err := c.v1(ctx)
 	if err != nil {
 		return nil, false, err
@@ -141,6 +160,9 @@ func (c *AssetsClient) AQLPage(ctx context.Context, ql string, startAt, maxResul
 
 // Object loads an Assets object and all attributes returned by the API.
 func (c *AssetsClient) Object(ctx context.Context, objectID string) (*AssetObject, error) {
+	if err := c.requireScopes(auth.AssetsObjectReadScope); err != nil {
+		return nil, err
+	}
 	workspaceID, err := c.WorkspaceID(ctx)
 	if err != nil {
 		return nil, err

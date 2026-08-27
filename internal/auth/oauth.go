@@ -15,6 +15,11 @@ import (
 )
 
 const (
+	AssetsObjectReadScope = "read:cmdb-object:jira"
+	AssetsSchemaReadScope = "read:cmdb-schema:jira"
+)
+
+const (
 	// AtlassianAuthURL is the authorization endpoint for Atlassian OAuth.
 	AtlassianAuthURL = "https://auth.atlassian.com/authorize"
 	// AtlassianAPIURL is the base URL for Atlassian API requests.
@@ -79,8 +84,8 @@ func DefaultScopes() []string {
 		// not a grantable Atlassian scope and is silently dropped from the token.
 		"read:servicedesk-request",
 		// Jira Assets scopes - AQL/object reads and schema counts.
-		"read:cmdb-object:jira",
-		"read:cmdb-schema:jira",
+		AssetsObjectReadScope,
+		AssetsSchemaReadScope,
 		// Token refresh
 		"offline_access",
 	}

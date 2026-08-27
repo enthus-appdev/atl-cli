@@ -173,9 +173,14 @@ func (c *Client) MissingScopes(required ...string) []string {
 	return missing
 }
 
-// BaseURL returns the base URL for Jira API requests.
+// JiraGatewayBaseURL returns the cloud gateway root for this Jira site.
+func (c *Client) JiraGatewayBaseURL() string {
+	return fmt.Sprintf("%s/ex/jira/%s", AtlassianAPIURL, c.cloudID)
+}
+
+// JiraBaseURL returns the base URL for Jira API requests.
 func (c *Client) JiraBaseURL() string {
-	return fmt.Sprintf("%s/ex/jira/%s/rest/api/3", AtlassianAPIURL, c.cloudID)
+	return c.JiraGatewayBaseURL() + "/rest/api/3"
 }
 
 // ConfluenceBaseURL returns the base URL for Confluence API requests.

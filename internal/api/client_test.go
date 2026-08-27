@@ -347,10 +347,10 @@ func TestClientAccessors(t *testing.T) {
 }
 
 func TestClientMissingScopes(t *testing.T) {
-	client := &Client{tokens: &auth.TokenSet{Scopes: []string{"read:cmdb-object:jira"}}}
+	client := &Client{tokens: &auth.TokenSet{Scopes: []string{auth.AssetsObjectReadScope}}}
 
-	got := client.MissingScopes("read:cmdb-object:jira", "read:cmdb-schema:jira")
-	if len(got) != 1 || got[0] != "read:cmdb-schema:jira" {
+	got := client.MissingScopes(auth.AssetsObjectReadScope, auth.AssetsSchemaReadScope)
+	if len(got) != 1 || got[0] != auth.AssetsSchemaReadScope {
 		t.Fatalf("MissingScopes() = %#v, want read:cmdb-schema:jira", got)
 	}
 }

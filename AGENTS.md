@@ -11,9 +11,9 @@ Jira commands live under `atl jira` (`atl jira issue`, `atl jira board`, `atl ji
 ## Authentication
 
 ```bash
-atl auth status --hostname prod         # Check one authenticated site
 atl auth login --hostname enthus.atlassian.net  # Authenticate one explicit site
 atl config set-alias prod enthus.atlassian.net  # Name the host used below
+atl auth status --hostname prod         # Check one authenticated site
 ```
 
 ## Context Switching (Multi-Environment)

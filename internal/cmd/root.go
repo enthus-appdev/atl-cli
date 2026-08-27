@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"runtime/debug"
+	"strings"
 
 	"github.com/spf13/cobra"
 
@@ -21,7 +22,8 @@ import (
 // Execute runs the root command and returns an exit code.
 func Execute(ios *iostreams.IOStreams, version string) int {
 	rootCmd := NewRootCmd(ios, version)
-	if err := rootCmd.Execute(); err != nil {
+	err := runWithInvocationContext(invocationContextArg(os.Args[1:]), rootCmd.Execute)
+	if err != nil {
 		fmt.Fprintf(ios.ErrOut, "Error: %s\n", err)
 		return 1
 	}
@@ -75,27 +77,24 @@ Environment variables:
 	cmd.AddCommand(deprecatedAlias(issueCmd.NewCmdIssue(ios), ios, "jira issue"))
 	cmd.AddCommand(deprecatedAlias(boardCmd.NewCmdBoard(ios), ios, "jira board"))
 	cmd.AddCommand(deprecatedAlias(smCmd.NewCmdSM(ios), ios, "jira sm"))
-	wrapInvocationContext(cmd, &contextName)
-
 	return cmd
 }
 
-func wrapInvocationContext(parent *cobra.Command, contextName *string) {
-	if parent.RunE != nil {
-		runE := parent.RunE
-		parent.RunE = func(cmd *cobra.Command, args []string) error {
-			return runWithInvocationContext(*contextName, func() error { return runE(cmd, args) })
+func invocationContextArg(args []string) string {
+	var contextName string
+	for i := 0; i < len(args); i++ {
+		if args[i] == "--" {
+			break
 		}
-	} else if parent.Run != nil {
-		run := parent.Run
-		parent.Run = nil
-		parent.RunE = func(cmd *cobra.Command, args []string) error {
-			return runWithInvocationContext(*contextName, func() error { run(cmd, args); return nil })
+		switch {
+		case args[i] == "--context" && i+1 < len(args):
+			contextName = args[i+1]
+			i++
+		case strings.HasPrefix(args[i], "--context="):
+			contextName = strings.TrimPrefix(args[i], "--context=")
 		}
 	}
-	for _, child := range parent.Commands() {
-		wrapInvocationContext(child, contextName)
-	}
+	return contextName
 }
 
 func runWithInvocationContext(contextName string, run func() error) error {
