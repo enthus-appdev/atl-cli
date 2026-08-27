@@ -2,6 +2,7 @@ package auth
 
 import (
 	"bytes"
+	"encoding/json"
 	"strings"
 	"testing"
 
@@ -56,5 +57,21 @@ func TestRunStatusJSONOmitsCredentialLine(t *testing.T) {
 	}
 	if strings.Contains(buf.String(), "OAuth credentials:") {
 		t.Fatalf("JSON output must not contain the credential-source line, got:\n%s", buf.String())
+	}
+}
+
+func TestAuthStatusJSONIncludesTokenScopes(t *testing.T) {
+	data, err := json.Marshal(AuthStatus{
+		Hostname:      "sandbox.atlassian.net",
+		Authenticated: true,
+		Scopes:        []string{"read:cmdb-object:jira", "read:cmdb-schema:jira"},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, scope := range []string{"read:cmdb-object:jira", "read:cmdb-schema:jira"} {
+		if !strings.Contains(string(data), scope) {
+			t.Fatalf("JSON missing scope %q: %s", scope, data)
+		}
 	}
 }

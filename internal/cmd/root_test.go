@@ -2,6 +2,9 @@ package cmd
 
 import (
 	"bytes"
+	"errors"
+	"fmt"
+	"os"
 	"strings"
 	"testing"
 
@@ -59,6 +62,67 @@ func TestDeprecationWarning(t *testing.T) {
 
 	if got := errOut.String(); !strings.Contains(got, "deprecated") || !strings.Contains(got, "jira issue") {
 		t.Errorf("warning missing expected text, got: %q", got)
+	}
+}
+
+func TestContextFlagSetsInvocationOverride(t *testing.T) {
+	t.Setenv("ATLASSIAN_CONTEXT", "from-environment")
+	root := NewRootCmd(iostreams.Test(), "test")
+	contextName, err := parsedInvocationContext(root, []string{"jira", "--context", "sandbox", "issue", "list"})
+	if err != nil {
+		t.Fatalf("parse --context: %v", err)
+	}
+	var during string
+	if err := runWithInvocationContext(contextName, func() error {
+		during = os.Getenv("ATLASSIAN_CONTEXT")
+		return nil
+	}); err != nil {
+		t.Fatalf("execute with --context: %v", err)
+	}
+	if during != "sandbox" {
+		t.Fatalf("ATLASSIAN_CONTEXT during command = %q, want sandbox", during)
+	}
+	if got := os.Getenv("ATLASSIAN_CONTEXT"); got != "from-environment" {
+		t.Fatalf("ATLASSIAN_CONTEXT after command = %q, want restored value", got)
+	}
+}
+
+func TestContextFlagRestoresOverrideAfterError(t *testing.T) {
+	t.Setenv("ATLASSIAN_CONTEXT", "from-environment")
+	wantErr := fmt.Errorf("command failed")
+	if err := runWithInvocationContext("sandbox", func() error {
+		if got := os.Getenv("ATLASSIAN_CONTEXT"); got != "sandbox" {
+			t.Fatalf("ATLASSIAN_CONTEXT during command = %q, want sandbox", got)
+		}
+		return wantErr
+	}); !errors.Is(err, wantErr) {
+		t.Fatalf("runWithInvocationContext() error = %v, want %v", err, wantErr)
+	}
+	if got := os.Getenv("ATLASSIAN_CONTEXT"); got != "from-environment" {
+		t.Fatalf("ATLASSIAN_CONTEXT after error = %q, want restored value", got)
+	}
+}
+
+func TestParsedInvocationContext(t *testing.T) {
+	for _, test := range []struct {
+		args []string
+		want string
+	}{
+		{args: []string{"--context", "prod", "jira", "issue", "list"}, want: "prod"},
+		{args: []string{"jira", "--context=sandbox", "assets", "count"}, want: "sandbox"},
+		{args: []string{"jira", "issue", "comment", "add", "NX-1", "--body", "--context=positional"}, want: ""},
+		{args: []string{"jira", "issue", "create", "--", "--context=positional"}, want: ""},
+		{args: []string{"jira", "issue", "list"}, want: ""},
+	} {
+		root := NewRootCmd(iostreams.Test(), "test")
+		got, err := parsedInvocationContext(root, test.args)
+		if err != nil {
+			t.Errorf("parsedInvocationContext(%q) error: %v", test.args, err)
+			continue
+		}
+		if got != test.want {
+			t.Errorf("parsedInvocationContext(%q) = %q, want %q", test.args, got, test.want)
+		}
 	}
 }
 

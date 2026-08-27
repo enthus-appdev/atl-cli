@@ -140,11 +140,12 @@ func NewClientFromConfig() (*Client, error) {
 		return nil, fmt.Errorf("failed to load config: %w", err)
 	}
 
-	if cfg.CurrentHost == "" {
+	hostname := cfg.InvocationHost()
+	if hostname == "" {
 		return nil, fmt.Errorf("no host configured. Run 'atl auth login' first")
 	}
 
-	return NewClient(cfg.CurrentHost)
+	return NewClient(hostname)
 }
 
 // Hostname returns the configured hostname.
@@ -157,9 +158,29 @@ func (c *Client) CloudID() string {
 	return c.cloudID
 }
 
-// BaseURL returns the base URL for Jira API requests.
+// MissingScopes returns required OAuth scopes absent from the stored token.
+func (c *Client) MissingScopes(required ...string) []string {
+	granted := make(map[string]struct{}, len(c.tokens.Scopes))
+	for _, scope := range c.tokens.Scopes {
+		granted[scope] = struct{}{}
+	}
+	missing := make([]string, 0, len(required))
+	for _, scope := range required {
+		if _, ok := granted[scope]; !ok {
+			missing = append(missing, scope)
+		}
+	}
+	return missing
+}
+
+// JiraGatewayBaseURL returns the cloud gateway root for this Jira site.
+func (c *Client) JiraGatewayBaseURL() string {
+	return fmt.Sprintf("%s/ex/jira/%s", AtlassianAPIURL, c.cloudID)
+}
+
+// JiraBaseURL returns the base URL for Jira API requests.
 func (c *Client) JiraBaseURL() string {
-	return fmt.Sprintf("%s/ex/jira/%s/rest/api/3", AtlassianAPIURL, c.cloudID)
+	return c.JiraGatewayBaseURL() + "/rest/api/3"
 }
 
 // ConfluenceBaseURL returns the base URL for Confluence API requests.

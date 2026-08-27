@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"fmt"
+	"os"
 	"runtime/debug"
 
 	"github.com/spf13/cobra"
@@ -20,7 +21,9 @@ import (
 // Execute runs the root command and returns an exit code.
 func Execute(ios *iostreams.IOStreams, version string) int {
 	rootCmd := NewRootCmd(ios, version)
-	if err := rootCmd.Execute(); err != nil {
+	contextName, _ := parsedInvocationContext(rootCmd, os.Args[1:])
+	err := runWithInvocationContext(contextName, rootCmd.Execute)
+	if err != nil {
 		fmt.Fprintf(ios.ErrOut, "Error: %s\n", err)
 		return 1
 	}
@@ -30,6 +33,7 @@ func Execute(ios *iostreams.IOStreams, version string) int {
 // NewRootCmd creates the root command for the CLI.
 func NewRootCmd(ios *iostreams.IOStreams, version string) *cobra.Command {
 	commit, date := vcsInfo()
+	var contextName string
 	cmd := &cobra.Command{
 		Use:   "atl",
 		Short: "Atlassian CLI - Work with Jira and Confluence from the command line",
@@ -42,11 +46,13 @@ It provides commands for:
 Get started by running 'atl auth login' to authenticate with your Atlassian account.
 
 Environment variables:
-  ATL_DEBUG=1    Enable debug logging (shows API requests/responses)`,
+  ATL_DEBUG=1                 Enable debug logging (shows API requests/responses)
+  ATLASSIAN_CONTEXT=<context> Select a host for this invocation`,
 		SilenceUsage:  true,
 		SilenceErrors: true,
 		Version:       version,
 	}
+	cmd.PersistentFlags().StringVar(&contextName, "context", "", "Atlassian host or alias for this invocation")
 
 	// Set custom version template
 	cmd.SetVersionTemplate(fmt.Sprintf("atl version %s\ncommit: %s\nbuilt:  %s\n",
@@ -71,8 +77,36 @@ Environment variables:
 	cmd.AddCommand(deprecatedAlias(issueCmd.NewCmdIssue(ios), ios, "jira issue"))
 	cmd.AddCommand(deprecatedAlias(boardCmd.NewCmdBoard(ios), ios, "jira board"))
 	cmd.AddCommand(deprecatedAlias(smCmd.NewCmdSM(ios), ios, "jira sm"))
-
 	return cmd
+}
+
+func parsedInvocationContext(root *cobra.Command, args []string) (string, error) {
+	command, commandArgs, err := root.Find(args)
+	if err != nil {
+		return "", err
+	}
+	if err := command.ParseFlags(commandArgs); err != nil {
+		return "", err
+	}
+	return command.Flags().GetString("context")
+}
+
+func runWithInvocationContext(contextName string, run func() error) error {
+	if contextName == "" {
+		return run()
+	}
+	previous, existed := os.LookupEnv("ATLASSIAN_CONTEXT")
+	if err := os.Setenv("ATLASSIAN_CONTEXT", contextName); err != nil {
+		return err
+	}
+	defer func() {
+		if existed {
+			_ = os.Setenv("ATLASSIAN_CONTEXT", previous)
+		} else {
+			_ = os.Unsetenv("ATLASSIAN_CONTEXT")
+		}
+	}()
+	return run()
 }
 
 // deprecatedAlias hides a relocated command and warns once on use.

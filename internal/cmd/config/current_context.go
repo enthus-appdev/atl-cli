@@ -39,7 +39,8 @@ func runCurrentContext(ios *iostreams.IOStreams, jsonOutput bool) error {
 		return fmt.Errorf("failed to load config: %w", err)
 	}
 
-	if cfg.CurrentHost == "" {
+	activeHost := cfg.InvocationHost()
+	if activeHost == "" {
 		if jsonOutput {
 			return output.JSON(ios.Out, CurrentContextOutput{})
 		}
@@ -48,19 +49,19 @@ func runCurrentContext(ios *iostreams.IOStreams, jsonOutput bool) error {
 		return nil
 	}
 
-	alias := cfg.AliasForHost(cfg.CurrentHost)
+	alias := cfg.AliasForHost(activeHost)
 
 	if jsonOutput {
 		return output.JSON(ios.Out, CurrentContextOutput{
-			Hostname: cfg.CurrentHost,
+			Hostname: activeHost,
 			Alias:    alias,
 		})
 	}
 
 	if alias != "" {
-		fmt.Fprintf(ios.Out, "%s (%s)\n", alias, cfg.CurrentHost)
+		fmt.Fprintf(ios.Out, "%s (%s)\n", alias, activeHost)
 	} else {
-		fmt.Fprintln(ios.Out, cfg.CurrentHost)
+		fmt.Fprintln(ios.Out, activeHost)
 	}
 
 	return nil

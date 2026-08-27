@@ -27,10 +27,10 @@ paginates, because the Assets endpoint caps its reported total at 1000).
 Otherwise the first matching objects are listed.`,
 		Args: cobra.ExactArgs(1),
 		Example: `  # Exact count of every object in the workspace
-  atl assets aql 'objectId > 0' --count
+  atl --context sandbox jira assets aql 'objectId > 0' --count
 
   # Newest objects of one object type
-  atl assets aql 'objectTypeId = 36 ORDER BY created DESC' --limit 20`,
+  atl --context prod jira assets aql 'objectTypeId = 36 ORDER BY created DESC' --limit 20`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ql := args[0]
 			client, err := common.client()
