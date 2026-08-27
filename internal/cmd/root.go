@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"fmt"
+	"os"
 	"runtime/debug"
 
 	"github.com/spf13/cobra"
@@ -30,6 +31,7 @@ func Execute(ios *iostreams.IOStreams, version string) int {
 // NewRootCmd creates the root command for the CLI.
 func NewRootCmd(ios *iostreams.IOStreams, version string) *cobra.Command {
 	commit, date := vcsInfo()
+	var contextName string
 	cmd := &cobra.Command{
 		Use:   "atl",
 		Short: "Atlassian CLI - Work with Jira and Confluence from the command line",
@@ -42,11 +44,21 @@ It provides commands for:
 Get started by running 'atl auth login' to authenticate with your Atlassian account.
 
 Environment variables:
-  ATL_DEBUG=1    Enable debug logging (shows API requests/responses)`,
+  ATL_DEBUG=1                 Enable debug logging (shows API requests/responses)
+  ATLASSIAN_CONTEXT=<context> Select a host for this invocation`,
 		SilenceUsage:  true,
 		SilenceErrors: true,
 		Version:       version,
+		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
+			if contextName == "" {
+				return nil
+			}
+			// The API client resolves this process-local override before the
+			// persisted current_host, so --context never mutates shared config.
+			return os.Setenv("ATLASSIAN_CONTEXT", contextName)
+		},
 	}
+	cmd.PersistentFlags().StringVar(&contextName, "context", "", "Atlassian host or alias for this invocation")
 
 	// Set custom version template
 	cmd.SetVersionTemplate(fmt.Sprintf("atl version %s\ncommit: %s\nbuilt:  %s\n",

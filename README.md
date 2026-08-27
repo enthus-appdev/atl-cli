@@ -30,8 +30,8 @@ atl auth setup
 atl auth login
 
 # 3. Start using the CLI
-atl jira issue list --assignee @me
-atl confluence space list
+atl --context prod jira issue list --assignee @me
+atl --context prod confluence space list
 ```
 
 ## OAuth Setup
@@ -80,16 +80,16 @@ export ATLASSIAN_CLIENT_SECRET="your-client-secret"
 
 ```bash
 # View an issue
-atl jira issue view PROJ-1234
+atl --context prod jira issue view PROJ-1234
 
 # List your assigned issues
-atl jira issue list --assignee @me
+atl --context prod jira issue list --assignee @me
 
 # Output as JSON for LLM processing
-atl jira issue view PROJ-1234 --json
+atl --context prod jira issue view PROJ-1234 --json
 
 # View a Confluence page
-atl confluence page view --space DOCS --title "Getting Started"
+atl --context prod confluence page view --space DOCS --title "Getting Started"
 ```
 
 ## LLM-Friendly Output
@@ -98,13 +98,13 @@ All commands support `--json` flag for structured JSON output, making it easy to
 
 ```bash
 # Get issue data as JSON
-atl jira issue view PROJ-1234 --json
+atl --context prod jira issue view PROJ-1234 --json
 
 # List issues as JSON
-atl jira issue list --project PROJ --json
+atl --context prod jira issue list --project PROJ --json
 
 # Get spaces as JSON
-atl confluence space list --json
+atl --context prod confluence space list --json
 ```
 
 Plain text output is also structured for easy parsing by LLMs.
@@ -115,7 +115,7 @@ Issue descriptions and comments support **Markdown syntax**, which is automatica
 
 ```bash
 # Create issue with markdown description
-atl jira issue create --project PROJ --type Task --summary "Feature" --description "## Goals
+atl --context prod jira issue create --project PROJ --type Task --summary "Feature" --description "## Goals
 
 - Goal 1
 - Goal 2
@@ -123,7 +123,7 @@ atl jira issue create --project PROJ --type Task --summary "Feature" --descripti
 **Important**: See [docs](https://example.com) for details."
 
 # Add comment with markdown
-atl jira issue comment PROJ-1234 --body "## Summary
+atl --context prod jira issue comment PROJ-1234 --body "## Summary
 
 Fixed the **critical** bug in \`main.go\`.
 
@@ -167,120 +167,120 @@ atl auth status       # View authentication status
 ### Jira Issues
 
 ```bash
-atl jira issue view <key>                    # View an issue
-atl jira issue view <key> --json             # View as JSON
-atl jira issue view <key> --web              # Open in browser
+atl --context prod jira issue view <key>                    # View an issue
+atl --context prod jira issue view <key> --json             # View as JSON
+atl --context prod jira issue view <key> --web              # Open in browser
 
-atl jira issue list                          # List recent issues
-atl jira issue list --assignee @me           # Your assigned issues
-atl jira issue list --project PROJ           # Issues in project
-atl jira issue list --jql "status = Open"    # Custom JQL query
-atl jira issue list --json                   # Output as JSON
+atl --context prod jira issue list                          # List recent issues
+atl --context prod jira issue list --assignee @me           # Your assigned issues
+atl --context prod jira issue list --project PROJ           # Issues in project
+atl --context prod jira issue list --jql "status = Open"    # Custom JQL query
+atl --context prod jira issue list --json                   # Output as JSON
 
-atl jira issue create --project PROJ --type Bug --summary "Title"
-atl jira issue create --project PROJ --type Task --summary "Title" --description "Details"
-atl jira issue create --project PROJ --type Story --summary "Title" --field "Story Points=5"
-atl jira issue create --project PROJ --type Task --summary "Title" --field-file fields.json
-atl jira issue create --project PROJ --parent PROJ-123 --summary "Subtask"  # Auto-discovers subtask type
+atl --context prod jira issue create --project PROJ --type Bug --summary "Title"
+atl --context prod jira issue create --project PROJ --type Task --summary "Title" --description "Details"
+atl --context prod jira issue create --project PROJ --type Story --summary "Title" --field "Story Points=5"
+atl --context prod jira issue create --project PROJ --type Task --summary "Title" --field-file fields.json
+atl --context prod jira issue create --project PROJ --parent PROJ-123 --summary "Subtask"  # Auto-discovers subtask type
 
-atl jira issue edit <key> --summary "New summary"
-atl jira issue edit <key> --assignee @me
-atl jira issue edit <key> --add-label bug --remove-label wontfix
-atl jira issue edit <key> --field "Story Points=8"    # Set custom field by name
-atl jira issue edit <key> --field-file fields.json    # Complex fields from JSON file
+atl --context prod jira issue edit <key> --summary "New summary"
+atl --context prod jira issue edit <key> --assignee @me
+atl --context prod jira issue edit <key> --add-label bug --remove-label wontfix
+atl --context prod jira issue edit <key> --field "Story Points=8"    # Set custom field by name
+atl --context prod jira issue edit <key> --field-file fields.json    # Complex fields from JSON file
 
-atl jira issue transition <key> "In Progress"
-atl jira issue transition <key> --list       # List available transitions
+atl --context prod jira issue transition <key> "In Progress"
+atl --context prod jira issue transition <key> --list       # List available transitions
 
-atl jira issue comment <key> --body "Comment text"
-atl jira issue comment <key> --list          # List comments
-atl jira issue comment <key> --edit --comment-id 12345 --body "Updated text"
-atl jira issue comment <key> --delete --comment-id 12345
-atl jira issue comment <key> --reply-to 12345 --body "Reply text"
-atl jira issue comment <key> --body "Internal note" --visibility-type role --visibility-name Developers
+atl --context prod jira issue comment <key> --body "Comment text"
+atl --context prod jira issue comment <key> --list          # List comments
+atl --context prod jira issue comment <key> --edit --comment-id 12345 --body "Updated text"
+atl --context prod jira issue comment <key> --delete --comment-id 12345
+atl --context prod jira issue comment <key> --reply-to 12345 --body "Reply text"
+atl --context prod jira issue comment <key> --body "Internal note" --visibility-type role --visibility-name Developers
 
-atl jira issue assign <key> --assignee @me
-atl jira issue assign <key> --assignee -     # Unassign
+atl --context prod jira issue assign <key> --assignee @me
+atl --context prod jira issue assign <key> --assignee -     # Unassign
 
-atl jira issue link <key> <target-key>                    # Link issues (default: Relates)
-atl jira issue link <key> <target-key> --type Blocks      # Link with specific type
-atl jira issue link <key> --list-types                    # List available link types
+atl --context prod jira issue link <key> <target-key>                    # Link issues (default: Relates)
+atl --context prod jira issue link <key> <target-key> --type Blocks      # Link with specific type
+atl --context prod jira issue link <key> --list-types                    # List available link types
 
-atl jira issue weblink <key> --url "https://..." --title "Title"  # Add web link
-atl jira issue weblink <key> --list                       # List web links
-atl jira issue weblink <key> --delete 12345               # Delete web link by ID
+atl --context prod jira issue weblink <key> --url "https://..." --title "Title"  # Add web link
+atl --context prod jira issue weblink <key> --list                       # List web links
+atl --context prod jira issue weblink <key> --delete 12345               # Delete web link by ID
 
-atl jira issue types --project PROJ           # List issue types (shows subtask types)
+atl --context prod jira issue types --project PROJ           # List issue types (shows subtask types)
 
-atl jira issue fields                        # List all fields
-atl jira issue fields --custom               # List custom fields only
-atl jira issue fields --search "story"       # Search for fields by name
+atl --context prod jira issue fields                        # List all fields
+atl --context prod jira issue fields --custom               # List custom fields only
+atl --context prod jira issue fields --search "story"       # Search for fields by name
 
-atl jira issue sprint <key> --sprint-id 123  # Move issue to sprint
-atl jira issue sprint <key> --backlog        # Move issue to backlog
-atl jira issue sprint <key> --list-sprints --board-id 1   # List sprints
+atl --context prod jira issue sprint <key> --sprint-id 123  # Move issue to sprint
+atl --context prod jira issue sprint <key> --backlog        # Move issue to backlog
+atl --context prod jira issue sprint <key> --list-sprints --board-id 1   # List sprints
 
-atl jira issue flag <key>                    # Flag issue (mark as blocked)
-atl jira issue flag <key> --unflag           # Remove flag
-atl jira issue flag <key> --status           # Check if flagged
+atl --context prod jira issue flag <key>                    # Flag issue (mark as blocked)
+atl --context prod jira issue flag <key> --unflag           # Remove flag
+atl --context prod jira issue flag <key> --status           # Check if flagged
 
-atl jira issue attachment <key> --list       # List attachments
-atl jira issue attachment <key> --download --id 12345  # Download specific file
-atl jira issue attachment <key> --download-all         # Download all attachments
-atl jira issue attachment <key> --download-all -o ./dir  # Download to directory
+atl --context prod jira issue attachment <key> --list       # List attachments
+atl --context prod jira issue attachment <key> --download --id 12345  # Download specific file
+atl --context prod jira issue attachment <key> --download-all         # Download all attachments
+atl --context prod jira issue attachment <key> --download-all -o ./dir  # Download to directory
 ```
 
 ### Boards
 
 ```bash
-atl jira board list                          # List all boards
-atl jira board list --project PROJ           # List boards for a project
+atl --context prod jira board list                          # List all boards
+atl --context prod jira board list --project PROJ           # List boards for a project
 
-atl jira board rank PROJ-123 --before PROJ-456   # Rank issue before another
-atl jira board rank PROJ-123 --after PROJ-456    # Rank issue after another
-atl jira board rank PROJ-1 PROJ-2 PROJ-3 --before PROJ-4  # Rank multiple issues in order
-atl jira board rank PROJ-123 --top --board-id 42    # Move to top of backlog
+atl --context prod jira board rank PROJ-123 --before PROJ-456   # Rank issue before another
+atl --context prod jira board rank PROJ-123 --after PROJ-456    # Rank issue after another
+atl --context prod jira board rank PROJ-1 PROJ-2 PROJ-3 --before PROJ-4  # Rank multiple issues in order
+atl --context prod jira board rank PROJ-123 --top --board-id 42    # Move to top of backlog
 ```
 
 ### Confluence
 
 ```bash
-atl confluence space list               # List spaces
-atl confluence space list --json        # Output as JSON
+atl --context prod confluence space list               # List spaces
+atl --context prod confluence space list --json        # Output as JSON
 
-atl confluence page view <id>           # View page by ID
-atl confluence page view --space DOCS --title "Title"
-atl confluence page view <id> --json    # Output as JSON
-atl confluence page view <id> --web     # Open in browser
+atl --context prod confluence page view <id>           # View page by ID
+atl --context prod confluence page view --space DOCS --title "Title"
+atl --context prod confluence page view <id> --json    # Output as JSON
+atl --context prod confluence page view <id> --web     # Open in browser
 
-atl confluence page list --space DOCS   # List pages in space
+atl --context prod confluence page list --space DOCS   # List pages in space
 
-atl confluence page create --space DOCS --title "New Page"
-atl confluence page create --space DOCS --title "New Page" --body "Content"
+atl --context prod confluence page create --space DOCS --title "New Page"
+atl --context prod confluence page create --space DOCS --title "New Page" --body "Content"
 
-atl confluence page edit <id> --title "Updated Title"
-atl confluence page edit <id> --body "New content"
+atl --context prod confluence page edit <id> --title "Updated Title"
+atl --context prod confluence page edit <id> --body "New content"
 
-atl confluence page children <id>       # List child pages
-atl confluence page children <id> --descendants  # Include all descendants
+atl --context prod confluence page children <id>       # List child pages
+atl --context prod confluence page children <id> --descendants  # Include all descendants
 
-atl confluence page search "query"      # Search pages by title
-atl confluence page search "query" --space DOCS  # Search within space
+atl --context prod confluence page search "query"      # Search pages by title
+atl --context prod confluence page search "query" --space DOCS  # Search within space
 
-atl confluence page archive <id>        # Archive a page
-atl confluence page archive <id> --unarchive     # Restore archived page
+atl --context prod confluence page archive <id>        # Archive a page
+atl --context prod confluence page archive <id> --unarchive     # Restore archived page
 
-atl confluence page move <id> --target <parent-id>           # Move as child of target
-atl confluence page move <id> --target <sibling-id> --position before  # Move before sibling
-atl confluence page move <id> --space NEWSPACE               # Move to different space
+atl --context prod confluence page move <id> --target <parent-id>           # Move as child of target
+atl --context prod confluence page move <id> --target <sibling-id> --position before  # Move before sibling
+atl --context prod confluence page move <id> --space NEWSPACE               # Move to different space
 
-atl confluence page attachment <id> --list               # List attachments
-atl confluence page attachment <id> --list --json        # List as JSON
-atl confluence page attachment <id> --download --id <attID>  # Download specific
-atl confluence page attachment <id> --download-all       # Download all
-atl confluence page attachment <id> --download-all -o ./dir  # Download to directory
-atl confluence page attachment <id> --upload ./file.pdf  # Upload file
-atl confluence page attachment <id> --upload a.pdf --upload b.png  # Upload multiple
+atl --context prod confluence page attachment <id> --list               # List attachments
+atl --context prod confluence page attachment <id> --list --json        # List as JSON
+atl --context prod confluence page attachment <id> --download --id <attID>  # Download specific
+atl --context prod confluence page attachment <id> --download-all       # Download all
+atl --context prod confluence page attachment <id> --download-all -o ./dir  # Download to directory
+atl --context prod confluence page attachment <id> --upload ./file.pdf  # Upload file
+atl --context prod confluence page attachment <id> --upload a.pdf --upload b.png  # Upload multiple
 ```
 
 ### Configuration
@@ -297,6 +297,22 @@ Available config keys:
 - `default_output_format` - Default output format (text/json)
 - `editor` - Editor for editing content
 - `pager` - Pager for long output
+
+### Explicit invocation context
+
+The persistent `current_host` is convenient for an interactive shell, but it is
+shared by every process using the same config file. Agents and automation should
+select a host per invocation instead:
+
+```bash
+atl --context prod jira issue view PROJ-1234
+atl --context sandbox confluence space list
+atl --context sandbox jira assets object 9244 --json
+```
+
+The value may be a configured alias or hostname. `--context` does not mutate
+`current_host`. `ATLASSIAN_CONTEXT=prod atl ...` provides the same process-local
+override.
 
 ## Configuration
 
@@ -320,7 +336,7 @@ default_output_format: text
 - `ATLASSIAN_CLIENT_ID` - OAuth client ID (highest-precedence source for login; otherwise OS keychain, then config file)
 - `ATLASSIAN_CLIENT_SECRET` - OAuth client secret (highest-precedence source for login; otherwise OS keychain, then config file)
 - `ATLASSIAN_TOKEN` - Override access token
-- `ATLASSIAN_HOST` - Override default host
+- `ATLASSIAN_CONTEXT` - Select a configured host or alias for this invocation
 - `ATLASSIAN_CONFIG_DIR` - Override config directory
 - `NO_COLOR` - Disable colored output
 
@@ -351,16 +367,14 @@ atl completion powershell >> $PROFILE
 
 ### "Scope does not match" or 403 errors after updating
 
-When the CLI adds new features that require additional OAuth scopes (like sprint management), you may get permission errors even after adding the scopes to your OAuth app.
+When the CLI adds new features that require additional OAuth scopes (like Jira Assets), you may get permission errors even after adding the scopes to your OAuth app. Existing tokens do not gain scopes retroactively.
 
-**Solution:** Perform a full logout and login to refresh your token with the new scopes:
+**Solution:** Authenticate each affected site explicitly to replace its token:
 
 ```bash
-atl auth logout
-atl auth login
+atl auth login --hostname mycompany.atlassian.net
+atl auth login --hostname mycompany-sandbox.atlassian.net
 ```
-
-Simply running `atl auth login` again may not be sufficient as the existing token retains its original scopes.
 
 ### Token expired errors
 
@@ -381,7 +395,7 @@ If authentication fails, verify your OAuth app configuration at https://develope
 
    **Jira API** (under "Jira API" in Developer Console):
    - Classic scopes: `read:jira-work`, `write:jira-work`, `read:jira-user`
-   - Granular scopes: `read:project:jira`, `read:issue-details:jira`
+   - Granular scopes: `read:project:jira`, `read:issue-details:jira`, `read:cmdb-object:jira`, `read:cmdb-schema:jira`
    - Granular scopes for boards/sprints/ranking: `read:board-scope:jira-software`, `write:board-scope:jira-software`, `read:issue:jira-software`, `write:issue:jira-software`, `read:sprint:jira-software`, `write:sprint:jira-software`
 
    **Confluence API** (under "Confluence API"):

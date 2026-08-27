@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"bytes"
+	"os"
 	"strings"
 	"testing"
 
@@ -59,6 +60,19 @@ func TestDeprecationWarning(t *testing.T) {
 
 	if got := errOut.String(); !strings.Contains(got, "deprecated") || !strings.Contains(got, "jira issue") {
 		t.Errorf("warning missing expected text, got: %q", got)
+	}
+}
+
+func TestContextFlagSetsInvocationOverride(t *testing.T) {
+	t.Setenv("ATLASSIAN_CONTEXT", "from-environment")
+	root := NewRootCmd(iostreams.Test(), "test")
+	root.SetArgs([]string{"version", "--context", "sandbox"})
+
+	if err := root.Execute(); err != nil {
+		t.Fatalf("execute with --context: %v", err)
+	}
+	if got := os.Getenv("ATLASSIAN_CONTEXT"); got != "sandbox" {
+		t.Fatalf("ATLASSIAN_CONTEXT = %q, want sandbox", got)
 	}
 }
 

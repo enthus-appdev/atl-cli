@@ -78,6 +78,9 @@ func DefaultScopes() []string {
 		// request types (what the sm commands call); a bare read:servicedesk is
 		// not a grantable Atlassian scope and is silently dropped from the token.
 		"read:servicedesk-request",
+		// Jira Assets scopes - AQL/object reads and schema counts.
+		"read:cmdb-object:jira",
+		"read:cmdb-schema:jira",
 		// Token refresh
 		"offline_access",
 	}

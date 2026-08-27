@@ -184,6 +184,16 @@ func (c *Config) ResolveHost(nameOrHostname string) string {
 	return NormalizeHostname(nameOrHostname)
 }
 
+// InvocationHost returns the host selected for this process. An invocation
+// override wins over the persistent default because multiple shells and agents
+// may share config.yaml while targeting different Atlassian sites.
+func (c *Config) InvocationHost() string {
+	if contextName := strings.TrimSpace(os.Getenv("ATLASSIAN_CONTEXT")); contextName != "" {
+		return c.ResolveHost(contextName)
+	}
+	return c.CurrentHost
+}
+
 // SetAlias creates or updates an alias mapping to a hostname.
 // The hostname must exist in the Hosts map.
 func (c *Config) SetAlias(alias, hostname string) error {

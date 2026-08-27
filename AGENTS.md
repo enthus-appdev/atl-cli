@@ -11,8 +11,8 @@ Jira commands live under `atl jira` (`atl jira issue`, `atl jira board`, `atl ji
 ## Authentication
 
 ```bash
-atl auth status                         # Check authentication status
-atl auth login                          # Authenticate (opens browser)
+atl auth status --hostname prod         # Check one authenticated site
+atl auth login --hostname enthus.atlassian.net  # Authenticate one explicit site
 ```
 
 ## Context Switching (Multi-Environment)
@@ -24,7 +24,7 @@ Switch between Atlassian instances using aliases:
 atl config set-alias prod                                    # alias "prod" → current host
 atl config set-alias sandbox mycompany-sandbox.atlassian.net # alias → specific host
 
-# Switch active host
+# Switch the persistent interactive default
 atl config use-context prod       # by alias
 atl config use-context mycompany.atlassian.net  # by hostname
 
@@ -41,32 +41,60 @@ atl config list                   # shows Aliases section with (current) marker
 
 Aliases also work with `--hostname` flags: `atl auth status --hostname prod`
 
+For every Jira, Confluence, or Assets operation, pass an invocation-scoped
+context. Agents and automation must never rely on the persistent default because
+other processes share and can change it:
+
+```bash
+atl --context prod jira issue view PROJ-1234
+atl --context sandbox jira assets object 9244
+```
+
+`ATLASSIAN_CONTEXT=prod atl ...` is equivalent, but `--context` is preferred.
+The explicit context selects the host and its token without changing
+`current_host`.
+
+## Jira Assets
+
+Assets uses the selected host's OAuth token and auto-discovers its workspace.
+Tokens minted before the CMDB scopes were configured must be replaced with
+`atl auth login --hostname <host>` before Assets requests will work.
+
+```bash
+atl --context sandbox jira assets count
+atl --context sandbox jira assets aql 'objectType = Customer' --limit 25
+atl --context sandbox jira assets object 9244 --json
+```
+
 ## Jira Issues
+
+The examples below focus on their subcommand flags; add
+`--context <alias-or-hostname>` to every actual API invocation.
 
 ### View Issues
 
 ```bash
-atl jira issue view PROJ-1234                  # View issue details (includes custom fields)
-atl jira issue view PROJ-1234 --json           # View as JSON (includes custom_fields section)
-atl jira issue view PROJ-1234 --web            # Open in browser
+atl --context prod jira issue view PROJ-1234                  # View issue details (includes custom fields)
+atl --context prod jira issue view PROJ-1234 --json           # View as JSON (includes custom_fields section)
+atl --context prod jira issue view PROJ-1234 --web            # Open in browser
 ```
 
 ### List Issues
 
 ```bash
-atl jira issue list --assignee @me           # Your assigned issues
-atl jira issue list --project PROJ             # Issues in project
-atl jira issue list --jql "status = Open"    # Custom JQL query
-atl jira issue list --jql "sprint in openSprints() AND assignee = currentUser()"
+atl --context prod jira issue list --assignee @me           # Your assigned issues
+atl --context prod jira issue list --project PROJ             # Issues in project
+atl --context prod jira issue list --jql "status = Open"    # Custom JQL query
+atl --context prod jira issue list --jql "sprint in openSprints() AND assignee = currentUser()"
 ```
 
 ### Create Issues
 
 ```bash
-atl jira issue create --project PROJ --type Bug --summary "Title"
-atl jira issue create --project PROJ --type Task --summary "Title" --description "Details"
-atl jira issue create --project PROJ --parent PROJ-123 --summary "Subtask"
-atl jira issue create --project PROJ --type Bug --summary "Title" --security "Developer only"
+atl --context prod jira issue create --project PROJ --type Bug --summary "Title"
+atl --context prod jira issue create --project PROJ --type Task --summary "Title" --description "Details"
+atl --context prod jira issue create --project PROJ --parent PROJ-123 --summary "Subtask"
+atl --context prod jira issue create --project PROJ --type Bug --summary "Title" --security "Developer only"
 ```
 
 **`--security`**: restricts issue visibility to an issue security level, by name
@@ -76,15 +104,15 @@ atl jira issue create --project PROJ --type Bug --summary "Title" --security "De
 ### Edit Issues
 
 ```bash
-atl jira issue edit PROJ-1234 --summary "New summary"
-atl jira issue edit PROJ-1234 --description "New description content"
-atl jira issue edit PROJ-1234 --description "Additional notes" --append  # Append to existing
-atl jira issue edit PROJ-1234 --assignee @me
-atl jira issue edit PROJ-1234 --add-label bug --remove-label wontfix
-atl jira issue edit PROJ-1234 --field "Story Points=8"
-atl jira issue edit PROJ-1234 --field "Custom Field=Some **markdown** text"  # Auto-converts to ADF
-atl jira issue edit PROJ-1234 --security "Developer only"   # Set issue security level
-atl jira issue edit PROJ-1234 --security ""                 # Clear issue security level
+atl --context prod jira issue edit PROJ-1234 --summary "New summary"
+atl --context prod jira issue edit PROJ-1234 --description "New description content"
+atl --context prod jira issue edit PROJ-1234 --description "Additional notes" --append  # Append to existing
+atl --context prod jira issue edit PROJ-1234 --assignee @me
+atl --context prod jira issue edit PROJ-1234 --add-label bug --remove-label wontfix
+atl --context prod jira issue edit PROJ-1234 --field "Story Points=8"
+atl --context prod jira issue edit PROJ-1234 --field "Custom Field=Some **markdown** text"  # Auto-converts to ADF
+atl --context prod jira issue edit PROJ-1234 --security "Developer only"   # Set issue security level
+atl --context prod jira issue edit PROJ-1234 --security ""                 # Clear issue security level
 ```
 
 **Notes**:
@@ -95,58 +123,58 @@ atl jira issue edit PROJ-1234 --security ""                 # Clear issue securi
 ### Transitions and Workflow
 
 ```bash
-atl jira issue transition PROJ-1234 "In Progress"
-atl jira issue transition PROJ-1234 --list     # List available transitions
-atl jira issue transition PROJ-1234 "Done" --field "Resolution=Fixed"  # With required fields
+atl --context prod jira issue transition PROJ-1234 "In Progress"
+atl --context prod jira issue transition PROJ-1234 --list     # List available transitions
+atl --context prod jira issue transition PROJ-1234 "Done" --field "Resolution=Fixed"  # With required fields
 ```
 
 ### Comments
 
 ```bash
-atl jira issue comment list PROJ-1234                    # List comments
-atl jira issue comment add PROJ-1234 --body "Comment"    # Add comment
-atl jira issue comment add PROJ-1234 --body-file msg.md  # Add from file (avoids shell escaping)
-atl jira issue comment edit PROJ-1234 --id 123 --body "Updated"
-atl jira issue comment edit PROJ-1234 --id 123 --body-file msg.md
-atl jira issue comment delete PROJ-1234 --id 123
+atl --context prod jira issue comment list PROJ-1234                    # List comments
+atl --context prod jira issue comment add PROJ-1234 --body "Comment"    # Add comment
+atl --context prod jira issue comment add PROJ-1234 --body-file msg.md  # Add from file (avoids shell escaping)
+atl --context prod jira issue comment edit PROJ-1234 --id 123 --body "Updated"
+atl --context prod jira issue comment edit PROJ-1234 --id 123 --body-file msg.md
+atl --context prod jira issue comment delete PROJ-1234 --id 123
 ```
 
 ### Issue Links
 
 ```bash
-atl jira issue link PROJ-1234 PROJ-5678                    # Link issues (default: Relates)
-atl jira issue link PROJ-1234 PROJ-5678 --type Blocks      # Link with specific type
+atl --context prod jira issue link PROJ-1234 PROJ-5678                    # Link issues (default: Relates)
+atl --context prod jira issue link PROJ-1234 PROJ-5678 --type Blocks      # Link with specific type
 ```
 
 ### Web Links
 
 ```bash
-atl jira issue weblink PROJ-1234 --url "https://..." --title "Title"
+atl --context prod jira issue weblink PROJ-1234 --url "https://..." --title "Title"
 ```
 
 ### Sprint Management
 
 ```bash
-atl jira issue sprint PROJ-1234 --sprint-id 123          # Move to sprint
-atl jira issue sprint PROJ-1234 --backlog                # Move to backlog
+atl --context prod jira issue sprint PROJ-1234 --sprint-id 123          # Move to sprint
+atl --context prod jira issue sprint PROJ-1234 --backlog                # Move to backlog
 ```
 
 ### Attachments
 
 ```bash
-atl jira issue attachment PROJ-1234 --list               # List attachments
-atl jira issue attachment PROJ-1234 --download <id>      # Download attachment
+atl --context prod jira issue attachment PROJ-1234 --list               # List attachments
+atl --context prod jira issue attachment PROJ-1234 --download <id>      # Download attachment
 ```
 
 ### Metadata Discovery
 
 ```bash
-atl jira issue types --project PROJ                      # List issue types
-atl jira issue priorities                                # List available priorities
-atl jira issue fields                                    # List all fields
-atl jira issue fields --search "story points"            # Search for field by name
-atl jira issue field-options --project PROJ --type Bug   # Show allowed values for fields
-atl jira issue field-options --project PROJ --type Bug --field "Priority"  # Specific field
+atl --context prod jira issue types --project PROJ                      # List issue types
+atl --context prod jira issue priorities                                # List available priorities
+atl --context prod jira issue fields                                    # List all fields
+atl --context prod jira issue fields --search "story points"            # Search for field by name
+atl --context prod jira issue field-options --project PROJ --type Bug   # Show allowed values for fields
+atl --context prod jira issue field-options --project PROJ --type Bug --field "Priority"  # Specific field
 ```
 
 `field-options` also lists the project's issue **security levels** as a synthetic
@@ -160,9 +188,9 @@ project metadata, and similar lookups), use the GET passthrough. Only GET is
 supported — there is no write passthrough by design.
 
 ```bash
-atl jira api GET issue/PROJ-1234/editmeta     # Allowed fields + values for an edit
-atl jira api project/PROJ/securitylevel       # Method arg optional; defaults to GET
-atl jira api GET issue/PROJ-1234/editmeta | jq '.fields | keys'
+atl --context prod jira api GET issue/PROJ-1234/editmeta     # Allowed fields + values for an edit
+atl --context prod jira api project/PROJ/securitylevel       # Method arg optional; defaults to GET
+atl --context prod jira api GET issue/PROJ-1234/editmeta | jq '.fields | keys'
 ```
 
 The `<path>` is relative to the Jira REST v3 base (`.../rest/api/3`), with or
@@ -171,11 +199,11 @@ without a leading slash. The JSON response is pretty-printed.
 ## Jira Boards
 
 ```bash
-atl jira board list                                    # List all boards
-atl jira board list --project PROJ                       # List boards for project
-atl jira board rank PROJ-123 --before PROJ-456             # Rank issue before another
-atl jira board rank PROJ-123 --after PROJ-456              # Rank issue after another
-atl jira board rank PROJ-123 --top --board-id 42         # Move to top of backlog
+atl --context prod jira board list                                    # List all boards
+atl --context prod jira board list --project PROJ                       # List boards for project
+atl --context prod jira board rank PROJ-123 --before PROJ-456             # Rank issue before another
+atl --context prod jira board rank PROJ-123 --after PROJ-456              # Rank issue after another
+atl --context prod jira board rank PROJ-123 --top --board-id 42         # Move to top of backlog
 ```
 
 ## Jira Sprints
@@ -193,39 +221,39 @@ Full sprint lifecycle under `atl jira sprint`.
 
 ```bash
 # Create a sprint as undated future sprint (required: --board, --name)
-atl jira sprint create --board 42 --name "Sprint 30" --goal "Ship MI cutover"
+atl --context prod jira sprint create --board 42 --name "Sprint 30" --goal "Ship MI cutover"
 
 # Create and start immediately (--start applies default 14d duration; override with --duration)
-atl jira sprint create --board 42 --name "Sprint 31" --start
-atl jira sprint create --board 42 --name "Sprint 32" --start --duration 3w
+atl --context prod jira sprint create --board 42 --name "Sprint 31" --start
+atl --context prod jira sprint create --board 42 --name "Sprint 32" --start --duration 3w
 
 # Edit sprint name, goal, or dates (date changes may fail for active/closed sprints)
 # Date format: YYYY-MM-DD
-atl jira sprint edit 123 --goal "Updated goal"
-atl jira sprint edit 123 --name "Sprint 30 (extended)" --start-date 2026-06-23 --end-date 2026-07-14
+atl --context prod jira sprint edit 123 --goal "Updated goal"
+atl --context prod jira sprint edit 123 --name "Sprint 30 (extended)" --start-date 2026-06-23 --end-date 2026-07-14
 
 # Start a sprint (only future sprints; sets dates via duration OR explicit dates)
 # Duration-based (calculates end date; default 14d)
-atl jira sprint start 123
-atl jira sprint start 123 --duration 2w
+atl --context prod jira sprint start 123
+atl --context prod jira sprint start 123 --duration 2w
 # Or use explicit dates (YYYY-MM-DD)
-atl jira sprint start 123 --start-date 2026-06-23 --end-date 2026-07-07
+atl --context prod jira sprint start 123 --start-date 2026-06-23 --end-date 2026-07-07
 
 # Close a sprint (only active sprints; incomplete issues move to backlog; prompts unless --force)
-atl jira sprint close 123
-atl jira sprint close 123 --force
+atl --context prod jira sprint close 123
+atl --context prod jira sprint close 123 --force
 
 # List sprints on a board (required: --board; state: active|future|closed, default: active,future)
-atl jira sprint list --board 42
-atl jira sprint list --board 42 --state closed
-atl jira sprint list --board 42 --state active,future,closed
+atl --context prod jira sprint list --board 42
+atl --context prod jira sprint list --board 42 --state closed
+atl --context prod jira sprint list --board 42 --state active,future,closed
 
 # Move issues by sprint ID (RECOMMENDED: unambiguous, safe)
 # Note: Issues must belong to target sprint's board; Jira will error if they don't
-atl jira sprint move NX-1 NX-2 --to 123
+atl --context prod jira sprint move NX-1 NX-2 --to 123
 
 # Move issues to their native board backlogs (works cross-board; independent of sprint)
-atl jira sprint backlog NX-1 NX-2
+atl --context prod jira sprint backlog NX-1 NX-2
 ```
 
 ## Confluence
@@ -233,48 +261,48 @@ atl jira sprint backlog NX-1 NX-2
 ### Spaces
 
 ```bash
-atl confluence space list               # List spaces
-atl confluence space list --json        # List as JSON
+atl --context prod confluence space list               # List spaces
+atl --context prod confluence space list --json        # List as JSON
 ```
 
 ### Pages
 
 ```bash
-atl confluence page view <id>           # View page by ID
-atl confluence page view --space DOCS --title "Title"
-atl confluence page list --space DOCS   # List pages in space
-atl confluence page list --space DOCS --status draft     # List draft pages
-atl confluence page list --space DOCS --status archived  # List archived pages
-atl confluence page search "query"      # Search pages
-atl confluence page children <id>       # List child pages
-atl confluence page create --space DOCS --title "New Page" --body "<p>Content</p>"
-atl confluence page create --space DOCS --title "Draft" --draft   # Create as draft
-atl confluence page edit <id> --body "<p>New content</p>"
-atl confluence page delete <id>         # Delete page (prompts for confirmation)
-atl confluence page delete <id> --force # Delete without confirmation
-atl confluence page publish <id>        # Publish a draft page
-atl confluence page move <id> --target <parent-id>
-atl confluence page archive <id>        # Archive page (unarchive not supported via API)
+atl --context prod confluence page view <id>           # View page by ID
+atl --context prod confluence page view --space DOCS --title "Title"
+atl --context prod confluence page list --space DOCS   # List pages in space
+atl --context prod confluence page list --space DOCS --status draft     # List draft pages
+atl --context prod confluence page list --space DOCS --status archived  # List archived pages
+atl --context prod confluence page search "query"      # Search pages
+atl --context prod confluence page children <id>       # List child pages
+atl --context prod confluence page create --space DOCS --title "New Page" --body "<p>Content</p>"
+atl --context prod confluence page create --space DOCS --title "Draft" --draft   # Create as draft
+atl --context prod confluence page edit <id> --body "<p>New content</p>"
+atl --context prod confluence page delete <id>         # Delete page (prompts for confirmation)
+atl --context prod confluence page delete <id> --force # Delete without confirmation
+atl --context prod confluence page publish <id>        # Publish a draft page
+atl --context prod confluence page move <id> --target <parent-id>
+atl --context prod confluence page archive <id>        # Archive page (unarchive not supported via API)
 ```
 
 ### Templates
 
 ```bash
-atl confluence template view <id>       # View template
-atl confluence template create --space DOCS --name "Name" --body "<html>"
-atl confluence template update <id> --body "<html>"
+atl --context prod confluence template view <id>       # View template
+atl --context prod confluence template create --space DOCS --name "Name" --body "<html>"
+atl --context prod confluence template update <id> --body "<html>"
 ```
 
 ### Attachments
 
 ```bash
-atl confluence page attachment <id> --list               # List attachments
-atl confluence page attachment <id> --list --json        # List as JSON
-atl confluence page attachment <id> --download --id <attID>  # Download specific
-atl confluence page attachment <id> --download-all       # Download all
-atl confluence page attachment <id> --download-all -o ./dir  # Download to directory
-atl confluence page attachment <id> --upload ./file.pdf  # Upload file
-atl confluence page attachment <id> --upload a.pdf --upload b.png  # Upload multiple
+atl --context prod confluence page attachment <id> --list               # List attachments
+atl --context prod confluence page attachment <id> --list --json        # List as JSON
+atl --context prod confluence page attachment <id> --download --id <attID>  # Download specific
+atl --context prod confluence page attachment <id> --download-all       # Download all
+atl --context prod confluence page attachment <id> --download-all -o ./dir  # Download to directory
+atl --context prod confluence page attachment <id> --upload ./file.pdf  # Upload file
+atl --context prod confluence page attachment <id> --upload a.pdf --upload b.png  # Upload multiple
 ```
 
 ## Formatting Guidelines
@@ -327,13 +355,13 @@ Use `--json` flag for structured output suitable for parsing:
 
 ```bash
 # Get issue data as JSON
-atl jira issue view PROJ-1234 --json | jq '.status'
+atl --context prod jira issue view PROJ-1234 --json | jq '.status'
 
 # List issues and extract keys
-atl jira issue list --assignee @me --json | jq '.[].key'
+atl --context prod jira issue list --assignee @me --json | jq '.[].key'
 
 # Get page content
-atl confluence page view 12345 --json | jq '.body'
+atl --context prod confluence page view 12345 --json | jq '.body'
 ```
 
 ## Common Workflows
@@ -342,38 +370,38 @@ atl confluence page view 12345 --json | jq '.body'
 
 ```bash
 # Find the issue
-atl jira issue list --jql "summary ~ 'login bug'" --json
+atl --context prod jira issue list --jql "summary ~ 'login bug'" --json
 
 # View details
-atl jira issue view PROJ-1234
+atl --context prod jira issue view PROJ-1234
 
 # Update it
-atl jira issue edit PROJ-1234 --assignee @me
-atl jira issue transition PROJ-1234 "In Progress"
-atl jira issue comment PROJ-1234 --body "Starting work on this"
+atl --context prod jira issue edit PROJ-1234 --assignee @me
+atl --context prod jira issue transition PROJ-1234 "In Progress"
+atl --context prod jira issue comment PROJ-1234 --body "Starting work on this"
 ```
 
 ### Create a Linked Issue
 
 ```bash
 # Create the issue
-atl jira issue create --project PROJ --type Task --summary "Implement feature X"
+atl --context prod jira issue create --project PROJ --type Task --summary "Implement feature X"
 
 # Link it to a parent story
-atl jira issue link PROJ-1235 PROJ-1000 --type "is part of"
+atl --context prod jira issue link PROJ-1235 PROJ-1000 --type "is part of"
 ```
 
 ### Update Confluence Documentation
 
 ```bash
 # Find the page
-atl confluence page search "API documentation" --json
+atl --context prod confluence page search "API documentation" --json
 
 # View current content
-atl confluence page view 12345
+atl --context prod confluence page view 12345
 
 # Update it
-atl confluence page edit 12345 --body "<h1>Updated API Docs</h1><p>New content...</p>"
+atl --context prod confluence page edit 12345 --body "<h1>Updated API Docs</h1><p>New content...</p>"
 ```
 
 ## Error Handling

@@ -333,6 +333,36 @@ func TestResolveHostNilAliases(t *testing.T) {
 	}
 }
 
+func TestInvocationHost(t *testing.T) {
+	cfg := &Config{
+		CurrentHost: "default.atlassian.net",
+		Aliases: map[string]string{
+			"sandbox": "sandbox.atlassian.net",
+		},
+	}
+
+	t.Run("persistent default", func(t *testing.T) {
+		t.Setenv("ATLASSIAN_CONTEXT", "")
+		if got := cfg.InvocationHost(); got != "default.atlassian.net" {
+			t.Fatalf("InvocationHost() = %q, want persistent default", got)
+		}
+	})
+
+	t.Run("alias override", func(t *testing.T) {
+		t.Setenv("ATLASSIAN_CONTEXT", "sandbox")
+		if got := cfg.InvocationHost(); got != "sandbox.atlassian.net" {
+			t.Fatalf("InvocationHost() = %q, want resolved alias", got)
+		}
+	})
+
+	t.Run("hostname override", func(t *testing.T) {
+		t.Setenv("ATLASSIAN_CONTEXT", "https://other.atlassian.net/")
+		if got := cfg.InvocationHost(); got != "other.atlassian.net" {
+			t.Fatalf("InvocationHost() = %q, want normalized hostname", got)
+		}
+	})
+}
+
 // TestSetAlias tests creating aliases.
 func TestSetAlias(t *testing.T) {
 	cfg := &Config{

@@ -140,11 +140,12 @@ func NewClientFromConfig() (*Client, error) {
 		return nil, fmt.Errorf("failed to load config: %w", err)
 	}
 
-	if cfg.CurrentHost == "" {
+	hostname := cfg.InvocationHost()
+	if hostname == "" {
 		return nil, fmt.Errorf("no host configured. Run 'atl auth login' first")
 	}
 
-	return NewClient(cfg.CurrentHost)
+	return NewClient(hostname)
 }
 
 // Hostname returns the configured hostname.

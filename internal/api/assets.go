@@ -1,81 +1,34 @@
 package api
 
 import (
-	"bytes"
 	"context"
-	"encoding/json"
 	"fmt"
-	"io"
 	"net/http"
 	"net/url"
-	"strings"
-	"time"
 )
 
 // AssetsClient talks to the Jira Service Management Assets (CMDB) REST API.
 //
-// Assets lives on a different base URL than the Jira site API
-// (https://api.atlassian.com/jsm/assets/workspace/{workspaceId}/v1) and the
-// granular OAuth scopes the rest of atl uses do not cover CMDB objects, so this
-// client authenticates with Basic auth (account email + API token) instead of
-// the shared OAuth client. The token is read from the environment so it never
-// lands in the on-disk config.
+// Assets lives below a different path than the Jira platform API, but supports
+// the same OAuth 2.0 access token when requests use the cloud gateway URL.
 type AssetsClient struct {
-	httpClient  *http.Client
-	email       string
-	token       string
+	client      *Client
 	workspaceID string
-	siteBase    string // https://<hostname>, used only for workspace discovery
+	baseURL     string
 }
 
-const assetsAPIBase = "https://api.atlassian.com/jsm/assets/workspace"
-
-// NewAssetsClient builds an Assets client. email and token are required;
-// workspaceID may be empty, in which case it is discovered from the site.
-func NewAssetsClient(siteBase, email, token, workspaceID string) *AssetsClient {
+// NewAssetsClient builds an OAuth-backed Assets client. workspaceID may be
+// empty, in which case it is discovered through Jira Service Management.
+func NewAssetsClient(client *Client, workspaceID string) *AssetsClient {
 	return &AssetsClient{
-		httpClient:  &http.Client{Timeout: 60 * time.Second},
-		email:       email,
-		token:       token,
+		client:      client,
 		workspaceID: workspaceID,
-		siteBase:    strings.TrimRight(siteBase, "/"),
+		baseURL:     fmt.Sprintf("%s/ex/jira/%s", AtlassianAPIURL, client.CloudID()),
 	}
 }
 
-func (c *AssetsClient) do(ctx context.Context, method, fullURL string, body []byte, out interface{}) error {
-	var rdr io.Reader
-	if body != nil {
-		rdr = bytes.NewReader(body)
-	}
-	req, err := http.NewRequestWithContext(ctx, method, fullURL, rdr)
-	if err != nil {
-		return err
-	}
-	req.SetBasicAuth(c.email, c.token)
-	req.Header.Set("Accept", "application/json")
-	if body != nil {
-		req.Header.Set("Content-Type", "application/json")
-	}
-	resp, err := c.httpClient.Do(req)
-	if err != nil {
-		return err
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		dec := json.NewDecoder(resp.Body)
-		var apiErr struct {
-			ErrorMessages []string `json:"errorMessages"`
-		}
-		_ = dec.Decode(&apiErr)
-		if len(apiErr.ErrorMessages) > 0 {
-			return fmt.Errorf("assets API %s: %d: %s", method, resp.StatusCode, strings.Join(apiErr.ErrorMessages, "; "))
-		}
-		return fmt.Errorf("assets API %s: unexpected status %d", method, resp.StatusCode)
-	}
-	if out == nil {
-		return nil
-	}
-	return json.NewDecoder(resp.Body).Decode(out)
+func (c *AssetsClient) do(ctx context.Context, method, fullURL string, body, out interface{}) error {
+	return c.client.Request(ctx, method, fullURL, body, out)
 }
 
 // WorkspaceID returns the resolved workspace id, discovering it from the site if
@@ -84,19 +37,16 @@ func (c *AssetsClient) WorkspaceID(ctx context.Context) (string, error) {
 	if c.workspaceID != "" {
 		return c.workspaceID, nil
 	}
-	if c.siteBase == "" {
-		return "", fmt.Errorf("workspace id not set and no site to discover it from (pass --workspace or set ATLASSIAN_ASSETS_WORKSPACE)")
-	}
 	var out struct {
 		Values []struct {
 			WorkspaceID string `json:"workspaceId"`
 		} `json:"values"`
 	}
-	if err := c.do(ctx, http.MethodGet, c.siteBase+"/rest/servicedeskapi/assets/workspace", nil, &out); err != nil {
+	if err := c.do(ctx, http.MethodGet, c.baseURL+"/rest/servicedeskapi/assets/workspace", nil, &out); err != nil {
 		return "", fmt.Errorf("discovering assets workspace: %w", err)
 	}
 	if len(out.Values) == 0 {
-		return "", fmt.Errorf("no assets workspace found for site %s", c.siteBase)
+		return "", fmt.Errorf("no assets workspace found for %s", c.client.Hostname())
 	}
 	c.workspaceID = out.Values[0].WorkspaceID
 	return c.workspaceID, nil
@@ -107,7 +57,7 @@ func (c *AssetsClient) v1(ctx context.Context) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return fmt.Sprintf("%s/%s/v1", assetsAPIBase, ws), nil
+	return fmt.Sprintf("%s/jsm/assets/workspace/%s/v1", c.baseURL, ws), nil
 }
 
 // AssetSchema is one object schema with its current object count.
@@ -136,14 +86,35 @@ func (c *AssetsClient) Schemas(ctx context.Context) ([]AssetSchema, error) {
 
 // AssetObject is a single Assets object (trimmed to the useful fields).
 type AssetObject struct {
-	ID         string `json:"id"`
-	ObjectKey  string `json:"objectKey"`
-	Label      string `json:"label"`
-	Created    string `json:"created"`
-	Updated    string `json:"updated"`
-	ObjectType struct {
+	WorkspaceID string `json:"workspaceId,omitempty"`
+	GlobalID    string `json:"globalId,omitempty"`
+	ID          string `json:"id"`
+	ObjectKey   string `json:"objectKey"`
+	Label       string `json:"label"`
+	Created     string `json:"created"`
+	Updated     string `json:"updated"`
+	ObjectType  struct {
+		ID   string `json:"id,omitempty"`
 		Name string `json:"name"`
 	} `json:"objectType"`
+	Attributes []AssetAttribute `json:"attributes,omitempty"`
+}
+
+// AssetAttribute is one named attribute and its values on an Assets object.
+type AssetAttribute struct {
+	ID                    string `json:"id,omitempty"`
+	ObjectTypeAttributeID string `json:"objectTypeAttributeId"`
+	ObjectTypeAttribute   struct {
+		Name string `json:"name"`
+	} `json:"objectTypeAttribute"`
+	ObjectAttributeValues []AssetAttributeValue `json:"objectAttributeValues,omitempty"`
+}
+
+// AssetAttributeValue preserves both the API value and its display form.
+type AssetAttributeValue struct {
+	Value        interface{} `json:"value,omitempty"`
+	DisplayValue string      `json:"displayValue,omitempty"`
+	SearchValue  string      `json:"searchValue,omitempty"`
 }
 
 type aqlPage struct {
@@ -161,12 +132,24 @@ func (c *AssetsClient) AQLPage(ctx context.Context, ql string, startAt, maxResul
 	q.Set("startAt", fmt.Sprint(startAt))
 	q.Set("maxResults", fmt.Sprint(maxResults))
 	q.Set("includeAttributes", "false")
-	body, _ := json.Marshal(map[string]string{"qlQuery": ql})
 	var page aqlPage
-	if err := c.do(ctx, http.MethodPost, base+"/object/aql?"+q.Encode(), body, &page); err != nil {
+	if err := c.do(ctx, http.MethodPost, base+"/object/aql?"+q.Encode(), map[string]string{"qlQuery": ql}, &page); err != nil {
 		return nil, false, err
 	}
 	return page.Values, page.IsLast, nil
+}
+
+// Object loads an Assets object and all attributes returned by the API.
+func (c *AssetsClient) Object(ctx context.Context, objectID string) (*AssetObject, error) {
+	base, err := c.v1(ctx)
+	if err != nil {
+		return nil, err
+	}
+	var object AssetObject
+	if err := c.do(ctx, http.MethodGet, base+"/object/"+url.PathEscape(objectID), nil, &object); err != nil {
+		return nil, err
+	}
+	return &object, nil
 }
 
 // AQLCount returns the exact number of objects matching an AQL query by
