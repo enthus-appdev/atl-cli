@@ -2,6 +2,8 @@ package cmd
 
 import (
 	"bytes"
+	"errors"
+	"fmt"
 	"os"
 	"strings"
 	"testing"
@@ -65,7 +67,9 @@ func TestDeprecationWarning(t *testing.T) {
 
 func TestContextFlagSetsInvocationOverride(t *testing.T) {
 	t.Setenv("ATLASSIAN_CONTEXT", "from-environment")
-	root := NewRootCmd(iostreams.Test(), "test")
+	root := &cobra.Command{Use: "atl"}
+	var contextName string
+	root.PersistentFlags().StringVar(&contextName, "context", "", "")
 	var during string
 	root.AddCommand(&cobra.Command{
 		Use: "capture-context",
@@ -73,6 +77,7 @@ func TestContextFlagSetsInvocationOverride(t *testing.T) {
 			during = os.Getenv("ATLASSIAN_CONTEXT")
 		},
 	})
+	wrapInvocationContext(root, &contextName)
 	root.SetArgs([]string{"capture-context", "--context", "sandbox"})
 
 	if err := root.Execute(); err != nil {
@@ -86,19 +91,20 @@ func TestContextFlagSetsInvocationOverride(t *testing.T) {
 	}
 }
 
-func TestSubcommandsDoNotOverrideRootPersistentHooks(t *testing.T) {
-	root := NewRootCmd(iostreams.Test(), "test")
-	var check func(*cobra.Command)
-	check = func(parent *cobra.Command) {
-		for _, child := range parent.Commands() {
-			if child.PersistentPreRun != nil || child.PersistentPreRunE != nil ||
-				child.PersistentPostRun != nil || child.PersistentPostRunE != nil {
-				t.Errorf("%s overrides root invocation-context hooks", child.CommandPath())
-			}
-			check(child)
+func TestContextFlagRestoresOverrideAfterError(t *testing.T) {
+	t.Setenv("ATLASSIAN_CONTEXT", "from-environment")
+	wantErr := fmt.Errorf("command failed")
+	if err := runWithInvocationContext("sandbox", func() error {
+		if got := os.Getenv("ATLASSIAN_CONTEXT"); got != "sandbox" {
+			t.Fatalf("ATLASSIAN_CONTEXT during command = %q, want sandbox", got)
 		}
+		return wantErr
+	}); !errors.Is(err, wantErr) {
+		t.Fatalf("runWithInvocationContext() error = %v, want %v", err, wantErr)
 	}
-	check(root)
+	if got := os.Getenv("ATLASSIAN_CONTEXT"); got != "from-environment" {
+		t.Fatalf("ATLASSIAN_CONTEXT after error = %q, want restored value", got)
+	}
 }
 
 // findChild returns the direct subcommand with the given name, including hidden ones.

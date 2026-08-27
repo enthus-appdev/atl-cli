@@ -57,7 +57,7 @@ func (c *AssetsClient) v1(ctx context.Context) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return fmt.Sprintf("%s/jsm/assets/workspace/%s/v1", c.baseURL, ws), nil
+	return fmt.Sprintf("%s/jsm/assets/workspace/%s/v1", c.baseURL, url.PathEscape(ws)), nil
 }
 
 // AssetSchema is one object schema with its current object count.

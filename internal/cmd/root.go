@@ -32,7 +32,6 @@ func Execute(ios *iostreams.IOStreams, version string) int {
 func NewRootCmd(ios *iostreams.IOStreams, version string) *cobra.Command {
 	commit, date := vcsInfo()
 	var contextName string
-	var restoreContext func()
 	cmd := &cobra.Command{
 		Use:   "atl",
 		Short: "Atlassian CLI - Work with Jira and Confluence from the command line",
@@ -50,28 +49,6 @@ Environment variables:
 		SilenceUsage:  true,
 		SilenceErrors: true,
 		Version:       version,
-		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
-			if contextName == "" {
-				return nil
-			}
-			previous, existed := os.LookupEnv("ATLASSIAN_CONTEXT")
-			if err := os.Setenv("ATLASSIAN_CONTEXT", contextName); err != nil {
-				return err
-			}
-			restoreContext = func() {
-				if existed {
-					_ = os.Setenv("ATLASSIAN_CONTEXT", previous)
-				} else {
-					_ = os.Unsetenv("ATLASSIAN_CONTEXT")
-				}
-			}
-			return nil
-		},
-		PersistentPostRun: func(cmd *cobra.Command, args []string) {
-			if restoreContext != nil {
-				restoreContext()
-			}
-		},
 	}
 	cmd.PersistentFlags().StringVar(&contextName, "context", "", "Atlassian host or alias for this invocation")
 
@@ -98,8 +75,45 @@ Environment variables:
 	cmd.AddCommand(deprecatedAlias(issueCmd.NewCmdIssue(ios), ios, "jira issue"))
 	cmd.AddCommand(deprecatedAlias(boardCmd.NewCmdBoard(ios), ios, "jira board"))
 	cmd.AddCommand(deprecatedAlias(smCmd.NewCmdSM(ios), ios, "jira sm"))
+	wrapInvocationContext(cmd, &contextName)
 
 	return cmd
+}
+
+func wrapInvocationContext(parent *cobra.Command, contextName *string) {
+	if parent.RunE != nil {
+		runE := parent.RunE
+		parent.RunE = func(cmd *cobra.Command, args []string) error {
+			return runWithInvocationContext(*contextName, func() error { return runE(cmd, args) })
+		}
+	} else if parent.Run != nil {
+		run := parent.Run
+		parent.Run = nil
+		parent.RunE = func(cmd *cobra.Command, args []string) error {
+			return runWithInvocationContext(*contextName, func() error { run(cmd, args); return nil })
+		}
+	}
+	for _, child := range parent.Commands() {
+		wrapInvocationContext(child, contextName)
+	}
+}
+
+func runWithInvocationContext(contextName string, run func() error) error {
+	if contextName == "" {
+		return run()
+	}
+	previous, existed := os.LookupEnv("ATLASSIAN_CONTEXT")
+	if err := os.Setenv("ATLASSIAN_CONTEXT", contextName); err != nil {
+		return err
+	}
+	defer func() {
+		if existed {
+			_ = os.Setenv("ATLASSIAN_CONTEXT", previous)
+		} else {
+			_ = os.Unsetenv("ATLASSIAN_CONTEXT")
+		}
+	}()
+	return run()
 }
 
 // deprecatedAlias hides a relocated command and warns once on use.

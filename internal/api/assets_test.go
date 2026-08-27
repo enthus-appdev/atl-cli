@@ -66,6 +66,20 @@ func TestAssetsWorkspaceIDUsesOAuthGateway(t *testing.T) {
 	}
 }
 
+func TestAssetsV1EscapesWorkspaceID(t *testing.T) {
+	server := httptest.NewServer(http.NotFoundHandler())
+	defer server.Close()
+
+	client := newTestAssetsClient(server, "workspace/456")
+	base, err := client.v1(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got, want := base, server.URL+"/ex/jira/cloud-123/jsm/assets/workspace/workspace%2F456/v1"; got != want {
+		t.Fatalf("v1() = %q, want %q", got, want)
+	}
+}
+
 func TestAssetsAQLPageUsesOAuthGateway(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, request *http.Request) {
 		requireBearer(t, request)
