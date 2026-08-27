@@ -26,8 +26,9 @@ make install
 # 1. Set up OAuth (one-time, interactive wizard)
 atl auth setup
 
-# 2. Log in to your Atlassian account
-atl auth login
+# 2. Log in and name the host used by the examples below
+atl auth login --hostname mycompany.atlassian.net
+atl config set-alias prod mycompany.atlassian.net
 
 # 3. Start using the CLI
 atl --context prod jira issue list --assignee @me
@@ -192,12 +193,12 @@ atl --context prod jira issue edit <key> --field-file fields.json    # Complex f
 atl --context prod jira issue transition <key> "In Progress"
 atl --context prod jira issue transition <key> --list       # List available transitions
 
-atl --context prod jira issue comment <key> --body "Comment text"
-atl --context prod jira issue comment <key> --list          # List comments
-atl --context prod jira issue comment <key> --edit --comment-id 12345 --body "Updated text"
-atl --context prod jira issue comment <key> --delete --comment-id 12345
-atl --context prod jira issue comment <key> --reply-to 12345 --body "Reply text"
-atl --context prod jira issue comment <key> --body "Internal note" --visibility-type role --visibility-name Developers
+atl --context prod jira issue comment add <key> --body "Comment text"
+atl --context prod jira issue comment list <key>          # List comments
+atl --context prod jira issue comment edit <key> --id 12345 --body "Updated text"
+atl --context prod jira issue comment delete <key> --id 12345
+atl --context prod jira issue comment add <key> --reply-to 12345 --body "Reply text"
+atl --context prod jira issue comment add <key> --body "Internal note" --visibility-type role --visibility-name Developers
 
 atl --context prod jira issue assign <key> --assignee @me
 atl --context prod jira issue assign <key> --assignee -     # Unassign

@@ -32,6 +32,7 @@ func Execute(ios *iostreams.IOStreams, version string) int {
 func NewRootCmd(ios *iostreams.IOStreams, version string) *cobra.Command {
 	commit, date := vcsInfo()
 	var contextName string
+	var restoreContext func()
 	cmd := &cobra.Command{
 		Use:   "atl",
 		Short: "Atlassian CLI - Work with Jira and Confluence from the command line",
@@ -53,9 +54,23 @@ Environment variables:
 			if contextName == "" {
 				return nil
 			}
-			// The API client resolves this process-local override before the
-			// persisted current_host, so --context never mutates shared config.
-			return os.Setenv("ATLASSIAN_CONTEXT", contextName)
+			previous, existed := os.LookupEnv("ATLASSIAN_CONTEXT")
+			if err := os.Setenv("ATLASSIAN_CONTEXT", contextName); err != nil {
+				return err
+			}
+			restoreContext = func() {
+				if existed {
+					_ = os.Setenv("ATLASSIAN_CONTEXT", previous)
+				} else {
+					_ = os.Unsetenv("ATLASSIAN_CONTEXT")
+				}
+			}
+			return nil
+		},
+		PersistentPostRun: func(cmd *cobra.Command, args []string) {
+			if restoreContext != nil {
+				restoreContext()
+			}
 		},
 	}
 	cmd.PersistentFlags().StringVar(&contextName, "context", "", "Atlassian host or alias for this invocation")

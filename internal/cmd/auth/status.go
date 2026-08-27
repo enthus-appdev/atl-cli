@@ -92,6 +92,7 @@ func runStatus(opts *StatusOptions) error {
 	}
 
 	var statuses []AuthStatus
+	activeHost := cfg.InvocationHost()
 
 	for hostname, hostCfg := range cfg.Hosts {
 		if opts.Hostname != "" && opts.Hostname != hostname {
@@ -101,7 +102,7 @@ func runStatus(opts *StatusOptions) error {
 		status := AuthStatus{
 			Hostname: hostname,
 			CloudID:  hostCfg.CloudID,
-			Current:  hostname == cfg.CurrentHost,
+			Current:  hostname == activeHost,
 		}
 
 		tokens, err := auth.GetToken(hostname)

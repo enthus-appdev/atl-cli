@@ -66,14 +66,39 @@ func TestDeprecationWarning(t *testing.T) {
 func TestContextFlagSetsInvocationOverride(t *testing.T) {
 	t.Setenv("ATLASSIAN_CONTEXT", "from-environment")
 	root := NewRootCmd(iostreams.Test(), "test")
-	root.SetArgs([]string{"version", "--context", "sandbox"})
+	var during string
+	root.AddCommand(&cobra.Command{
+		Use: "capture-context",
+		Run: func(cmd *cobra.Command, args []string) {
+			during = os.Getenv("ATLASSIAN_CONTEXT")
+		},
+	})
+	root.SetArgs([]string{"capture-context", "--context", "sandbox"})
 
 	if err := root.Execute(); err != nil {
 		t.Fatalf("execute with --context: %v", err)
 	}
-	if got := os.Getenv("ATLASSIAN_CONTEXT"); got != "sandbox" {
-		t.Fatalf("ATLASSIAN_CONTEXT = %q, want sandbox", got)
+	if during != "sandbox" {
+		t.Fatalf("ATLASSIAN_CONTEXT during command = %q, want sandbox", during)
 	}
+	if got := os.Getenv("ATLASSIAN_CONTEXT"); got != "from-environment" {
+		t.Fatalf("ATLASSIAN_CONTEXT after command = %q, want restored value", got)
+	}
+}
+
+func TestSubcommandsDoNotOverrideRootPersistentHooks(t *testing.T) {
+	root := NewRootCmd(iostreams.Test(), "test")
+	var check func(*cobra.Command)
+	check = func(parent *cobra.Command) {
+		for _, child := range parent.Commands() {
+			if child.PersistentPreRun != nil || child.PersistentPreRunE != nil ||
+				child.PersistentPostRun != nil || child.PersistentPostRunE != nil {
+				t.Errorf("%s overrides root invocation-context hooks", child.CommandPath())
+			}
+			check(child)
+		}
+	}
+	check(root)
 }
 
 // findChild returns the direct subcommand with the given name, including hidden ones.
