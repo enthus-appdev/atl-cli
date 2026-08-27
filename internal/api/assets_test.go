@@ -36,6 +36,15 @@ func requireBearer(t *testing.T, request *http.Request) {
 	}
 }
 
+func TestNewAssetsClientUsesCloudGateway(t *testing.T) {
+	client := &Client{cloudID: "cloud-123"}
+	assets := NewAssetsClient(client, "workspace-456")
+
+	if got, want := assets.baseURL, "https://api.atlassian.com/ex/jira/cloud-123"; got != want {
+		t.Fatalf("baseURL = %q, want %q", got, want)
+	}
+}
+
 func TestAssetsWorkspaceIDUsesOAuthGateway(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, request *http.Request) {
 		requireBearer(t, request)
