@@ -67,8 +67,13 @@ func TestDeprecationWarning(t *testing.T) {
 
 func TestContextFlagSetsInvocationOverride(t *testing.T) {
 	t.Setenv("ATLASSIAN_CONTEXT", "from-environment")
+	root := NewRootCmd(iostreams.Test(), "test")
+	contextName, err := parsedInvocationContext(root, []string{"jira", "--context", "sandbox", "issue", "list"})
+	if err != nil {
+		t.Fatalf("parse --context: %v", err)
+	}
 	var during string
-	if err := runWithInvocationContext(invocationContextArg([]string{"jira", "--context", "sandbox", "issue", "list"}), func() error {
+	if err := runWithInvocationContext(contextName, func() error {
 		during = os.Getenv("ATLASSIAN_CONTEXT")
 		return nil
 	}); err != nil {
@@ -98,18 +103,25 @@ func TestContextFlagRestoresOverrideAfterError(t *testing.T) {
 	}
 }
 
-func TestInvocationContextArg(t *testing.T) {
+func TestParsedInvocationContext(t *testing.T) {
 	for _, test := range []struct {
 		args []string
 		want string
 	}{
 		{args: []string{"--context", "prod", "jira", "issue", "list"}, want: "prod"},
 		{args: []string{"jira", "--context=sandbox", "assets", "count"}, want: "sandbox"},
+		{args: []string{"jira", "issue", "comment", "add", "NX-1", "--body", "--context=positional"}, want: ""},
 		{args: []string{"jira", "issue", "create", "--", "--context=positional"}, want: ""},
 		{args: []string{"jira", "issue", "list"}, want: ""},
 	} {
-		if got := invocationContextArg(test.args); got != test.want {
-			t.Errorf("invocationContextArg(%q) = %q, want %q", test.args, got, test.want)
+		root := NewRootCmd(iostreams.Test(), "test")
+		got, err := parsedInvocationContext(root, test.args)
+		if err != nil {
+			t.Errorf("parsedInvocationContext(%q) error: %v", test.args, err)
+			continue
+		}
+		if got != test.want {
+			t.Errorf("parsedInvocationContext(%q) = %q, want %q", test.args, got, test.want)
 		}
 	}
 }

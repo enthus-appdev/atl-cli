@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"os"
 	"runtime/debug"
-	"strings"
 
 	"github.com/spf13/cobra"
 
@@ -22,7 +21,8 @@ import (
 // Execute runs the root command and returns an exit code.
 func Execute(ios *iostreams.IOStreams, version string) int {
 	rootCmd := NewRootCmd(ios, version)
-	err := runWithInvocationContext(invocationContextArg(os.Args[1:]), rootCmd.Execute)
+	contextName, _ := parsedInvocationContext(rootCmd, os.Args[1:])
+	err := runWithInvocationContext(contextName, rootCmd.Execute)
 	if err != nil {
 		fmt.Fprintf(ios.ErrOut, "Error: %s\n", err)
 		return 1
@@ -80,21 +80,15 @@ Environment variables:
 	return cmd
 }
 
-func invocationContextArg(args []string) string {
-	var contextName string
-	for i := 0; i < len(args); i++ {
-		if args[i] == "--" {
-			break
-		}
-		switch {
-		case args[i] == "--context" && i+1 < len(args):
-			contextName = args[i+1]
-			i++
-		case strings.HasPrefix(args[i], "--context="):
-			contextName = strings.TrimPrefix(args[i], "--context=")
-		}
+func parsedInvocationContext(root *cobra.Command, args []string) (string, error) {
+	command, commandArgs, err := root.Find(args)
+	if err != nil {
+		return "", err
 	}
-	return contextName
+	if err := command.ParseFlags(commandArgs); err != nil {
+		return "", err
+	}
+	return command.Flags().GetString("context")
 }
 
 func runWithInvocationContext(contextName string, run func() error) error {
