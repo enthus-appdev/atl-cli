@@ -379,7 +379,7 @@ atl --context prod jira issue view PROJ-1234
 # Update it
 atl --context prod jira issue edit PROJ-1234 --assignee @me
 atl --context prod jira issue transition PROJ-1234 "In Progress"
-atl --context prod jira issue comment PROJ-1234 --body "Starting work on this"
+atl --context prod jira issue comment add PROJ-1234 --body "Starting work on this"
 ```
 
 ### Create a Linked Issue

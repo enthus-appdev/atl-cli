@@ -158,6 +158,21 @@ func (c *Client) CloudID() string {
 	return c.cloudID
 }
 
+// MissingScopes returns required OAuth scopes absent from the stored token.
+func (c *Client) MissingScopes(required ...string) []string {
+	granted := make(map[string]struct{}, len(c.tokens.Scopes))
+	for _, scope := range c.tokens.Scopes {
+		granted[scope] = struct{}{}
+	}
+	missing := make([]string, 0, len(required))
+	for _, scope := range required {
+		if _, ok := granted[scope]; !ok {
+			missing = append(missing, scope)
+		}
+	}
+	return missing
+}
+
 // BaseURL returns the base URL for Jira API requests.
 func (c *Client) JiraBaseURL() string {
 	return fmt.Sprintf("%s/ex/jira/%s/rest/api/3", AtlassianAPIURL, c.cloudID)

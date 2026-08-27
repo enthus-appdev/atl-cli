@@ -1,7 +1,9 @@
 package assets
 
 import (
+	"fmt"
 	"os"
+	"strings"
 
 	"github.com/spf13/cobra"
 
@@ -28,6 +30,11 @@ func (o *commonOptions) client() (*api.AssetsClient, error) {
 	client, err := api.NewClientFromConfig()
 	if err != nil {
 		return nil, err
+	}
+	missing := client.MissingScopes("read:cmdb-object:jira", "read:cmdb-schema:jira")
+	if len(missing) > 0 {
+		return nil, fmt.Errorf("OAuth token is missing Assets scopes %s; re-authenticate with 'atl auth login --hostname %s'",
+			strings.Join(missing, ", "), client.Hostname())
 	}
 
 	return api.NewAssetsClient(client, workspace), nil

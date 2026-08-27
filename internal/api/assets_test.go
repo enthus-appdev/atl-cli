@@ -144,3 +144,16 @@ func TestAssetsObjectIncludesAttributes(t *testing.T) {
 		t.Fatalf("display value = %q, want 145166", got)
 	}
 }
+
+func TestAssetsObjectRejectsWorkspaceMismatch(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, request *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"id":"9244","workspaceId":"other-workspace"}`))
+	}))
+	defer server.Close()
+
+	client := newTestAssetsClient(server, "workspace-456")
+	if _, err := client.Object(context.Background(), "9244"); err == nil {
+		t.Fatal("Object() succeeded for a different workspace")
+	}
+}

@@ -19,3 +19,9 @@ func TestAttributeValuesSkipsNullValues(t *testing.T) {
 		t.Fatalf("attributeValues() = %#v, want %#v", got, want)
 	}
 }
+
+func TestTerminalTextReplacesControlCharacters(t *testing.T) {
+	if got, want := terminalText("Customer\n\x1b]52;c;payload\a"), "Customer  ]52;c;payload "; got != want {
+		t.Fatalf("terminalText() = %q, want %q", got, want)
+	}
+}

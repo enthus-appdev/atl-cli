@@ -3,6 +3,7 @@ package assets
 import (
 	"fmt"
 	"strings"
+	"unicode"
 
 	"github.com/spf13/cobra"
 
@@ -15,12 +16,21 @@ func attributeValues(values []api.AssetAttributeValue) []string {
 	formatted := make([]string, 0, len(values))
 	for _, value := range values {
 		if value.DisplayValue != "" {
-			formatted = append(formatted, value.DisplayValue)
+			formatted = append(formatted, terminalText(value.DisplayValue))
 		} else if value.Value != nil {
-			formatted = append(formatted, fmt.Sprint(value.Value))
+			formatted = append(formatted, terminalText(fmt.Sprint(value.Value)))
 		}
 	}
 	return formatted
+}
+
+func terminalText(value string) string {
+	return strings.Map(func(r rune) rune {
+		if unicode.IsControl(r) {
+			return ' '
+		}
+		return r
+	}, value)
 }
 
 func newCmdObject(ios *iostreams.IOStreams, common *commonOptions) *cobra.Command {
@@ -46,12 +56,12 @@ func newCmdObject(ios *iostreams.IOStreams, common *commonOptions) *cobra.Comman
 				return output.JSON(ios.Out, object)
 			}
 
-			fmt.Fprintf(ios.Out, "%s\t%s\t%s\n", object.ObjectKey, object.ObjectType.Name, strings.TrimSpace(object.Label))
+			fmt.Fprintf(ios.Out, "%s\t%s\t%s\n", terminalText(object.ObjectKey), terminalText(object.ObjectType.Name), strings.TrimSpace(terminalText(object.Label)))
 			rows := make([][]string, 0, len(object.Attributes))
 			for _, attribute := range object.Attributes {
-				name := attribute.ObjectTypeAttribute.Name
+				name := terminalText(attribute.ObjectTypeAttribute.Name)
 				if name == "" {
-					name = attribute.ObjectTypeAttributeID
+					name = terminalText(attribute.ObjectTypeAttributeID)
 				}
 				values := attributeValues(attribute.ObjectAttributeValues)
 				rows = append(rows, []string{name, strings.Join(values, ", ")})

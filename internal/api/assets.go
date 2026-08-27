@@ -141,6 +141,10 @@ func (c *AssetsClient) AQLPage(ctx context.Context, ql string, startAt, maxResul
 
 // Object loads an Assets object and all attributes returned by the API.
 func (c *AssetsClient) Object(ctx context.Context, objectID string) (*AssetObject, error) {
+	workspaceID, err := c.WorkspaceID(ctx)
+	if err != nil {
+		return nil, err
+	}
 	base, err := c.v1(ctx)
 	if err != nil {
 		return nil, err
@@ -148,6 +152,9 @@ func (c *AssetsClient) Object(ctx context.Context, objectID string) (*AssetObjec
 	var object AssetObject
 	if err := c.do(ctx, http.MethodGet, base+"/object/"+url.PathEscape(objectID), nil, &object); err != nil {
 		return nil, err
+	}
+	if object.WorkspaceID != "" && object.WorkspaceID != workspaceID {
+		return nil, fmt.Errorf("assets object %s belongs to workspace %s, expected %s", objectID, object.WorkspaceID, workspaceID)
 	}
 	return &object, nil
 }
