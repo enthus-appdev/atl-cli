@@ -346,6 +346,15 @@ func TestClientAccessors(t *testing.T) {
 	}
 }
 
+func TestClientMissingScopes(t *testing.T) {
+	client := &Client{tokens: &auth.TokenSet{Scopes: []string{auth.AssetsObjectReadScope}}}
+
+	got := client.MissingScopes(auth.AssetsObjectReadScope, auth.AssetsSchemaReadScope)
+	if len(got) != 1 || got[0] != auth.AssetsSchemaReadScope {
+		t.Fatalf("MissingScopes() = %#v, want read:cmdb-schema:jira", got)
+	}
+}
+
 // Helper function to check string containment
 func contains(s, substr string) bool {
 	return len(s) >= len(substr) && (s == substr || len(s) > 0 && containsAt(s, substr, 0))

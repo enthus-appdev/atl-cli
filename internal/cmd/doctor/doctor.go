@@ -168,15 +168,16 @@ func checkHosts(r *Report, cfg *config.Config) {
 		return
 	}
 
-	if cfg.CurrentHost == "" {
+	activeHost := cfg.InvocationHost()
+	if activeHost == "" {
 		r.add("warn", "current host", "no current host set",
 			"Run 'atl config use-context <host>'")
-	} else if cfg.GetHost(cfg.CurrentHost) == nil {
+	} else if cfg.GetHost(activeHost) == nil {
 		r.add("error", "current host",
-			fmt.Sprintf("current host %q is not in the hosts list", cfg.CurrentHost),
+			fmt.Sprintf("current host %q is not in the hosts list", activeHost),
 			"Run 'atl config use-context <host>' with a configured host")
 	} else {
-		r.add("ok", "current host", cfg.CurrentHost, "")
+		r.add("ok", "current host", activeHost, "")
 	}
 
 	for hostname, hostCfg := range cfg.Hosts {

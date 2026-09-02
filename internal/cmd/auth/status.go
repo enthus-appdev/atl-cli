@@ -50,12 +50,13 @@ func NewCmdStatus(ios *iostreams.IOStreams) *cobra.Command {
 
 // AuthStatus represents the authentication status for a host.
 type AuthStatus struct {
-	Hostname      string `json:"hostname"`
-	CloudID       string `json:"cloud_id,omitempty"`
-	Authenticated bool   `json:"authenticated"`
-	TokenExpired  bool   `json:"token_expired,omitempty"`
-	ExpiresAt     string `json:"expires_at,omitempty"`
-	Current       bool   `json:"current"`
+	Hostname      string   `json:"hostname"`
+	CloudID       string   `json:"cloud_id,omitempty"`
+	Authenticated bool     `json:"authenticated"`
+	TokenExpired  bool     `json:"token_expired,omitempty"`
+	ExpiresAt     string   `json:"expires_at,omitempty"`
+	Scopes        []string `json:"scopes,omitempty"`
+	Current       bool     `json:"current"`
 }
 
 func runStatus(opts *StatusOptions) error {
@@ -91,6 +92,7 @@ func runStatus(opts *StatusOptions) error {
 	}
 
 	var statuses []AuthStatus
+	activeHost := cfg.InvocationHost()
 
 	for hostname, hostCfg := range cfg.Hosts {
 		if opts.Hostname != "" && opts.Hostname != hostname {
@@ -100,7 +102,7 @@ func runStatus(opts *StatusOptions) error {
 		status := AuthStatus{
 			Hostname: hostname,
 			CloudID:  hostCfg.CloudID,
-			Current:  hostname == cfg.CurrentHost,
+			Current:  hostname == activeHost,
 		}
 
 		tokens, err := auth.GetToken(hostname)
@@ -112,6 +114,7 @@ func runStatus(opts *StatusOptions) error {
 			status.Authenticated = true
 			status.TokenExpired = tokens.IsExpired()
 			status.ExpiresAt = tokens.ExpiresAt.Format(time.RFC3339)
+			status.Scopes = append([]string(nil), tokens.Scopes...)
 		}
 
 		statuses = append(statuses, status)

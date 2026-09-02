@@ -18,8 +18,8 @@ func newCmdCount(ios *iostreams.IOStreams, common *commonOptions) *cobra.Command
 		Long: `List every object schema with its current object count, plus the
 workspace-wide total — useful for tracking how close the workspace is to the
 Assets object limit.`,
-		Example: `  atl assets count
-  atl assets count --json`,
+		Example: `  atl --context sandbox jira assets count
+  atl --context prod jira assets count --json`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			client, err := common.client()
 			if err != nil {
