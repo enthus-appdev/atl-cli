@@ -66,13 +66,25 @@ func TestBuildReplyADF_MentionsAuthorAndLinksOriginalWithoutQuoting(t *testing.T
 }
 
 func TestBuildReplyADF_StillLinksWhenAuthorUnavailable(t *testing.T) {
-	doc := BuildReplyADF("example.atlassian.net", "PROJ-42", "987", &User{AccountID: "  "}, nil)
-
-	if len(doc.Content) != 1 || len(doc.Content[0].Content) != 1 {
-		t.Fatalf("expected link-only header, got %+v", doc.Content)
+	tests := []struct {
+		name   string
+		author *User
+	}{
+		{name: "nil author"},
+		{name: "empty account ID", author: &User{AccountID: "  "}},
 	}
-	link := doc.Content[0].Content[0]
-	if link.Type != "text" || len(link.Marks) != 1 || link.Marks[0].Type != "link" {
-		t.Fatalf("expected focused-comment link without a mention, got %+v", link)
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			doc := BuildReplyADF("example.atlassian.net", "PROJ-42", "987", test.author, nil)
+
+			if len(doc.Content) != 1 || len(doc.Content[0].Content) != 1 {
+				t.Fatalf("expected link-only header, got %+v", doc.Content)
+			}
+			link := doc.Content[0].Content[0]
+			if link.Type != "text" || len(link.Marks) != 1 || link.Marks[0].Type != "link" {
+				t.Fatalf("expected focused-comment link without a mention, got %+v", link)
+			}
+		})
 	}
 }
