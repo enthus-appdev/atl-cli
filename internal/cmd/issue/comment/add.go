@@ -3,9 +3,7 @@ package comment
 import (
 	"context"
 	"fmt"
-	"net/url"
 	"os"
-	"strings"
 
 	"github.com/spf13/cobra"
 
@@ -157,7 +155,7 @@ func replyToComment(ctx context.Context, jira *api.JiraService, hostname string,
 	}
 
 	commentOpts := &api.CommentOptions{
-		BodyADF:        buildReplyADF(hostname, opts.IssueKey, opts.ReplyTo, originalComment.Author, bodyADF),
+		BodyADF:        api.BuildReplyADF(hostname, opts.IssueKey, opts.ReplyTo, originalComment.Author, bodyADF),
 		VisibilityType: opts.VisibilityType,
 		VisibilityName: opts.VisibilityName,
 	}
@@ -183,46 +181,4 @@ func replyToComment(ctx context.Context, jira *api.JiraService, hostname string,
 	fmt.Fprintf(opts.IO.Out, "URL: %s\n", replyOutput.URL)
 
 	return nil
-}
-
-func buildReplyADF(hostname, issueKey, commentID string, author *api.User, body *api.ADF) *api.ADF {
-	commentURL := fmt.Sprintf(
-		"https://%s/browse/%s?focusedCommentId=%s",
-		hostname,
-		url.PathEscape(issueKey),
-		url.QueryEscape(commentID),
-	)
-
-	header := api.ADFContent{Type: "paragraph"}
-	if author != nil && author.AccountID != "" {
-		displayName := strings.TrimSpace(author.DisplayName)
-		if displayName == "" {
-			displayName = "Jira user"
-		}
-		header.Content = append(header.Content,
-			api.ADFContent{
-				Type: "mention",
-				Attrs: &api.ADFAttrs{
-					ID:   author.AccountID,
-					Text: "@" + displayName,
-				},
-			},
-			api.ADFContent{Type: "text", Text: " · "},
-		)
-	}
-	header.Content = append(header.Content, api.ADFContent{
-		Type: "text",
-		Text: fmt.Sprintf("Replying to comment %s", commentID),
-		Marks: []api.ADFMark{{
-			Type:  "link",
-			Attrs: &api.ADFAttrs{Href: commentURL},
-		}},
-	})
-
-	content := []api.ADFContent{header}
-	if body != nil {
-		content = append(content, body.Content...)
-	}
-
-	return &api.ADF{Type: "doc", Version: 1, Content: content}
 }
