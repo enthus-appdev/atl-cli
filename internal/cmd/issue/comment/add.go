@@ -3,7 +3,9 @@ package comment
 import (
 	"context"
 	"fmt"
+	"net/url"
 	"os"
+	"strings"
 
 	"github.com/spf13/cobra"
 
@@ -36,7 +38,7 @@ func NewCmdAdd(ios *iostreams.IOStreams) *cobra.Command {
 		Long: `Add a new comment to a Jira issue.
 
 Supports visibility restrictions to limit who can see the comment,
-and replying to existing comments with automatic quoting.`,
+and replying to existing comments with an author mention and comment link.`,
 		Example: `  # Add a comment
   atl jira issue comment add PROJ-1234 --body "This is my comment"
 
@@ -46,7 +48,7 @@ and replying to existing comments with automatic quoting.`,
   # Add a comment visible only to a group
   atl jira issue comment add PROJ-1234 --body "Team note" --visibility-type group --visibility-name "jira-developers"
 
-  # Reply to a specific comment (quotes the original)
+  # Reply to a specific comment (mentions the author and links the original)
   atl jira issue comment add PROJ-1234 --body "I agree!" --reply-to 12345
 
   # Read comment body from a file
@@ -78,7 +80,7 @@ and replying to existing comments with automatic quoting.`,
 
 	cmd.Flags().StringVarP(&opts.Body, "body", "b", "", "Comment text (mutually exclusive with --body-file)")
 	cmd.Flags().StringVar(&opts.BodyFile, "body-file", "", "Read comment body from file (mutually exclusive with --body)")
-	cmd.Flags().StringVar(&opts.ReplyTo, "reply-to", "", "Comment ID to reply to (quotes original)")
+	cmd.Flags().StringVar(&opts.ReplyTo, "reply-to", "", "Comment ID to reply to (mentions author and links original)")
 	cmd.Flags().StringVar(&opts.VisibilityType, "visibility-type", "", "Visibility type: 'role' or 'group'")
 	cmd.Flags().StringVar(&opts.VisibilityName, "visibility-name", "", "Role or group name for visibility restriction")
 	cmd.Flags().BoolVarP(&opts.JSON, "json", "j", false, "Output as JSON")
@@ -142,33 +144,20 @@ func runAdd(opts *AddOptions) error {
 }
 
 func replyToComment(ctx context.Context, jira *api.JiraService, hostname string, opts *AddOptions) error {
-	// Get the original comment to quote it
+	// Jira issue comments are flat, so a reply is represented by a mention and
+	// a stable link to the original comment.
 	originalComment, err := jira.GetComment(ctx, opts.IssueKey, opts.ReplyTo)
 	if err != nil {
 		return fmt.Errorf("failed to get original comment: %w", err)
 	}
 
-	originalAuthor := "Unknown"
-	if originalComment.Author != nil {
-		originalAuthor = originalComment.Author.DisplayName
-	}
-
-	// Build the reply as ADF. Quoting by copying nodes — rather than rendering
-	// the original to text and re-parsing it — is what keeps media, mentions and
-	// exact characters intact.
 	bodyADF, err := api.TextToADFWithResolver(ctx, opts.Body, jira)
 	if err != nil {
 		return fmt.Errorf("failed to process mentions: %w", err)
 	}
 
-	content := []api.ADFContent{api.AttributionParagraph(originalAuthor)}
-	if quote := api.QuoteADF(originalComment.Body); quote != nil {
-		content = append(content, *quote)
-	}
-	content = append(content, bodyADF.Content...)
-
 	commentOpts := &api.CommentOptions{
-		BodyADF:        &api.ADF{Type: "doc", Version: 1, Content: content},
+		BodyADF:        buildReplyADF(hostname, opts.IssueKey, opts.ReplyTo, originalComment.Author, bodyADF),
 		VisibilityType: opts.VisibilityType,
 		VisibilityName: opts.VisibilityName,
 	}
@@ -194,4 +183,46 @@ func replyToComment(ctx context.Context, jira *api.JiraService, hostname string,
 	fmt.Fprintf(opts.IO.Out, "URL: %s\n", replyOutput.URL)
 
 	return nil
+}
+
+func buildReplyADF(hostname, issueKey, commentID string, author *api.User, body *api.ADF) *api.ADF {
+	commentURL := fmt.Sprintf(
+		"https://%s/browse/%s?focusedCommentId=%s",
+		hostname,
+		url.PathEscape(issueKey),
+		url.QueryEscape(commentID),
+	)
+
+	header := api.ADFContent{Type: "paragraph"}
+	if author != nil && author.AccountID != "" {
+		displayName := strings.TrimSpace(author.DisplayName)
+		if displayName == "" {
+			displayName = "Jira user"
+		}
+		header.Content = append(header.Content,
+			api.ADFContent{
+				Type: "mention",
+				Attrs: &api.ADFAttrs{
+					ID:   author.AccountID,
+					Text: "@" + displayName,
+				},
+			},
+			api.ADFContent{Type: "text", Text: " · "},
+		)
+	}
+	header.Content = append(header.Content, api.ADFContent{
+		Type: "text",
+		Text: fmt.Sprintf("Replying to comment %s", commentID),
+		Marks: []api.ADFMark{{
+			Type:  "link",
+			Attrs: &api.ADFAttrs{Href: commentURL},
+		}},
+	})
+
+	content := []api.ADFContent{header}
+	if body != nil {
+		content = append(content, body.Content...)
+	}
+
+	return &api.ADF{Type: "doc", Version: 1, Content: content}
 }

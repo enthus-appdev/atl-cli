@@ -135,10 +135,18 @@ atl --context prod jira issue transition PROJ-1234 "Done" --field "Resolution=Fi
 atl --context prod jira issue comment list PROJ-1234                    # List comments
 atl --context prod jira issue comment add PROJ-1234 --body "Comment"    # Add comment
 atl --context prod jira issue comment add PROJ-1234 --body-file msg.md  # Add from file (avoids shell escaping)
+atl --context prod jira issue comment add PROJ-1234 --reply-to 123 --body "Reply"
 atl --context prod jira issue comment edit PROJ-1234 --id 123 --body "Updated"
 atl --context prod jira issue comment edit PROJ-1234 --id 123 --body-file msg.md
 atl --context prod jira issue comment delete PROJ-1234 --id 123
 ```
+
+`--reply-to` creates a new flat Jira comment containing a real mention of the
+original author and a focused-comment link. It does not quote or duplicate the
+original comment. For manually authored bodies, use Markdown links
+`[label](https://example.com)` and real mentions `@[Display Name]` or
+`@[id:accountId]`. Jira wiki links `[label|url]` remain literal, and plain
+`@Display Name` does not notify the user.
 
 ### Issue Links
 
