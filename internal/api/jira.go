@@ -211,6 +211,9 @@ type ADFAttrs struct {
 	Colspan  int   `json:"colspan,omitempty"`
 	Rowspan  int   `json:"rowspan,omitempty"`
 	Colwidth []int `json:"colwidth,omitempty"`
+	// Task list attributes (taskList/taskItem)
+	LocalID string `json:"localId,omitempty"`
+	State   string `json:"state,omitempty"`
 }
 
 // ADFMark represents text marks in ADF.
@@ -1748,6 +1751,43 @@ func convertNode(c ADFContent) *adf.Node {
 			NodeValue: adf.NodeValue{
 				Text: displayText,
 			},
+		}
+	}
+
+	// Handle task lists - the library's Markdown translator does not know
+	// taskList/taskItem and would silently drop their structure, so render
+	// them as a bullet list with GFM checkbox markers. This also round-trips:
+	// MarkdownToADF parses "- [ ]"/"- [x]" back into taskList nodes.
+	if c.Type == "taskList" {
+		return &adf.Node{
+			NodeType: adf.NodeType("bulletList"),
+			Content:  convertNodes(c.Content),
+		}
+	}
+	if c.Type == "taskItem" {
+		marker := "[ ] "
+		if c.Attrs != nil && c.Attrs.State == "DONE" {
+			marker = "[x] "
+		}
+		// taskItem holds inline content directly; wrap it in a paragraph so
+		// the listItem renders like a regular list entry. The marker is
+		// merged into the leading text node where possible because the
+		// translator drops trailing spaces of standalone text nodes.
+		inline := convertNodes(c.Content)
+		if len(inline) > 0 && inline[0].NodeType == adf.NodeType("text") && len(inline[0].Marks) == 0 {
+			inline[0].Text = marker + inline[0].Text
+		} else {
+			inline = append(
+				[]*adf.Node{{NodeType: adf.NodeType("text"), NodeValue: adf.NodeValue{Text: marker}}},
+				inline...,
+			)
+		}
+		return &adf.Node{
+			NodeType: adf.NodeType("listItem"),
+			Content: []*adf.Node{{
+				NodeType: adf.NodeType("paragraph"),
+				Content:  inline,
+			}},
 		}
 	}
 

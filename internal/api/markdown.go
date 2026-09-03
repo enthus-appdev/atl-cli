@@ -1,6 +1,8 @@
 package api
 
 import (
+	"crypto/rand"
+	"fmt"
 	"regexp"
 	"strings"
 )
@@ -15,6 +17,7 @@ import (
 //   - Code blocks: ```language\ncode\n```
 //   - Links: [text](url)
 //   - Bullet lists: - item or * item
+//   - Task lists: - [ ] open item, - [x] done item
 //   - Numbered lists: 1. item
 //   - Blockquotes: > text
 //   - Horizontal rules: --- or *** or ___
@@ -114,6 +117,15 @@ func parseBlocks(lines []string) []ADFContent {
 		// Blockquote
 		if strings.HasPrefix(strings.TrimSpace(line), ">") {
 			block, consumed := parseBlockquote(lines, i)
+			content = append(content, block)
+			i += consumed
+			continue
+		}
+
+		// Task list (must be checked before bullet list, since "- [ ]" is
+		// also a valid bullet item prefix)
+		if isTaskListItem(line) {
+			block, consumed := parseTaskList(lines, i)
 			content = append(content, block)
 			i += consumed
 			continue
@@ -299,7 +311,7 @@ func parseBulletList(lines []string, start int) (ADFContent, int) {
 			for j < len(lines) && strings.TrimSpace(lines[j]) == "" {
 				j++
 			}
-			if j >= len(lines) || !isBulletListItem(lines[j]) {
+			if j >= len(lines) || !isBulletListItem(lines[j]) || isTaskListItem(lines[j]) {
 				break
 			}
 			i = j
@@ -313,7 +325,7 @@ func parseBulletList(lines []string, start int) (ADFContent, int) {
 			break
 		}
 
-		if !isBulletListItem(line) {
+		if !isBulletListItem(line) || isTaskListItem(line) {
 			break
 		}
 
@@ -344,6 +356,88 @@ func parseBulletList(lines []string, start int) (ADFContent, int) {
 		Type:    "bulletList",
 		Content: items,
 	}, i - start
+}
+
+// taskListItemPattern matches GFM task list items like "- [ ] text" or
+// "* [x] text" and captures the state marker and the item text.
+var taskListItemPattern = regexp.MustCompile(`^[-*+] \[([ xX])\] (.*)$`)
+
+// isTaskListItem checks if a line is a task list item (- [ ] or - [x]).
+func isTaskListItem(line string) bool {
+	return taskListItemPattern.MatchString(strings.TrimSpace(line))
+}
+
+// parseTaskList parses a GFM task list into an ADF taskList node. Task items
+// carry their text as inline content directly (no paragraph wrapper), a
+// TODO/DONE state derived from the [ ]/[x] marker, and a generated localId,
+// which Jira requires on taskList and taskItem nodes.
+func parseTaskList(lines []string, start int) (ADFContent, int) {
+	var items []ADFContent
+	i := start
+	baseIndent := countLeadingSpaces(lines[start])
+
+	for i < len(lines) {
+		line := lines[i]
+
+		// Empty line might end the list
+		if strings.TrimSpace(line) == "" {
+			// Check if next non-empty line continues the list
+			j := i + 1
+			for j < len(lines) && strings.TrimSpace(lines[j]) == "" {
+				j++
+			}
+			if j >= len(lines) || !isTaskListItem(lines[j]) {
+				break
+			}
+			i = j
+			continue
+		}
+
+		indent := countLeadingSpaces(line)
+
+		// If less indented than base, we're done
+		if indent < baseIndent && i > start {
+			break
+		}
+
+		matches := taskListItemPattern.FindStringSubmatch(strings.TrimSpace(line))
+		if matches == nil {
+			break
+		}
+
+		state := "TODO"
+		if matches[1] == "x" || matches[1] == "X" {
+			state = "DONE"
+		}
+
+		items = append(items, ADFContent{
+			Type:    "taskItem",
+			Attrs:   &ADFAttrs{LocalID: newLocalID(), State: state},
+			Content: parseInline(matches[2]),
+		})
+		i++
+	}
+
+	return ADFContent{
+		Type:    "taskList",
+		Attrs:   &ADFAttrs{LocalID: newLocalID()},
+		Content: items,
+	}, i - start
+}
+
+// newLocalID generates a random identifier for ADF nodes that require a
+// localId attribute (taskList, taskItem).
+func newLocalID() string {
+	b := make([]byte, 16)
+	if _, err := rand.Read(b); err != nil {
+		// crypto/rand never fails on supported platforms; fall back to a
+		// constant rather than propagating an error through the parser.
+		return "00000000-0000-0000-0000-000000000000"
+	}
+	// RFC 4122 version 4 layout, matching the ids the Jira editor generates.
+	b[6] = (b[6] & 0x0f) | 0x40
+	b[8] = (b[8] & 0x3f) | 0x80
+	return fmt.Sprintf("%x-%x-%x-%x-%x", b[0:4], b[4:6], b[6:8], b[8:10], b[10:16])
 }
 
 // isOrderedListItem checks if a line is an ordered list item.
