@@ -145,7 +145,7 @@ func main() {
 | Strikethrough | `~~deleted~~` |
 | Inline code | `` `code` `` |
 | Code blocks | ` ``` ` with optional language |
-| Links | `[text](url)` |
+| Links | `[text](url)` (Jira wiki `[text|url]` is not supported) |
 | Bullet lists | `- item` or `* item` |
 | Task lists | `- [ ] open` or `- [x] done` |
 | Numbered lists | `1. item` |
@@ -231,6 +231,11 @@ atl --context prod jira issue attachment <key> --download --id 12345  # Download
 atl --context prod jira issue attachment <key> --download-all         # Download all attachments
 atl --context prod jira issue attachment <key> --download-all -o ./dir  # Download to directory
 ```
+
+`issue comment add --reply-to` creates a new flat Jira comment, mentions
+the original author, and links to the focused original comment. It does not
+copy the original body into the reply. For manually authored comments, plain
+`@Display Name` is only text; use `@[Display Name]` for a real Jira mention.
 
 ### Boards
 
