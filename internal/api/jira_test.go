@@ -747,7 +747,7 @@ func TestValidateRawPath(t *testing.T) {
 // hold even with a client that has no usable transport.
 func TestRawGet_ValidationBeforeNetwork(t *testing.T) {
 	jira := NewJiraService(&Client{})
-	_, err := jira.RawGet(context.Background(), "../../admin")
+	_, err := jira.RawGetVersion(context.Background(), DefaultJiraAPIVersion, "../../admin")
 	if err == nil {
 		t.Fatal("expected validation error for traversal path, got nil")
 	}

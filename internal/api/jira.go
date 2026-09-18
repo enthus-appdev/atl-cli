@@ -766,12 +766,6 @@ func validateRawPath(apiPath string) error {
 	return nil
 }
 
-// RawGet performs a read-only GET against a path relative to the default Jira
-// REST base and returns the raw JSON body.
-func (s *JiraService) RawGet(ctx context.Context, apiPath string) (json.RawMessage, error) {
-	return s.RawGetVersion(ctx, DefaultJiraAPIVersion, apiPath)
-}
-
 // RawGetVersion performs a read-only GET against a path relative to the Jira
 // platform REST base of the given API version (e.g. "issue/NX-1/editmeta") and
 // returns the raw JSON body. It is the escape hatch for endpoints atl does not

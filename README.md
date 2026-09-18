@@ -264,6 +264,17 @@ The object type and attribute reads need `read:cmdb-type:jira` and
 holding only `read:cmdb-object:jira` and `read:cmdb-schema:jira` gets
 `401 "scope does not match"` on these endpoints.
 
+Tokens issued before those two scopes were requested do not gain them, so
+`assets attributes` reports the missing scope until each site is authenticated
+again:
+
+```bash
+atl auth login --hostname mycompany.atlassian.net
+```
+
+This affects only the new object type reads. `assets count`, `assets aql` and
+`assets object` keep working on an older token.
+
 ### Read-only REST passthrough
 
 ```bash

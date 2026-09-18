@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -229,6 +230,42 @@ func TestAssetsObjectTypeAttributes(t *testing.T) {
 	}
 	if got, want := attributes[1].Options, "aktiv,inaktiv"; got != want {
 		t.Errorf("options = %q, want %q", got, want)
+	}
+}
+
+func TestObjectTypeIDMustBeNumeric(t *testing.T) {
+	client := newTestAssetsClient(httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		t.Error("a rejected id reached the network")
+		w.WriteHeader(http.StatusOK)
+	})), "workspace-456")
+
+	for _, id := range []string{"9;foo", "9%2f..", `9\x`, "../9", "9/attributes", "", "abc", " 9"} {
+		if _, err := client.ObjectType(context.Background(), id); err == nil {
+			t.Errorf("ObjectType(%q) accepted a non-numeric id", id)
+		}
+		if _, err := client.ObjectTypeAttributes(context.Background(), id); err == nil {
+			t.Errorf("ObjectTypeAttributes(%q) accepted a non-numeric id", id)
+		}
+	}
+}
+
+// AssetsObjectTypeReadScopes must cover every scope the individual calls demand,
+// or the up-front check passes a token the calls then reject.
+func TestAssetsObjectTypeReadScopesCoverEveryCall(t *testing.T) {
+	for _, scope := range slices.Concat(objectTypeScopes, objectTypeAttributeScopes) {
+		if !slices.Contains(AssetsObjectTypeReadScopes, scope) {
+			t.Errorf("AssetsObjectTypeReadScopes omits %q", scope)
+		}
+	}
+}
+
+func TestAssetObjectTypeAttributeIsMulti(t *testing.T) {
+	for max, want := range map[int]bool{-1: true, 0: false, 1: false, 2: true, 100: true, -2: false} {
+		var attribute AssetObjectTypeAttribute
+		attribute.MaximumCardinality = max
+		if got := attribute.IsMulti(); got != want {
+			t.Errorf("IsMulti() with maximumCardinality %d = %v, want %v", max, got, want)
+		}
 	}
 }
 

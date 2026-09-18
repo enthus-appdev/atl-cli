@@ -14,19 +14,12 @@ import (
 // attributeFlags renders the non-default properties of an attribute definition,
 // omitting the ordinary ones so the column carries only what distinguishes this
 // attribute from a plain optional single-value field.
-// unboundedCardinality is the upper-cardinality value Assets uses for "no limit".
-const unboundedCardinality = -1
-
 func attributeFlags(attribute api.AssetObjectTypeAttribute) string {
 	var flags []string
 	if attribute.Required() {
 		flags = append(flags, "required")
 	}
-	// Assets spells an unbounded upper cardinality as -1; stated bounds observed
-	// in a live workspace are 1, 2, 50 and 100, and 0 never appears. Only those
-	// two forms are labeled, so an unobserved value reads as no flag rather than
-	// as a claim about a sentinel whose meaning is not published.
-	if attribute.MaximumCardinality > 1 || attribute.MaximumCardinality == unboundedCardinality {
+	if attribute.IsMulti() {
 		flags = append(flags, "multi")
 	}
 	if attribute.Label {
@@ -80,11 +73,11 @@ meant: a wrong id and a type that genuinely lacks an attribute look the same.`,
 
 			objectType, err := client.ObjectType(cmd.Context(), args[0])
 			if err != nil {
-				return err
+				return fmt.Errorf("read object type %s: %w", args[0], err)
 			}
 			attributes, err := client.ObjectTypeAttributes(cmd.Context(), args[0])
 			if err != nil {
-				return err
+				return fmt.Errorf("read attributes of object type %s: %w", args[0], err)
 			}
 
 			if jsonOut {
@@ -94,7 +87,7 @@ meant: a wrong id and a type that genuinely lacks an attribute look the same.`,
 				})
 			}
 
-			fmt.Fprintf(ios.Out, "%s\t%s\n", objectType.ID, terminalText(objectType.Name))
+			fmt.Fprintf(ios.Out, "%s\t%s\n", terminalText(objectType.ID), terminalText(objectType.Name))
 			rows := make([][]string, 0, len(attributes))
 			for _, attribute := range attributes {
 				rows = append(rows, []string{

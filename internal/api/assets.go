@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"regexp"
+	"slices"
 	"strings"
 
 	"github.com/enthus-appdev/atl-cli/internal/auth"
@@ -255,11 +257,32 @@ func (a AssetObjectTypeAttribute) Required() bool {
 	return a.MinimumCardinality > 0
 }
 
-// AssetsObjectTypeReadScopes are the scopes the two object type reads need
-// between them. Assets gates the type and its attributes separately, so a
-// caller that will make both requests checks both up front rather than
-// discovering the second gap only after fixing the first.
-var AssetsObjectTypeReadScopes = []string{auth.AssetsTypeReadScope, auth.AssetsAttributeReadScope}
+// AssetsObjectTypeReadScopes is the union of what the object type reads need.
+// It is derived from the per-call requirements rather than restated, so adding a
+// scope to one of them cannot leave the up-front check advertising less than the
+// calls actually demand.
+var AssetsObjectTypeReadScopes = slices.Concat(objectTypeScopes, objectTypeAttributeScopes)
+
+// Assets gates the type and its attributes separately, so a caller that will
+// make both requests checks both up front rather than discovering the second gap
+// only after fixing the first.
+var (
+	objectTypeScopes          = []string{auth.AssetsTypeReadScope}
+	objectTypeAttributeScopes = []string{auth.AssetsAttributeReadScope}
+)
+
+// validObjectTypeID matches the only form an Assets object type id takes. The id
+// is interpolated into the request path, and url.PathEscape leaves ";" intact,
+// which is enough to append a path parameter and change how the server parses
+// the request. An allowlist of digits closes that without chasing encodings.
+var validObjectTypeID = regexp.MustCompile(`^[0-9]+$`)
+
+func checkObjectTypeID(objectTypeID string) error {
+	if validObjectTypeID.MatchString(objectTypeID) {
+		return nil
+	}
+	return fmt.Errorf("object type id must be numeric, got %q", objectTypeID)
+}
 
 // RequireObjectTypeReadScopes reports every scope missing for reading an object
 // type together with its attributes.
@@ -267,11 +290,26 @@ func (c *AssetsClient) RequireObjectTypeReadScopes() error {
 	return c.requireScopes(AssetsObjectTypeReadScopes...)
 }
 
+// IsMulti reports whether the attribute holds more than one value. Assets spells
+// an unbounded upper cardinality as -1; stated bounds observed in a live
+// workspace are 1, 2, 50 and 100, and 0 never appears. Only those two forms
+// count, so an unobserved value reads as single-valued rather than as a claim
+// about a sentinel whose meaning is not published.
+func (a AssetObjectTypeAttribute) IsMulti() bool {
+	return a.MaximumCardinality > 1 || a.MaximumCardinality == unboundedCardinality
+}
+
+// unboundedCardinality is the upper-cardinality value Assets uses for "no limit".
+const unboundedCardinality = -1
+
 // ObjectType loads one object type by id. Its name is what tells a caller the id
 // addresses the type they meant: a wrong id and a type without the attribute
 // being looked for are otherwise indistinguishable.
 func (c *AssetsClient) ObjectType(ctx context.Context, objectTypeID string) (*AssetObjectType, error) {
-	if err := c.requireScopes(auth.AssetsTypeReadScope); err != nil {
+	if err := checkObjectTypeID(objectTypeID); err != nil {
+		return nil, err
+	}
+	if err := c.requireScopes(objectTypeScopes...); err != nil {
 		return nil, err
 	}
 	base, err := c.v1(ctx)
@@ -288,7 +326,10 @@ func (c *AssetsClient) ObjectType(ctx context.Context, objectTypeID string) (*As
 // ObjectTypeAttributes returns every attribute defined on an object type,
 // including the ones inherited from a parent type.
 func (c *AssetsClient) ObjectTypeAttributes(ctx context.Context, objectTypeID string) ([]AssetObjectTypeAttribute, error) {
-	if err := c.requireScopes(auth.AssetsAttributeReadScope); err != nil {
+	if err := checkObjectTypeID(objectTypeID); err != nil {
+		return nil, err
+	}
+	if err := c.requireScopes(objectTypeAttributeScopes...); err != nil {
 		return nil, err
 	}
 	base, err := c.v1(ctx)
