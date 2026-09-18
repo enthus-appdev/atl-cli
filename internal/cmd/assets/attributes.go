@@ -97,10 +97,11 @@ meant: a wrong id and a type that genuinely lacks an attribute look the same.`,
 					attribute.ID,
 					terminalText(attribute.Name),
 					terminalText(attribute.DefaultType.Name),
+					terminalText(attribute.Options),
 					attributeFlags(attribute),
 				})
 			}
-			output.SimpleTable(ios.Out, []string{"ID", "ATTRIBUTE", "TYPE", "FLAGS"}, rows)
+			output.SimpleTable(ios.Out, []string{"ID", "ATTRIBUTE", "TYPE", "OPTIONS", "FLAGS"}, rows)
 			return nil
 		},
 	}

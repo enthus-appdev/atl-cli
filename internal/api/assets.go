@@ -224,13 +224,17 @@ type AssetObjectTypeAttribute struct {
 		ID   int    `json:"id"`
 		Name string `json:"name"`
 	} `json:"defaultType"`
-	System             bool `json:"system,omitempty"`
-	Editable           bool `json:"editable,omitempty"`
-	Hidden             bool `json:"hidden,omitempty"`
-	UniqueAttribute    bool `json:"uniqueAttribute,omitempty"`
-	MinimumCardinality int  `json:"minimumCardinality"`
-	MaximumCardinality int  `json:"maximumCardinality"`
-	Position           int  `json:"position"`
+	// Options carries a Select attribute's allowed values as one comma-separated
+	// string. A write of any other value is rejected, so this is the vocabulary a
+	// caller has to match.
+	Options            string `json:"options,omitempty"`
+	System             bool   `json:"system,omitempty"`
+	Editable           bool   `json:"editable,omitempty"`
+	Hidden             bool   `json:"hidden,omitempty"`
+	UniqueAttribute    bool   `json:"uniqueAttribute,omitempty"`
+	MinimumCardinality int    `json:"minimumCardinality"`
+	MaximumCardinality int    `json:"maximumCardinality"`
+	Position           int    `json:"position"`
 }
 
 // Required reports whether the attribute must carry at least one value.

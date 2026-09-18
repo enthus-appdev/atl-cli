@@ -204,7 +204,7 @@ func TestAssetsObjectTypeAttributes(t *testing.T) {
 			 "defaultType":{"id":0,"name":"Text"},"system":true,"editable":false,
 			 "minimumCardinality":1,"maximumCardinality":1,"position":0},
 			{"id":"561","name":"Status","label":false,"type":0,
-			 "defaultType":{"id":0,"name":"Text"},"editable":true,
+			 "defaultType":{"id":10,"name":"Select"},"editable":true,"options":"aktiv,inaktiv",
 			 "minimumCardinality":0,"maximumCardinality":1,"position":3}
 		]`))
 	}))
@@ -226,6 +226,9 @@ func TestAssetsObjectTypeAttributes(t *testing.T) {
 	}
 	if attributes[1].Required() {
 		t.Error("minimumCardinality 0 read as required")
+	}
+	if got, want := attributes[1].Options, "aktiv,inaktiv"; got != want {
+		t.Errorf("options = %q, want %q", got, want)
 	}
 }
 
