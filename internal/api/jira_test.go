@@ -756,8 +756,6 @@ func TestRawGet_ValidationBeforeNetwork(t *testing.T) {
 	}
 }
 
-// TestRawGetVersionRejectsUnsupportedVersion proves the version is validated
-// before any request is built, so a bad version cannot reach the network.
 func TestRawGetVersionRejectsUnsupportedVersion(t *testing.T) {
 	service := NewJiraService(&Client{cloudID: "cloud-123"})
 	if _, err := service.RawGetVersion(context.Background(), "3/../../..", "issue/NX-1"); err == nil {

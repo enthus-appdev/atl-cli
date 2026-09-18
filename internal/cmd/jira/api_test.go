@@ -70,9 +70,6 @@ func TestWriteIndentedJSON_NonJSONFallback(t *testing.T) {
 	}
 }
 
-// TestNewCmdAPI_APIVersionFlag pins the default version and the rejection of an
-// unsupported one. The rejection happens before the client is built, so it needs
-// no HTTP.
 func TestNewCmdAPI_APIVersionFlag(t *testing.T) {
 	cmd := NewCmdAPI(iostreams.Test())
 	flag := cmd.Flags().Lookup("api-version")

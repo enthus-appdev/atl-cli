@@ -253,10 +253,6 @@ func TestAssetsObjectType(t *testing.T) {
 	}
 }
 
-// TestAssetsObjectTypeReadsNeedTypeAndAttributeScopes pins which scope each
-// object-type read is gated on, so a token carrying only the object and schema
-// scopes fails locally with the missing scope named rather than as an opaque
-// 401 "scope does not match" from Atlassian.
 func TestAssetsObjectTypeReadsNeedTypeAndAttributeScopes(t *testing.T) {
 	client := &AssetsClient{client: &Client{
 		hostname: "test.atlassian.net",
@@ -270,9 +266,6 @@ func TestAssetsObjectTypeReadsNeedTypeAndAttributeScopes(t *testing.T) {
 	}
 }
 
-// TestRequireObjectTypeReadScopesNamesEveryGap is the contract of the combined
-// pre-check: one message lists every missing scope, so a caller does not fix one
-// gap only to hit the next on the following run.
 func TestRequireObjectTypeReadScopesNamesEveryGap(t *testing.T) {
 	client := &AssetsClient{client: &Client{
 		hostname: "test.atlassian.net",

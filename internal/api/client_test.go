@@ -449,8 +449,6 @@ func TestJiraBaseURLVersion(t *testing.T) {
 	}
 }
 
-// TestJiraBaseURLMatchesDefaultVersion keeps the unversioned helper and the
-// declared default from drifting apart.
 func TestJiraBaseURLMatchesDefaultVersion(t *testing.T) {
 	client := &Client{cloudID: "cloud-123"}
 	versioned, err := client.JiraBaseURLVersion(DefaultJiraAPIVersion)

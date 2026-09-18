@@ -196,10 +196,9 @@ func (c *Client) JiraBaseURL() string {
 }
 
 // JiraBaseURLVersion returns the base URL for a specific Jira platform REST API
-// version. Only the versions in SupportedJiraAPIVersions are accepted: the
-// version is interpolated into the URL, so an unchecked value ("3/../../..")
-// would leave the Jira REST namespace entirely, which no path-level guard on the
-// caller's side can catch.
+// version. Only versions in SupportedJiraAPIVersions are accepted; since the
+// version is interpolated into the URL, an unchecked value ("3/../../..")
+// escapes the Jira REST namespace entirely, bypassing any caller path-level guard.
 func (c *Client) JiraBaseURLVersion(version string) (string, error) {
 	if err := ValidateJiraAPIVersion(version); err != nil {
 		return "", err
