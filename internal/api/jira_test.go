@@ -747,11 +747,18 @@ func TestValidateRawPath(t *testing.T) {
 // hold even with a client that has no usable transport.
 func TestRawGet_ValidationBeforeNetwork(t *testing.T) {
 	jira := NewJiraService(&Client{})
-	_, err := jira.RawGet(context.Background(), "../../admin")
+	_, err := jira.RawGetVersion(context.Background(), DefaultJiraAPIVersion, "../../admin")
 	if err == nil {
 		t.Fatal("expected validation error for traversal path, got nil")
 	}
 	if !strings.Contains(err.Error(), "..") {
 		t.Errorf("error = %q, want a traversal-rejection message", err.Error())
+	}
+}
+
+func TestRawGetVersionRejectsUnsupportedVersion(t *testing.T) {
+	service := NewJiraService(&Client{cloudID: "cloud-123"})
+	if _, err := service.RawGetVersion(context.Background(), "3/../../..", "issue/NX-1"); err == nil {
+		t.Fatal("RawGetVersion() accepted a traversing version")
 	}
 }

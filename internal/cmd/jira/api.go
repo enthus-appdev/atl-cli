@@ -16,8 +16,9 @@ import (
 
 // APIOptions holds the options for the api command.
 type APIOptions struct {
-	IO   *iostreams.IOStreams
-	Path string
+	IO         *iostreams.IOStreams
+	Path       string
+	APIVersion string
 }
 
 // NewCmdAPI creates the api passthrough command.
@@ -29,21 +30,28 @@ func NewCmdAPI(ios *iostreams.IOStreams) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "api [GET] <path>",
 		Short: "Make a read-only GET request to the Jira REST API",
-		Long: `Make a read-only GET request against the Jira Cloud REST API (v3) and print
-the JSON response.
+		Long: `Make a read-only GET request against the Jira Cloud platform REST API and
+print the JSON response.
 
 This is an escape hatch for endpoints atl does not model as first-class
 commands (editmeta, project metadata, and similar read-only lookups). Only GET
 is supported — atl deliberately does not expose write passthrough.
 
-<path> is relative to the REST v3 base, with or without a leading slash:
+<path> is relative to the REST base, with or without a leading slash:
   issue/NX-1234/editmeta
-  /project/NX/securitylevel`,
+  /project/NX/securitylevel
+
+--api-version selects the platform API version. Both expose the same resources
+and differ in how they carry rich text: v3 uses ADF, v2 uses wiki markup. Read
+through v2 when a plain-text description is easier to work with than ADF.`,
 		Example: `  # Inspect an issue's edit metadata (allowed fields and values)
   atl jira api GET issue/NX-1234/editmeta
 
   # List a project's issue security levels
   atl jira api project/NX/securitylevel
+
+  # Read a description as wiki markup instead of ADF
+  atl --context prod jira api --api-version 2 issue/NX-1234?fields=description
 
   # Pipe into jq
   atl jira api GET issue/NX-1234/editmeta | jq '.fields | keys'`,
@@ -61,10 +69,19 @@ is supported — atl deliberately does not expose write passthrough.
 			if strings.EqualFold(path, "GET") {
 				return fmt.Errorf("missing <path>\n\nExample: atl jira api GET issue/NX-1234/editmeta")
 			}
+			// Validated here as well as in the API layer so an unsupported version is
+			// reported as such, rather than behind whatever error building the
+			// authenticated client happens to produce first.
+			if err := api.ValidateJiraAPIVersion(opts.APIVersion); err != nil {
+				return err
+			}
 			opts.Path = path
 			return runAPI(opts)
 		},
 	}
+
+	cmd.Flags().StringVar(&opts.APIVersion, "api-version", api.DefaultJiraAPIVersion,
+		fmt.Sprintf("Jira platform REST API version (%s)", strings.Join(api.SupportedJiraAPIVersions, ", ")))
 
 	return cmd
 }
@@ -78,7 +95,7 @@ func runAPI(opts *APIOptions) error {
 	ctx := context.Background()
 	jira := api.NewJiraService(client)
 
-	raw, err := jira.RawGet(ctx, opts.Path)
+	raw, err := jira.RawGetVersion(ctx, opts.APIVersion, opts.Path)
 	if err != nil {
 		return fmt.Errorf("request failed: %w", err)
 	}

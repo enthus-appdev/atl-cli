@@ -6,6 +6,8 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"slices"
+	"strings"
 	"testing"
 	"time"
 
@@ -20,7 +22,12 @@ func newTestAssetsClient(server *httptest.Server, workspaceID string) *AssetsCli
 		tokens: &auth.TokenSet{
 			AccessToken: "test-token",
 			ExpiresAt:   time.Now().Add(time.Hour),
-			Scopes:      []string{auth.AssetsObjectReadScope, auth.AssetsSchemaReadScope},
+			Scopes: []string{
+				auth.AssetsObjectReadScope,
+				auth.AssetsSchemaReadScope,
+				auth.AssetsTypeReadScope,
+				auth.AssetsAttributeReadScope,
+			},
 		},
 	}
 	return &AssetsClient{
@@ -183,5 +190,155 @@ func TestAssetsObjectRejectsWorkspaceMismatch(t *testing.T) {
 	client := newTestAssetsClient(server, "workspace-456")
 	if _, err := client.Object(context.Background(), "9244"); err == nil {
 		t.Fatal("Object() succeeded for a different workspace")
+	}
+}
+
+func TestAssetsObjectTypeAttributes(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, request *http.Request) {
+		requireBearer(t, request)
+		if request.URL.Path != "/ex/jira/cloud-123/jsm/assets/workspace/workspace-456/v1/objecttype/9/attributes" {
+			t.Fatalf("path = %q", request.URL.Path)
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`[
+			{"id":"550","name":"Import-Key","label":false,"type":0,
+			 "defaultType":{"id":0,"name":"Text"},"system":true,"editable":false,
+			 "minimumCardinality":1,"maximumCardinality":1,"position":0},
+			{"id":"561","name":"Status","label":false,"type":0,
+			 "defaultType":{"id":10,"name":"Select"},"editable":true,"options":"aktiv,inaktiv",
+			 "minimumCardinality":0,"maximumCardinality":1,"position":3}
+		]`))
+	}))
+	defer server.Close()
+
+	client := newTestAssetsClient(server, "workspace-456")
+	attributes, err := client.ObjectTypeAttributes(context.Background(), "9")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(attributes) != 2 {
+		t.Fatalf("attributes = %#v", attributes)
+	}
+	if got, want := attributes[1].Name, "Status"; got != want {
+		t.Fatalf("name = %q, want %q", got, want)
+	}
+	if !attributes[0].Required() {
+		t.Error("minimumCardinality 1 did not read as required")
+	}
+	if attributes[1].Required() {
+		t.Error("minimumCardinality 0 read as required")
+	}
+	if got, want := attributes[1].Options, "aktiv,inaktiv"; got != want {
+		t.Errorf("options = %q, want %q", got, want)
+	}
+}
+
+func TestObjectTypeIDMustBeNumeric(t *testing.T) {
+	client := newTestAssetsClient(httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		t.Error("a rejected id reached the network")
+		w.WriteHeader(http.StatusOK)
+	})), "workspace-456")
+
+	for _, id := range []string{"9;foo", "9%2f..", `9\x`, "../9", "9/attributes", "", "abc", " 9"} {
+		if _, err := client.ObjectType(context.Background(), id); err == nil {
+			t.Errorf("ObjectType(%q) accepted a non-numeric id", id)
+		}
+		if _, err := client.ObjectTypeAttributes(context.Background(), id); err == nil {
+			t.Errorf("ObjectTypeAttributes(%q) accepted a non-numeric id", id)
+		}
+	}
+}
+
+// AssetsObjectTypeReadScopes must cover every scope the individual calls demand,
+// or the up-front check passes a token the calls then reject.
+func TestAssetsObjectTypeReadScopesCoverEveryCall(t *testing.T) {
+	for _, scope := range slices.Concat(objectTypeScopes, objectTypeAttributeScopes) {
+		if !slices.Contains(AssetsObjectTypeReadScopes, scope) {
+			t.Errorf("AssetsObjectTypeReadScopes omits %q", scope)
+		}
+	}
+}
+
+func TestAssetObjectTypeAttributeIsMulti(t *testing.T) {
+	for max, want := range map[int]bool{-1: true, 0: false, 1: false, 2: true, 100: true, -2: false} {
+		var attribute AssetObjectTypeAttribute
+		attribute.MaximumCardinality = max
+		if got := attribute.IsMulti(); got != want {
+			t.Errorf("IsMulti() with maximumCardinality %d = %v, want %v", max, got, want)
+		}
+	}
+}
+
+func TestAssetObjectTypeAttributeTypeName(t *testing.T) {
+	var text AssetObjectTypeAttribute
+	text.DefaultType.Name = "Text"
+
+	var user AssetObjectTypeAttribute
+	user.Type = 2
+
+	if got, want := text.TypeName(), "Text"; got != want {
+		t.Errorf("TypeName() = %q, want %q", got, want)
+	}
+	if got, want := user.TypeName(), "type 2"; got != want {
+		t.Errorf("TypeName() = %q, want %q", got, want)
+	}
+}
+
+func TestAssetsObjectType(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, request *http.Request) {
+		requireBearer(t, request)
+		if request.URL.Path != "/ex/jira/cloud-123/jsm/assets/workspace/workspace-456/v1/objecttype/9" {
+			t.Fatalf("path = %q", request.URL.Path)
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"id":"9","name":"Mitarbeiter","objectSchemaId":"5"}`))
+	}))
+	defer server.Close()
+
+	client := newTestAssetsClient(server, "workspace-456")
+	objectType, err := client.ObjectType(context.Background(), "9")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got, want := objectType.Name, "Mitarbeiter"; got != want {
+		t.Fatalf("name = %q, want %q", got, want)
+	}
+}
+
+func TestAssetsObjectTypeReadsNeedTypeAndAttributeScopes(t *testing.T) {
+	client := &AssetsClient{client: &Client{
+		hostname: "test.atlassian.net",
+		tokens:   &auth.TokenSet{Scopes: []string{auth.AssetsObjectReadScope, auth.AssetsSchemaReadScope}},
+	}}
+	if _, err := client.ObjectType(context.Background(), "9"); err == nil {
+		t.Errorf("ObjectType() succeeded without %s", auth.AssetsTypeReadScope)
+	}
+	if _, err := client.ObjectTypeAttributes(context.Background(), "9"); err == nil {
+		t.Errorf("ObjectTypeAttributes() succeeded without %s", auth.AssetsAttributeReadScope)
+	}
+}
+
+func TestRequireObjectTypeReadScopesNamesEveryGap(t *testing.T) {
+	client := &AssetsClient{client: &Client{
+		hostname: "test.atlassian.net",
+		tokens:   &auth.TokenSet{Scopes: []string{auth.AssetsObjectReadScope, auth.AssetsSchemaReadScope}},
+	}}
+
+	err := client.RequireObjectTypeReadScopes()
+	if err == nil {
+		t.Fatal("RequireObjectTypeReadScopes() succeeded without the object type scopes")
+	}
+	for _, scope := range AssetsObjectTypeReadScopes {
+		if !strings.Contains(err.Error(), scope) {
+			t.Errorf("error %q does not name the missing scope %q", err.Error(), scope)
+		}
+	}
+
+	granted := &AssetsClient{client: &Client{
+		hostname: "test.atlassian.net",
+		tokens:   &auth.TokenSet{Scopes: AssetsObjectTypeReadScopes},
+	}}
+	if err := granted.RequireObjectTypeReadScopes(); err != nil {
+		t.Fatalf("RequireObjectTypeReadScopes() rejected a token holding both scopes: %v", err)
 	}
 }

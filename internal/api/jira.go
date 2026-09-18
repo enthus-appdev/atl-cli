@@ -730,11 +730,11 @@ func (s *JiraService) GetProjectSecurityLevels(ctx context.Context, projectKey s
 	return result.Levels, nil
 }
 
-// validateRawPath confines a passthrough path to the REST v3 base. The path
+// validateRawPath confines a passthrough path to the selected REST base. The path
 // component is required to be plain — no scheme/host (which would point at
 // another host), and no "%", ";", or "\" (percent-encoding, Tomcat path
 // parameters, and backslashes each smuggle a decoded ".." past a segment scan
-// and out of /rest/api/3, and double-encoding defeats any decode-then-scan).
+// and out of the REST base, and double-encoding defeats any decode-then-scan).
 // An allowlist ("plain segments only") closes that whole bypass class where a
 // blocklist would chase each encoding. Encoded values belong in the query
 // string, which is left untouched. This is a namespace guardrail, not an authz
@@ -766,16 +766,21 @@ func validateRawPath(apiPath string) error {
 	return nil
 }
 
-// RawGet performs a read-only GET against a path relative to the Jira REST base
-// (e.g. "issue/NX-1/editmeta") and returns the raw JSON body. It is the escape
-// hatch for endpoints atl does not model as first-class commands; the path is
-// confined to the REST base via validateRawPath so it cannot reach another host
-// or climb above /rest/api/3.
-func (s *JiraService) RawGet(ctx context.Context, apiPath string) (json.RawMessage, error) {
+// RawGetVersion performs a read-only GET against a path relative to the Jira
+// platform REST base of the given API version (e.g. "issue/NX-1/editmeta") and
+// returns the raw JSON body. It is the escape hatch for endpoints atl does not
+// model as first-class commands. Both halves of the URL are constrained: the
+// version against an allowlist, and the path via validateRawPath, so the request
+// cannot reach another host or climb out of the selected REST base.
+func (s *JiraService) RawGetVersion(ctx context.Context, apiVersion, apiPath string) (json.RawMessage, error) {
 	if err := validateRawPath(apiPath); err != nil {
 		return nil, err
 	}
-	path := fmt.Sprintf("%s/%s", s.client.JiraBaseURL(), strings.TrimPrefix(apiPath, "/"))
+	base, err := s.client.JiraBaseURLVersion(apiVersion)
+	if err != nil {
+		return nil, err
+	}
+	path := fmt.Sprintf("%s/%s", base, strings.TrimPrefix(apiPath, "/"))
 
 	var result json.RawMessage
 	if err := s.client.Get(ctx, path, &result); err != nil {

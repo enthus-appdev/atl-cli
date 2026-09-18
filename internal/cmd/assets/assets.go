@@ -53,6 +53,7 @@ Assets request returns 403 after the app scopes changed, re-run
 	cmd.AddCommand(newCmdCount(ios, opts))
 	cmd.AddCommand(newCmdAQL(ios, opts))
 	cmd.AddCommand(newCmdObject(ios, opts))
+	cmd.AddCommand(newCmdAttributes(ios, opts))
 
 	return cmd
 }

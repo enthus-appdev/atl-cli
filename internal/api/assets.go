@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"regexp"
+	"slices"
 	"strings"
 
 	"github.com/enthus-appdev/atl-cli/internal/auth"
@@ -197,4 +199,146 @@ func (c *AssetsClient) AQLCount(ctx context.Context, ql string) (int, error) {
 		}
 		start += len(vals)
 	}
+}
+
+// AssetObjectType is one object type (the "class" an Assets object belongs to).
+type AssetObjectType struct {
+	ID                 string `json:"id"`
+	Name               string `json:"name"`
+	Description        string `json:"description,omitempty"`
+	ObjectSchemaID     string `json:"objectSchemaId,omitempty"`
+	ParentObjectTypeID string `json:"parentObjectTypeId,omitempty"`
+	ObjectCount        int    `json:"objectCount,omitempty"`
+	Inherited          bool   `json:"inherited,omitempty"`
+}
+
+// AssetObjectTypeAttribute is one attribute definition on an object type: the
+// field itself, independent of any object's value for it. An object omits every
+// attribute it holds no value for, so reading one object can never prove an
+// attribute absent from its type; this is what does.
+type AssetObjectTypeAttribute struct {
+	ID          string `json:"id"`
+	Name        string `json:"name"`
+	Description string `json:"description,omitempty"`
+	Label       bool   `json:"label,omitempty"`
+	Type        int    `json:"type"`
+	DefaultType struct {
+		ID   int    `json:"id"`
+		Name string `json:"name"`
+	} `json:"defaultType"`
+	// Options carries an attribute's predefined value list as one comma-separated
+	// string, for the attributes that have one. It is not confined to Select: a
+	// Text attribute can carry a list too, so the presence of options says what
+	// values are expected without implying the kind.
+	Options            string `json:"options,omitempty"`
+	System             bool   `json:"system,omitempty"`
+	Editable           bool   `json:"editable,omitempty"`
+	Hidden             bool   `json:"hidden,omitempty"`
+	UniqueAttribute    bool   `json:"uniqueAttribute,omitempty"`
+	MinimumCardinality int    `json:"minimumCardinality"`
+	MaximumCardinality int    `json:"maximumCardinality"`
+	Position           int    `json:"position"`
+}
+
+// TypeName names the attribute's kind for display. Only a Default attribute
+// (type 0) carries its concrete kind in DefaultType; a reference, user, group,
+// or project attribute leaves DefaultType empty and is identified by the numeric
+// type alone. Assets does not publish that enum, so an unnamed kind is reported
+// as its number rather than mapped to a label that cannot be verified.
+func (a AssetObjectTypeAttribute) TypeName() string {
+	if a.DefaultType.Name != "" {
+		return a.DefaultType.Name
+	}
+	return fmt.Sprintf("type %d", a.Type)
+}
+
+// Required reports whether the attribute must carry at least one value.
+func (a AssetObjectTypeAttribute) Required() bool {
+	return a.MinimumCardinality > 0
+}
+
+// AssetsObjectTypeReadScopes is the union of what the object type reads need.
+// It is derived from the per-call requirements rather than restated, so adding a
+// scope to one of them cannot leave the up-front check advertising less than the
+// calls actually demand.
+var AssetsObjectTypeReadScopes = slices.Concat(objectTypeScopes, objectTypeAttributeScopes)
+
+// Assets gates the type and its attributes separately, so a caller that will
+// make both requests checks both up front rather than discovering the second gap
+// only after fixing the first.
+var (
+	objectTypeScopes          = []string{auth.AssetsTypeReadScope}
+	objectTypeAttributeScopes = []string{auth.AssetsAttributeReadScope}
+)
+
+// validObjectTypeID matches the only form an Assets object type id takes. The id
+// is interpolated into the request path, and url.PathEscape leaves ";" intact,
+// which is enough to append a path parameter and change how the server parses
+// the request. An allowlist of digits closes that without chasing encodings.
+var validObjectTypeID = regexp.MustCompile(`^[0-9]+$`)
+
+func checkObjectTypeID(objectTypeID string) error {
+	if validObjectTypeID.MatchString(objectTypeID) {
+		return nil
+	}
+	return fmt.Errorf("object type id must be numeric, got %q", objectTypeID)
+}
+
+// RequireObjectTypeReadScopes reports every scope missing for reading an object
+// type together with its attributes.
+func (c *AssetsClient) RequireObjectTypeReadScopes() error {
+	return c.requireScopes(AssetsObjectTypeReadScopes...)
+}
+
+// IsMulti reports whether the attribute holds more than one value. Assets spells
+// an unbounded upper cardinality as -1; stated bounds observed in a live
+// workspace are 1, 2, 50 and 100, and 0 never appears. Only those two forms
+// count, so an unobserved value reads as single-valued rather than as a claim
+// about a sentinel whose meaning is not published.
+func (a AssetObjectTypeAttribute) IsMulti() bool {
+	return a.MaximumCardinality > 1 || a.MaximumCardinality == unboundedCardinality
+}
+
+// unboundedCardinality is the upper-cardinality value Assets uses for "no limit".
+const unboundedCardinality = -1
+
+// ObjectType loads one object type by id. Its name is what tells a caller the id
+// addresses the type they meant: a wrong id and a type without the attribute
+// being looked for are otherwise indistinguishable.
+func (c *AssetsClient) ObjectType(ctx context.Context, objectTypeID string) (*AssetObjectType, error) {
+	if err := checkObjectTypeID(objectTypeID); err != nil {
+		return nil, err
+	}
+	if err := c.requireScopes(objectTypeScopes...); err != nil {
+		return nil, err
+	}
+	base, err := c.v1(ctx)
+	if err != nil {
+		return nil, err
+	}
+	var objectType AssetObjectType
+	if err := c.do(ctx, http.MethodGet, base+"/objecttype/"+url.PathEscape(objectTypeID), nil, &objectType); err != nil {
+		return nil, err
+	}
+	return &objectType, nil
+}
+
+// ObjectTypeAttributes returns every attribute defined on an object type,
+// including the ones inherited from a parent type.
+func (c *AssetsClient) ObjectTypeAttributes(ctx context.Context, objectTypeID string) ([]AssetObjectTypeAttribute, error) {
+	if err := checkObjectTypeID(objectTypeID); err != nil {
+		return nil, err
+	}
+	if err := c.requireScopes(objectTypeAttributeScopes...); err != nil {
+		return nil, err
+	}
+	base, err := c.v1(ctx)
+	if err != nil {
+		return nil, err
+	}
+	var attributes []AssetObjectTypeAttribute
+	if err := c.do(ctx, http.MethodGet, base+"/objecttype/"+url.PathEscape(objectTypeID)+"/attributes", nil, &attributes); err != nil {
+		return nil, err
+	}
+	return attributes, nil
 }

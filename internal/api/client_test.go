@@ -423,3 +423,39 @@ func TestEnsureValidTokenUsesKeychainCredentials(t *testing.T) {
 		t.Fatalf("token not refreshed, got %q", c.tokens.AccessToken)
 	}
 }
+
+// TestJiraBaseURLVersion is the guard on the interpolated version segment: an
+// unchecked value would rewrite the URL's namespace, and the passthrough's
+// path-level validation never sees it.
+func TestJiraBaseURLVersion(t *testing.T) {
+	client := &Client{cloudID: "cloud-123"}
+
+	for _, version := range SupportedJiraAPIVersions {
+		got, err := client.JiraBaseURLVersion(version)
+		if err != nil {
+			t.Fatalf("JiraBaseURLVersion(%q) error: %v", version, err)
+		}
+		want := "https://api.atlassian.com/ex/jira/cloud-123/rest/api/" + version
+		if got != want {
+			t.Errorf("JiraBaseURLVersion(%q) = %q, want %q", version, got, want)
+		}
+	}
+
+	rejected := []string{"", "1", "4", "3/../../../..", "../agile/1.0", "3 ", "v3", "3;x"}
+	for _, version := range rejected {
+		if _, err := client.JiraBaseURLVersion(version); err == nil {
+			t.Errorf("JiraBaseURLVersion(%q) accepted an unsupported version", version)
+		}
+	}
+}
+
+func TestJiraBaseURLMatchesDefaultVersion(t *testing.T) {
+	client := &Client{cloudID: "cloud-123"}
+	versioned, err := client.JiraBaseURLVersion(DefaultJiraAPIVersion)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := client.JiraBaseURL(); got != versioned {
+		t.Errorf("JiraBaseURL() = %q, want %q", got, versioned)
+	}
+}
