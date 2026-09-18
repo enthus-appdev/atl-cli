@@ -198,3 +198,77 @@ func (c *AssetsClient) AQLCount(ctx context.Context, ql string) (int, error) {
 		start += len(vals)
 	}
 }
+
+// AssetObjectType is one object type (the "class" an Assets object belongs to).
+type AssetObjectType struct {
+	ID                 string `json:"id"`
+	Name               string `json:"name"`
+	Description        string `json:"description,omitempty"`
+	ObjectSchemaID     string `json:"objectSchemaId,omitempty"`
+	ParentObjectTypeID string `json:"parentObjectTypeId,omitempty"`
+	ObjectCount        int    `json:"objectCount,omitempty"`
+	Inherited          bool   `json:"inherited,omitempty"`
+}
+
+// AssetObjectTypeAttribute is one attribute definition on an object type: the
+// field itself, independent of any object's value for it. An object omits every
+// attribute it holds no value for, so reading one object can never prove an
+// attribute absent from its type; this is what does.
+type AssetObjectTypeAttribute struct {
+	ID          string `json:"id"`
+	Name        string `json:"name"`
+	Description string `json:"description,omitempty"`
+	Label       bool   `json:"label,omitempty"`
+	Type        int    `json:"type"`
+	DefaultType struct {
+		ID   int    `json:"id"`
+		Name string `json:"name"`
+	} `json:"defaultType"`
+	System             bool `json:"system,omitempty"`
+	Editable           bool `json:"editable,omitempty"`
+	Hidden             bool `json:"hidden,omitempty"`
+	UniqueAttribute    bool `json:"uniqueAttribute,omitempty"`
+	MinimumCardinality int  `json:"minimumCardinality"`
+	MaximumCardinality int  `json:"maximumCardinality"`
+	Position           int  `json:"position"`
+}
+
+// Required reports whether the attribute must carry at least one value.
+func (a AssetObjectTypeAttribute) Required() bool {
+	return a.MinimumCardinality > 0
+}
+
+// ObjectType loads one object type by id. Its name is what tells a caller the id
+// addresses the type they meant: a wrong id and a type without the attribute
+// being looked for are otherwise indistinguishable.
+func (c *AssetsClient) ObjectType(ctx context.Context, objectTypeID string) (*AssetObjectType, error) {
+	if err := c.requireScopes(auth.AssetsTypeReadScope); err != nil {
+		return nil, err
+	}
+	base, err := c.v1(ctx)
+	if err != nil {
+		return nil, err
+	}
+	var objectType AssetObjectType
+	if err := c.do(ctx, http.MethodGet, base+"/objecttype/"+url.PathEscape(objectTypeID), nil, &objectType); err != nil {
+		return nil, err
+	}
+	return &objectType, nil
+}
+
+// ObjectTypeAttributes returns every attribute defined on an object type,
+// including the ones inherited from a parent type.
+func (c *AssetsClient) ObjectTypeAttributes(ctx context.Context, objectTypeID string) ([]AssetObjectTypeAttribute, error) {
+	if err := c.requireScopes(auth.AssetsAttributeReadScope); err != nil {
+		return nil, err
+	}
+	base, err := c.v1(ctx)
+	if err != nil {
+		return nil, err
+	}
+	var attributes []AssetObjectTypeAttribute
+	if err := c.do(ctx, http.MethodGet, base+"/objecttype/"+url.PathEscape(objectTypeID)+"/attributes", nil, &attributes); err != nil {
+		return nil, err
+	}
+	return attributes, nil
+}

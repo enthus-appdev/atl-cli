@@ -20,7 +20,12 @@ func newTestAssetsClient(server *httptest.Server, workspaceID string) *AssetsCli
 		tokens: &auth.TokenSet{
 			AccessToken: "test-token",
 			ExpiresAt:   time.Now().Add(time.Hour),
-			Scopes:      []string{auth.AssetsObjectReadScope, auth.AssetsSchemaReadScope},
+			Scopes: []string{
+				auth.AssetsObjectReadScope,
+				auth.AssetsSchemaReadScope,
+				auth.AssetsTypeReadScope,
+				auth.AssetsAttributeReadScope,
+			},
 		},
 	}
 	return &AssetsClient{
@@ -183,5 +188,80 @@ func TestAssetsObjectRejectsWorkspaceMismatch(t *testing.T) {
 	client := newTestAssetsClient(server, "workspace-456")
 	if _, err := client.Object(context.Background(), "9244"); err == nil {
 		t.Fatal("Object() succeeded for a different workspace")
+	}
+}
+
+func TestAssetsObjectTypeAttributes(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, request *http.Request) {
+		requireBearer(t, request)
+		if request.URL.Path != "/ex/jira/cloud-123/jsm/assets/workspace/workspace-456/v1/objecttype/9/attributes" {
+			t.Fatalf("path = %q", request.URL.Path)
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`[
+			{"id":"550","name":"Import-Key","label":false,"type":0,
+			 "defaultType":{"id":0,"name":"Text"},"system":true,"editable":false,
+			 "minimumCardinality":1,"maximumCardinality":1,"position":0},
+			{"id":"561","name":"Status","label":false,"type":0,
+			 "defaultType":{"id":0,"name":"Text"},"editable":true,
+			 "minimumCardinality":0,"maximumCardinality":1,"position":3}
+		]`))
+	}))
+	defer server.Close()
+
+	client := newTestAssetsClient(server, "workspace-456")
+	attributes, err := client.ObjectTypeAttributes(context.Background(), "9")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(attributes) != 2 {
+		t.Fatalf("attributes = %#v", attributes)
+	}
+	if got, want := attributes[1].Name, "Status"; got != want {
+		t.Fatalf("name = %q, want %q", got, want)
+	}
+	if !attributes[0].Required() {
+		t.Error("minimumCardinality 1 did not read as required")
+	}
+	if attributes[1].Required() {
+		t.Error("minimumCardinality 0 read as required")
+	}
+}
+
+func TestAssetsObjectType(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, request *http.Request) {
+		requireBearer(t, request)
+		if request.URL.Path != "/ex/jira/cloud-123/jsm/assets/workspace/workspace-456/v1/objecttype/9" {
+			t.Fatalf("path = %q", request.URL.Path)
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"id":"9","name":"Mitarbeiter","objectSchemaId":"5"}`))
+	}))
+	defer server.Close()
+
+	client := newTestAssetsClient(server, "workspace-456")
+	objectType, err := client.ObjectType(context.Background(), "9")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got, want := objectType.Name, "Mitarbeiter"; got != want {
+		t.Fatalf("name = %q, want %q", got, want)
+	}
+}
+
+// TestAssetsObjectTypeReadsNeedTypeAndAttributeScopes pins which scope each
+// object-type read is gated on, so a token carrying only the object and schema
+// scopes fails locally with the missing scope named rather than as an opaque
+// 401 "scope does not match" from Atlassian.
+func TestAssetsObjectTypeReadsNeedTypeAndAttributeScopes(t *testing.T) {
+	client := &AssetsClient{client: &Client{
+		hostname: "test.atlassian.net",
+		tokens:   &auth.TokenSet{Scopes: []string{auth.AssetsObjectReadScope, auth.AssetsSchemaReadScope}},
+	}}
+	if _, err := client.ObjectType(context.Background(), "9"); err == nil {
+		t.Errorf("ObjectType() succeeded without %s", auth.AssetsTypeReadScope)
+	}
+	if _, err := client.ObjectTypeAttributes(context.Background(), "9"); err == nil {
+		t.Errorf("ObjectTypeAttributes() succeeded without %s", auth.AssetsAttributeReadScope)
 	}
 }

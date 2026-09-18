@@ -14,9 +14,15 @@ import (
 	"time"
 )
 
+// Assets (CMDB) read scopes. Assets splits reading by resource kind rather than
+// granting one blanket read, so object values, schema listings, object type
+// definitions, and attribute definitions each need their own scope; a token
+// holding only some of them gets a 401 "scope does not match" on the rest.
 const (
-	AssetsObjectReadScope = "read:cmdb-object:jira"
-	AssetsSchemaReadScope = "read:cmdb-schema:jira"
+	AssetsObjectReadScope    = "read:cmdb-object:jira"
+	AssetsSchemaReadScope    = "read:cmdb-schema:jira"
+	AssetsTypeReadScope      = "read:cmdb-type:jira"
+	AssetsAttributeReadScope = "read:cmdb-attribute:jira"
 )
 
 const (
@@ -83,9 +89,12 @@ func DefaultScopes() []string {
 		// request types (what the sm commands call); a bare read:servicedesk is
 		// not a grantable Atlassian scope and is silently dropped from the token.
 		"read:servicedesk-request",
-		// Jira Assets scopes - AQL/object reads and schema counts.
+		// Jira Assets scopes - AQL/object reads, schema counts, and object type
+		// definitions with their attributes.
 		AssetsObjectReadScope,
 		AssetsSchemaReadScope,
+		AssetsTypeReadScope,
+		AssetsAttributeReadScope,
 		// Token refresh
 		"offline_access",
 	}
