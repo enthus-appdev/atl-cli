@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"strings"
 	"testing"
 	"time"
 
@@ -263,5 +264,33 @@ func TestAssetsObjectTypeReadsNeedTypeAndAttributeScopes(t *testing.T) {
 	}
 	if _, err := client.ObjectTypeAttributes(context.Background(), "9"); err == nil {
 		t.Errorf("ObjectTypeAttributes() succeeded without %s", auth.AssetsAttributeReadScope)
+	}
+}
+
+// TestRequireObjectTypeReadScopesNamesEveryGap is the contract of the combined
+// pre-check: one message lists every missing scope, so a caller does not fix one
+// gap only to hit the next on the following run.
+func TestRequireObjectTypeReadScopesNamesEveryGap(t *testing.T) {
+	client := &AssetsClient{client: &Client{
+		hostname: "test.atlassian.net",
+		tokens:   &auth.TokenSet{Scopes: []string{auth.AssetsObjectReadScope, auth.AssetsSchemaReadScope}},
+	}}
+
+	err := client.RequireObjectTypeReadScopes()
+	if err == nil {
+		t.Fatal("RequireObjectTypeReadScopes() succeeded without the object type scopes")
+	}
+	for _, scope := range AssetsObjectTypeReadScopes {
+		if !strings.Contains(err.Error(), scope) {
+			t.Errorf("error %q does not name the missing scope %q", err.Error(), scope)
+		}
+	}
+
+	granted := &AssetsClient{client: &Client{
+		hostname: "test.atlassian.net",
+		tokens:   &auth.TokenSet{Scopes: AssetsObjectTypeReadScopes},
+	}}
+	if err := granted.RequireObjectTypeReadScopes(); err != nil {
+		t.Fatalf("RequireObjectTypeReadScopes() rejected a token holding both scopes: %v", err)
 	}
 }
