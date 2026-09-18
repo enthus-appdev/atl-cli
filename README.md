@@ -237,6 +237,44 @@ the original author, and links to the focused original comment. It does not
 copy the original body into the reply. For manually authored comments, plain
 `@Display Name` is only text; use `@[Display Name]` for a real Jira mention.
 
+### Jira Assets (CMDB)
+
+```bash
+atl --context prod jira assets count                        # Object count per schema
+atl --context prod jira assets aql '<query>'                # Run an AQL query
+atl --context prod jira assets object <id>                  # One object and its attribute values
+atl --context prod jira assets attributes <object-type-id>  # Attributes defined on an object type
+```
+
+`assets attributes` (alias `fields`) reads the object type, not an object. An
+Assets object omits every attribute it holds no value for, so reading one object
+can never show that an attribute is absent from its type. It prints the object
+type's name above the table: check it names the type you meant, because a wrong
+id and a type that genuinely lacks an attribute look the same.
+
+```bash
+# Does this object type carry a Status attribute at all?
+atl --context prod jira assets attributes 9 --json | jq '.attributes[].name'
+```
+
+The object type and attribute reads need `read:cmdb-type:jira` and
+`read:cmdb-attribute:jira`. Assets grants reads per resource kind, so a token
+holding only `read:cmdb-object:jira` and `read:cmdb-schema:jira` gets
+`401 "scope does not match"` on these endpoints.
+
+### Read-only REST passthrough
+
+```bash
+atl --context prod jira api GET issue/PROJ-1234/editmeta     # Endpoints atl does not model
+atl --context prod jira api project/PROJ/securitylevel
+atl --context prod jira api --api-version 2 issue/PROJ-1234?fields=description
+```
+
+Only GET is supported; atl deliberately does not expose write passthrough.
+`--api-version` selects the Jira platform REST API version (`2` or `3`, default
+`3`). Both expose the same resources and differ in how they carry rich text: v3
+uses ADF, v2 uses wiki markup.
+
 ### Boards
 
 ```bash
@@ -402,7 +440,8 @@ If authentication fails, verify your OAuth app configuration at https://develope
 
    **Jira API** (under "Jira API" in Developer Console):
    - Classic scopes: `read:jira-work`, `write:jira-work`, `read:jira-user`
-   - Granular scopes: `read:project:jira`, `read:issue-details:jira`, `read:cmdb-object:jira`, `read:cmdb-schema:jira`
+   - Granular scopes: `read:project:jira`, `read:issue-details:jira`
+   - Granular scopes for Assets (CMDB): `read:cmdb-object:jira`, `read:cmdb-schema:jira`, `read:cmdb-type:jira`, `read:cmdb-attribute:jira`
    - Granular scopes for boards/sprints/ranking: `read:board-scope:jira-software`, `write:board-scope:jira-software`, `read:issue:jira-software`, `write:issue:jira-software`, `read:sprint:jira-software`, `write:sprint:jira-software`
 
    **Confluence API** (under "Confluence API"):
