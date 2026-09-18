@@ -19,7 +19,10 @@ func attributeFlags(attribute api.AssetObjectTypeAttribute) string {
 	if attribute.Required() {
 		flags = append(flags, "required")
 	}
-	if attribute.MaximumCardinality != 1 {
+	// Assets spells an unbounded upper cardinality as a negative number. Treat
+	// only a stated bound above one, or that unbounded form, as multi-valued: an
+	// absent or zero field is not evidence of anything and must not be labeled.
+	if attribute.MaximumCardinality > 1 || attribute.MaximumCardinality < 0 {
 		flags = append(flags, "multi")
 	}
 	if attribute.Label {
@@ -64,6 +67,10 @@ meant: a wrong id and a type that genuinely lacks an attribute look the same.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			client, err := common.client()
 			if err != nil {
+				return err
+			}
+
+			if err := client.RequireObjectTypeReadScopes(); err != nil {
 				return err
 			}
 

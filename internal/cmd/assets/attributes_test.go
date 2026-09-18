@@ -14,8 +14,14 @@ func TestAttributeFlags(t *testing.T) {
 	required := ordinary
 	required.MinimumCardinality = 1
 
-	multi := ordinary
-	multi.MaximumCardinality = -1
+	unbounded := ordinary
+	unbounded.MaximumCardinality = -1
+
+	boundedMulti := ordinary
+	boundedMulti.MaximumCardinality = 5
+
+	unstated := ordinary
+	unstated.MaximumCardinality = 0
 
 	importKey := ordinary
 	importKey.System = true
@@ -30,7 +36,9 @@ func TestAttributeFlags(t *testing.T) {
 	}{
 		{"ordinary attribute has no flags", ordinary, ""},
 		{"minimum cardinality marks required", required, "required"},
-		{"unbounded cardinality marks multi", multi, "multi"},
+		{"unbounded cardinality marks multi", unbounded, "multi"},
+		{"a bound above one marks multi", boundedMulti, "multi"},
+		{"an unstated upper bound claims nothing", unstated, ""},
 		{"import key shows every distinguishing flag", importKey, "required, unique, system, read-only"},
 	}
 

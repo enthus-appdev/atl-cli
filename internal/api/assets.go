@@ -238,6 +238,18 @@ func (a AssetObjectTypeAttribute) Required() bool {
 	return a.MinimumCardinality > 0
 }
 
+// AssetsObjectTypeReadScopes are the scopes the two object type reads need
+// between them. Assets gates the type and its attributes separately, so a
+// caller that will make both requests checks both up front rather than
+// discovering the second gap only after fixing the first.
+var AssetsObjectTypeReadScopes = []string{auth.AssetsTypeReadScope, auth.AssetsAttributeReadScope}
+
+// RequireObjectTypeReadScopes reports every scope missing for reading an object
+// type together with its attributes.
+func (c *AssetsClient) RequireObjectTypeReadScopes() error {
+	return c.requireScopes(AssetsObjectTypeReadScopes...)
+}
+
 // ObjectType loads one object type by id. Its name is what tells a caller the id
 // addresses the type they meant: a wrong id and a type without the attribute
 // being looked for are otherwise indistinguishable.
