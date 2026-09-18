@@ -30,6 +30,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"time"
 
@@ -45,11 +46,22 @@ const (
 	// DefaultTimeout is the default HTTP client timeout for API requests.
 	DefaultTimeout = 30 * time.Second
 
+	// DefaultJiraAPIVersion is the Jira platform REST API version atl addresses
+	// unless a caller selects another one. v3 is the version that speaks ADF,
+	// which every atl command that writes issue content depends on.
+	DefaultJiraAPIVersion = "3"
+
 	// Retry configuration for transient failures
 	maxRetries     = 3
 	initialBackoff = 500 * time.Millisecond
 	maxBackoff     = 10 * time.Second
 )
+
+// SupportedJiraAPIVersions lists the Jira platform REST API versions atl will
+// address. v2 and v3 expose the same resources and differ in how they represent
+// rich text: v2 takes and returns wiki markup, v3 takes and returns ADF. Reading
+// through v2 is the way to get a plain-text description without an ADF walk.
+var SupportedJiraAPIVersions = []string{"2", "3"}
 
 // isDebug returns true if debug logging is enabled via ATL_DEBUG=1 environment variable.
 func isDebug() bool {
@@ -180,7 +192,29 @@ func (c *Client) JiraGatewayBaseURL() string {
 
 // JiraBaseURL returns the base URL for Jira API requests.
 func (c *Client) JiraBaseURL() string {
-	return c.JiraGatewayBaseURL() + "/rest/api/3"
+	return c.JiraGatewayBaseURL() + "/rest/api/" + DefaultJiraAPIVersion
+}
+
+// JiraBaseURLVersion returns the base URL for a specific Jira platform REST API
+// version. Only the versions in SupportedJiraAPIVersions are accepted: the
+// version is interpolated into the URL, so an unchecked value ("3/../../..")
+// would leave the Jira REST namespace entirely, which no path-level guard on the
+// caller's side can catch.
+func (c *Client) JiraBaseURLVersion(version string) (string, error) {
+	if err := ValidateJiraAPIVersion(version); err != nil {
+		return "", err
+	}
+	return c.JiraGatewayBaseURL() + "/rest/api/" + version, nil
+}
+
+// ValidateJiraAPIVersion reports whether version names a Jira platform REST API
+// version atl will address.
+func ValidateJiraAPIVersion(version string) error {
+	if slices.Contains(SupportedJiraAPIVersions, version) {
+		return nil
+	}
+	return fmt.Errorf("unsupported Jira API version %q; supported: %s",
+		version, strings.Join(SupportedJiraAPIVersions, ", "))
 }
 
 // ConfluenceBaseURL returns the base URL for Confluence API requests.

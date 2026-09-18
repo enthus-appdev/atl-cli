@@ -6,6 +6,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/enthus-appdev/atl-cli/internal/api"
 	"github.com/enthus-appdev/atl-cli/internal/iostreams"
 )
 
@@ -66,5 +67,30 @@ func TestWriteIndentedJSON_NonJSONFallback(t *testing.T) {
 	}
 	if !strings.Contains(buf.String(), "not json at all") {
 		t.Errorf("non-JSON body not echoed; got: %s", buf.String())
+	}
+}
+
+// TestNewCmdAPI_APIVersionFlag pins the default version and the rejection of an
+// unsupported one. The rejection happens before the client is built, so it needs
+// no HTTP.
+func TestNewCmdAPI_APIVersionFlag(t *testing.T) {
+	cmd := NewCmdAPI(iostreams.Test())
+	flag := cmd.Flags().Lookup("api-version")
+	if flag == nil {
+		t.Fatal("api-version flag not registered")
+	}
+	if got, want := flag.DefValue, api.DefaultJiraAPIVersion; got != want {
+		t.Errorf("api-version default = %q, want %q", got, want)
+	}
+
+	cmd.SetArgs([]string{"--api-version", "9", "issue/NX-1"})
+	cmd.SilenceUsage = true
+	cmd.SilenceErrors = true
+	err := cmd.Execute()
+	if err == nil {
+		t.Fatal("expected an error for an unsupported api version")
+	}
+	if !strings.Contains(err.Error(), "unsupported Jira API version") {
+		t.Errorf("error = %q, want it to mention an unsupported version", err.Error())
 	}
 }
