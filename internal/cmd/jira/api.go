@@ -69,6 +69,12 @@ through v2 when a plain-text description is easier to work with than ADF.`,
 			if strings.EqualFold(path, "GET") {
 				return fmt.Errorf("missing <path>\n\nExample: atl jira api GET issue/NX-1234/editmeta")
 			}
+			// Validated here as well as in the API layer so an unsupported version is
+			// reported as such, rather than behind whatever error building the
+			// authenticated client happens to produce first.
+			if err := api.ValidateJiraAPIVersion(opts.APIVersion); err != nil {
+				return err
+			}
 			opts.Path = path
 			return runAPI(opts)
 		},

@@ -23,6 +23,9 @@ func TestAttributeFlags(t *testing.T) {
 	unstated := ordinary
 	unstated.MaximumCardinality = 0
 
+	otherNegative := ordinary
+	otherNegative.MaximumCardinality = -2
+
 	importKey := ordinary
 	importKey.System = true
 	importKey.Editable = false
@@ -39,6 +42,7 @@ func TestAttributeFlags(t *testing.T) {
 		{"unbounded cardinality marks multi", unbounded, "multi"},
 		{"a bound above one marks multi", boundedMulti, "multi"},
 		{"an unstated upper bound claims nothing", unstated, ""},
+		{"a negative other than the sentinel claims nothing", otherNegative, ""},
 		{"import key shows every distinguishing flag", importKey, "required, unique, system, read-only"},
 	}
 

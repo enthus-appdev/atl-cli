@@ -14,15 +14,19 @@ import (
 // attributeFlags renders the non-default properties of an attribute definition,
 // omitting the ordinary ones so the column carries only what distinguishes this
 // attribute from a plain optional single-value field.
+// unboundedCardinality is the upper-cardinality value Assets uses for "no limit".
+const unboundedCardinality = -1
+
 func attributeFlags(attribute api.AssetObjectTypeAttribute) string {
 	var flags []string
 	if attribute.Required() {
 		flags = append(flags, "required")
 	}
-	// Assets spells an unbounded upper cardinality as a negative number. Treat
-	// only a stated bound above one, or that unbounded form, as multi-valued: an
-	// absent or zero field is not evidence of anything and must not be labeled.
-	if attribute.MaximumCardinality > 1 || attribute.MaximumCardinality < 0 {
+	// Assets spells an unbounded upper cardinality as -1; stated bounds observed
+	// in a live workspace are 1, 2, 50 and 100, and 0 never appears. Only those
+	// two forms are labeled, so an unobserved value reads as no flag rather than
+	// as a claim about a sentinel whose meaning is not published.
+	if attribute.MaximumCardinality > 1 || attribute.MaximumCardinality == unboundedCardinality {
 		flags = append(flags, "multi")
 	}
 	if attribute.Label {
