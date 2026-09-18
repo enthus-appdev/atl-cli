@@ -224,9 +224,10 @@ type AssetObjectTypeAttribute struct {
 		ID   int    `json:"id"`
 		Name string `json:"name"`
 	} `json:"defaultType"`
-	// Options carries a Select attribute's allowed values as one comma-separated
-	// string. A write of any other value is rejected, so this is the vocabulary a
-	// caller has to match.
+	// Options carries an attribute's predefined value list as one comma-separated
+	// string, for the attributes that have one. It is not confined to Select: a
+	// Text attribute can carry a list too, so the presence of options says what
+	// values are expected without implying the kind.
 	Options            string `json:"options,omitempty"`
 	System             bool   `json:"system,omitempty"`
 	Editable           bool   `json:"editable,omitempty"`
@@ -235,6 +236,18 @@ type AssetObjectTypeAttribute struct {
 	MinimumCardinality int    `json:"minimumCardinality"`
 	MaximumCardinality int    `json:"maximumCardinality"`
 	Position           int    `json:"position"`
+}
+
+// TypeName names the attribute's kind for display. Only a Default attribute
+// (type 0) carries its concrete kind in DefaultType; a reference, user, group,
+// or project attribute leaves DefaultType empty and is identified by the numeric
+// type alone. Assets does not publish that enum, so an unnamed kind is reported
+// as its number rather than mapped to a label that cannot be verified.
+func (a AssetObjectTypeAttribute) TypeName() string {
+	if a.DefaultType.Name != "" {
+		return a.DefaultType.Name
+	}
+	return fmt.Sprintf("type %d", a.Type)
 }
 
 // Required reports whether the attribute must carry at least one value.

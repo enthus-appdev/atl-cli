@@ -96,7 +96,7 @@ meant: a wrong id and a type that genuinely lacks an attribute look the same.`,
 				rows = append(rows, []string{
 					attribute.ID,
 					terminalText(attribute.Name),
-					terminalText(attribute.DefaultType.Name),
+					terminalText(attribute.TypeName()),
 					terminalText(attribute.Options),
 					attributeFlags(attribute),
 				})

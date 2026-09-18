@@ -232,6 +232,21 @@ func TestAssetsObjectTypeAttributes(t *testing.T) {
 	}
 }
 
+func TestAssetObjectTypeAttributeTypeName(t *testing.T) {
+	var text AssetObjectTypeAttribute
+	text.DefaultType.Name = "Text"
+
+	var user AssetObjectTypeAttribute
+	user.Type = 2
+
+	if got, want := text.TypeName(), "Text"; got != want {
+		t.Errorf("TypeName() = %q, want %q", got, want)
+	}
+	if got, want := user.TypeName(), "type 2"; got != want {
+		t.Errorf("TypeName() = %q, want %q", got, want)
+	}
+}
+
 func TestAssetsObjectType(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, request *http.Request) {
 		requireBearer(t, request)

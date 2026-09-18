@@ -250,9 +250,9 @@ atl --context prod jira assets attributes <object-type-id>  # Attributes defined
 Assets object omits every attribute it holds no value for, so reading one object
 can never show that an attribute is absent from its type. It prints the object
 type's name above the table: check it names the type you meant, because a wrong
-id and a type that genuinely lacks an attribute look the same. A Select
-attribute lists its allowed values, which are the only values a write of it is
-accepted with.
+id and a type that genuinely lacks an attribute look the same. An attribute
+configured with a predefined value list shows that list, which is the vocabulary
+a write of it is expected to use.
 
 ```bash
 # Does this object type carry a Status attribute at all?
