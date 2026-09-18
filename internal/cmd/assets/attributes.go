@@ -91,7 +91,7 @@ meant: a wrong id and a type that genuinely lacks an attribute look the same.`,
 			rows := make([][]string, 0, len(attributes))
 			for _, attribute := range attributes {
 				rows = append(rows, []string{
-					attribute.ID,
+					terminalText(attribute.ID),
 					terminalText(attribute.Name),
 					terminalText(attribute.TypeName()),
 					terminalText(attribute.Options),
