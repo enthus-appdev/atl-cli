@@ -34,7 +34,7 @@ func isSystemField(name string) bool {
 
 func referenceValue(value string) map[string]string {
 	trimmed := strings.TrimSpace(value)
-	if trimmed != "" && strings.Trim(trimmed, "0123456789") == "" {
+	if strings.Trim(trimmed, "0123456789") == "" {
 		return map[string]string{"id": trimmed}
 	}
 	return map[string]string{"name": trimmed}
@@ -120,6 +120,9 @@ func ParseCustomField(ctx context.Context, jira *api.JiraService, raw string) (s
 	} else if canonical, ok := systemFieldKeys[strings.ToLower(key)]; ok {
 		key = canonical
 		if referenceFields[key] {
+			if strings.TrimSpace(value) == "" {
+				return "", nil, fmt.Errorf("field %s requires a value (id or name)", key)
+			}
 			return key, referenceValue(value), nil
 		}
 	} else {

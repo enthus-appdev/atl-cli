@@ -129,6 +129,8 @@ atl --context prod jira issue transition PROJ-1234 --list     # List available t
 atl --context prod jira issue transition PROJ-1234 "Done" --field "Resolution=Fixed"  # With required fields
 ```
 
+`resolution` and `priority` take a name or an id; an all-digit value is sent as an id.
+
 ### Comments
 
 ```bash

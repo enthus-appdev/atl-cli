@@ -282,3 +282,11 @@ func TestParseCustomField_SystemFieldKeyCasing(t *testing.T) {
 		}
 	}
 }
+
+func TestParseCustomField_EmptyReferenceValue(t *testing.T) {
+	for _, raw := range []string{"Resolution=", "priority=  "} {
+		if _, _, err := ParseCustomField(t.Context(), nil, raw); err == nil {
+			t.Errorf("ParseCustomField(%q) error = nil, want a missing-value error", raw)
+		}
+	}
+}
