@@ -9,18 +9,37 @@ import (
 	"github.com/enthus-appdev/atl-cli/internal/api"
 )
 
+// systemFieldKeys maps a lowercased Jira system field name to the key the
+// REST API expects in a fields payload. Jira matches those keys
+// case-sensitively, so "Resolution" is rejected as an unknown field.
+var systemFieldKeys = map[string]string{
+	"summary": "summary", "description": "description", "issuetype": "issuetype",
+	"project": "project", "reporter": "reporter", "assignee": "assignee",
+	"priority": "priority", "labels": "labels", "components": "components",
+	"fixversions": "fixVersions", "versions": "versions", "duedate": "duedate",
+	"environment": "environment", "resolution": "resolution", "status": "status",
+	"created": "created", "updated": "updated", "parent": "parent",
+	"security": "security",
+}
+
+// referenceFields are system fields whose value must be a reference object
+// ({"id": ...} or {"name": ...}); Jira rejects a bare string or number.
+var referenceFields = map[string]bool{"resolution": true, "priority": true}
+
 // isSystemField checks if a field name is a known Jira system field.
 func isSystemField(name string) bool {
-	systemFields := map[string]bool{
-		"summary": true, "description": true, "issuetype": true,
-		"project": true, "reporter": true, "assignee": true,
-		"priority": true, "labels": true, "components": true,
-		"fixversions": true, "versions": true, "duedate": true,
-		"environment": true, "resolution": true, "status": true,
-		"created": true, "updated": true, "parent": true,
-		"security": true,
+	_, ok := systemFieldKeys[strings.ToLower(name)]
+	return ok
+}
+
+// referenceValue builds the reference object for a reference field: an
+// all-digit value is an id, anything else a name.
+func referenceValue(value string) map[string]string {
+	trimmed := strings.TrimSpace(value)
+	if trimmed != "" && strings.Trim(trimmed, "0123456789") == "" {
+		return map[string]string{"id": trimmed}
 	}
-	return systemFields[strings.ToLower(name)]
+	return map[string]string{"name": trimmed}
 }
 
 // projectKeyFromIssueKey returns the project key portion of an issue key
@@ -100,7 +119,12 @@ func ParseCustomField(ctx context.Context, jira *api.JiraService, raw string) (s
 
 	if strings.HasPrefix(key, "customfield_") {
 		resolvedField, _ = jira.GetFieldByID(ctx, key)
-	} else if !isSystemField(key) {
+	} else if canonical, ok := systemFieldKeys[strings.ToLower(key)]; ok {
+		key = canonical
+		if referenceFields[key] {
+			return key, referenceValue(value), nil
+		}
+	} else {
 		var err error
 		resolvedField, err = jira.GetFieldByName(ctx, key)
 		if err != nil {

@@ -233,3 +233,52 @@ func TestCoerceFieldValue_RadioStillWorks(t *testing.T) {
 		t.Errorf("got %v, want %v", gotMap, want)
 	}
 }
+
+// TestParseCustomField_SystemFields covers system fields, which resolve without
+// an API call: keys are sent in Jira's casing, and reference fields are wrapped
+// in an id or name object because Jira rejects a bare value for them.
+func TestParseCustomField_SystemFields(t *testing.T) {
+	tests := []struct {
+		raw     string
+		wantKey string
+		want    interface{}
+	}{
+		{"Resolution=Won't Do", "resolution", map[string]string{"name": "Won't Do"}},
+		{"resolution=10001", "resolution", map[string]string{"id": "10001"}},
+		{"Priority=High", "priority", map[string]string{"name": "High"}},
+		{"priority= 3 ", "priority", map[string]string{"id": "3"}},
+		{"Summary=New title", "summary", "New title"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.raw, func(t *testing.T) {
+			key, got, err := ParseCustomField(t.Context(), nil, tt.raw)
+			if err != nil {
+				t.Fatalf("ParseCustomField(%q) error: %v", tt.raw, err)
+			}
+			if key != tt.wantKey {
+				t.Errorf("key = %q, want %q", key, tt.wantKey)
+			}
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("value = %#v, want %#v", got, tt.want)
+			}
+		})
+	}
+}
+
+// TestParseCustomField_SystemFieldKeyCasing guards that a system field key is
+// sent in the casing Jira expects, whatever the user typed.
+func TestParseCustomField_SystemFieldKeyCasing(t *testing.T) {
+	for raw, want := range map[string]string{
+		"FixVersions=v2":    "fixVersions",
+		"fixversions=v2":    "fixVersions",
+		"DueDate=2026-10-1": "duedate",
+	} {
+		key, _, err := ParseCustomField(t.Context(), nil, raw)
+		if err != nil {
+			t.Fatalf("ParseCustomField(%q) error: %v", raw, err)
+		}
+		if key != want {
+			t.Errorf("ParseCustomField(%q) key = %q, want %q", raw, key, want)
+		}
+	}
+}
