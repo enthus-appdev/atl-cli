@@ -32,8 +32,6 @@ func isSystemField(name string) bool {
 	return ok
 }
 
-// referenceValue builds the reference object for a reference field: an
-// all-digit value is an id, anything else a name.
 func referenceValue(value string) map[string]string {
 	trimmed := strings.TrimSpace(value)
 	if trimmed != "" && strings.Trim(trimmed, "0123456789") == "" {
