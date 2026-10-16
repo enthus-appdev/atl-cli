@@ -199,7 +199,8 @@ atl --context prod jira issue comment list <key>          # List comments
 atl --context prod jira issue comment edit <key> --id 12345 --body "Updated text"
 atl --context prod jira issue comment delete <key> --id 12345
 atl --context prod jira issue comment add <key> --reply-to 12345 --body "Reply text"
-atl --context prod jira issue comment add <key> --body "Internal note" --visibility-type role --visibility-name Developers
+atl --context prod jira issue comment add <key> --body "Internal note" --internal   # JSM internal note (hidden from customers)
+atl --context prod jira issue comment add <key> --body "Dev note" --visibility-type role --visibility-name Developers
 
 atl --context prod jira issue assign <key> --assignee @me
 atl --context prod jira issue assign <key> --assignee -     # Unassign
@@ -236,6 +237,12 @@ atl --context prod jira issue attachment <key> --download-all -o ./dir  # Downlo
 the original author, and links to the focused original comment. It does not
 copy the original body into the reply. For manually authored comments, plain
 `@Display Name` is only text; use `@[Display Name]` for a real Jira mention.
+
+In Jira Service Management projects, comments added by atl are public replies
+that the customer sees. Pass `--internal` to add an internal note instead; it
+is rejected on issues outside a Jira Service Management project.
+`--visibility-type`/`--visibility-name` only restrict a comment to a role or
+group and do not make it a JSM internal note.
 
 ### Jira Assets (CMDB)
 

@@ -21,6 +21,7 @@ type AddOptions struct {
 	ReplyTo        string
 	VisibilityType string
 	VisibilityName string
+	Internal       bool
 	JSON           bool
 }
 
@@ -36,12 +37,19 @@ func NewCmdAdd(ios *iostreams.IOStreams) *cobra.Command {
 		Long: `Add a new comment to a Jira issue.
 
 Supports visibility restrictions to limit who can see the comment,
-and replying to existing comments with an author mention and comment link.`,
+and replying to existing comments with an author mention and comment link.
+
+In Jira Service Management projects, comments are public replies to the
+customer by default. Use --internal to add an internal note instead;
+it is rejected on issues outside a Jira Service Management project.`,
 		Example: `  # Add a comment
   atl jira issue comment add PROJ-1234 --body "This is my comment"
 
-  # Add an internal comment (visible only to a role)
-  atl jira issue comment add PROJ-1234 --body "Internal note" --visibility-type role --visibility-name "Developers"
+  # Add an internal note in a Jira Service Management project (hidden from customers)
+  atl jira issue comment add SD-1234 --body "Internal note" --internal
+
+  # Add a comment visible only to a role
+  atl jira issue comment add PROJ-1234 --body "Developer note" --visibility-type role --visibility-name "Developers"
 
   # Add a comment visible only to a group
   atl jira issue comment add PROJ-1234 --body "Team note" --visibility-type group --visibility-name "jira-developers"
@@ -81,9 +89,19 @@ and replying to existing comments with an author mention and comment link.`,
 	cmd.Flags().StringVar(&opts.ReplyTo, "reply-to", "", "Comment ID to reply to (mentions author and links original)")
 	cmd.Flags().StringVar(&opts.VisibilityType, "visibility-type", "", "Visibility type: 'role' or 'group'")
 	cmd.Flags().StringVar(&opts.VisibilityName, "visibility-name", "", "Role or group name for visibility restriction")
+	cmd.Flags().BoolVar(&opts.Internal, "internal", false, "Add as internal note, hidden from customers (Jira Service Management issues only)")
 	cmd.Flags().BoolVarP(&opts.JSON, "json", "j", false, "Output as JSON")
 
 	return cmd
+}
+
+// newCommentOptions returns the API options shared by plain comments and replies.
+func newCommentOptions(opts *AddOptions) *api.CommentOptions {
+	return &api.CommentOptions{
+		VisibilityType: opts.VisibilityType,
+		VisibilityName: opts.VisibilityName,
+		Internal:       opts.Internal,
+	}
 }
 
 // AddCommentOutput represents the result of adding a comment.
@@ -109,11 +127,8 @@ func runAdd(opts *AddOptions) error {
 		return replyToComment(ctx, jira, hostname, opts)
 	}
 
-	commentOpts := &api.CommentOptions{
-		Body:           opts.Body,
-		VisibilityType: opts.VisibilityType,
-		VisibilityName: opts.VisibilityName,
-	}
+	commentOpts := newCommentOptions(opts)
+	commentOpts.Body = opts.Body
 
 	comment, err := jira.AddCommentWithOptions(ctx, opts.IssueKey, commentOpts)
 	if err != nil {
@@ -136,6 +151,9 @@ func runAdd(opts *AddOptions) error {
 	if opts.VisibilityType != "" {
 		fmt.Fprintf(opts.IO.Out, "Visibility: %s '%s'\n", opts.VisibilityType, opts.VisibilityName)
 	}
+	if opts.Internal {
+		fmt.Fprintln(opts.IO.Out, "Internal note (hidden from customers)")
+	}
 	fmt.Fprintf(opts.IO.Out, "URL: %s\n", addOutput.URL)
 
 	return nil
@@ -154,11 +172,8 @@ func replyToComment(ctx context.Context, jira *api.JiraService, hostname string,
 		return fmt.Errorf("failed to process mentions: %w", err)
 	}
 
-	commentOpts := &api.CommentOptions{
-		BodyADF:        api.BuildReplyADF(hostname, opts.IssueKey, opts.ReplyTo, originalComment.Author, bodyADF),
-		VisibilityType: opts.VisibilityType,
-		VisibilityName: opts.VisibilityName,
-	}
+	commentOpts := newCommentOptions(opts)
+	commentOpts.BodyADF = api.BuildReplyADF(hostname, opts.IssueKey, opts.ReplyTo, originalComment.Author, bodyADF)
 
 	comment, err := jira.AddCommentWithOptions(ctx, opts.IssueKey, commentOpts)
 	if err != nil {
