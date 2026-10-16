@@ -862,10 +862,17 @@ type CommentVisibility struct {
 	Identifier string `json:"identifier,omitempty"` // group ID (for group type)
 }
 
+// CommentProperty is an entity property stored on a comment.
+type CommentProperty struct {
+	Key   string `json:"key"`
+	Value any    `json:"value"`
+}
+
 // AddCommentRequest represents a request to add a comment.
 type AddCommentRequest struct {
 	Body       *ADF               `json:"body"`
 	Visibility *CommentVisibility `json:"visibility,omitempty"`
+	Properties []CommentProperty  `json:"properties,omitempty"`
 }
 
 // CommentOptions contains options for adding/editing comments.
@@ -874,6 +881,7 @@ type CommentOptions struct {
 	BodyADF        *ADF   // when non-nil, posted as-is; Body is ignored
 	VisibilityType string // "role" or "group"
 	VisibilityName string // role name or group name
+	Internal       bool   // Jira Service Management internal note (hidden from customers)
 }
 
 // commentBodyADF resolves the ADF document to post. A caller that has already
@@ -891,9 +899,40 @@ func (s *JiraService) AddComment(ctx context.Context, key string, body string) (
 	return s.AddCommentWithOptions(ctx, key, &CommentOptions{Body: body})
 }
 
+type issueProjectResponse struct {
+	Fields struct {
+		Project struct {
+			ProjectTypeKey string `json:"projectTypeKey"`
+		} `json:"project"`
+	} `json:"fields"`
+}
+
+// isServiceDeskIssue reports whether the issue belongs to a Jira Service Management project.
+func (s *JiraService) isServiceDeskIssue(ctx context.Context, key string) (bool, error) {
+	path := fmt.Sprintf("%s/issue/%s?fields=project", s.client.JiraBaseURL(), key)
+
+	var result issueProjectResponse
+	if err := s.client.Get(ctx, path, &result); err != nil {
+		return false, err
+	}
+
+	return result.Fields.Project.ProjectTypeKey == "service_desk", nil
+}
+
 // AddCommentWithOptions adds a comment with optional visibility restrictions.
+// An internal comment is only accepted on Jira Service Management issues.
 func (s *JiraService) AddCommentWithOptions(ctx context.Context, key string, opts *CommentOptions) (*Comment, error) {
 	path := fmt.Sprintf("%s/issue/%s/comment", s.client.JiraBaseURL(), key)
+
+	if opts.Internal {
+		isServiceDesk, err := s.isServiceDeskIssue(ctx, key)
+		if err != nil {
+			return nil, fmt.Errorf("failed to check project type: %w", err)
+		}
+		if !isServiceDesk {
+			return nil, fmt.Errorf("internal comments are only supported on Jira Service Management issues; %s is not in a service project", key)
+		}
+	}
 
 	body, err := s.commentBodyADF(ctx, opts)
 	if err != nil {
@@ -909,6 +948,15 @@ func (s *JiraService) AddCommentWithOptions(ctx context.Context, key string, opt
 			Type:  opts.VisibilityType,
 			Value: opts.VisibilityName,
 		}
+	}
+
+	// Jira Service Management treats comments created through the platform API
+	// as public replies unless this property marks them internal.
+	if opts.Internal {
+		req.Properties = []CommentProperty{{
+			Key:   "sd.public.comment",
+			Value: map[string]bool{"internal": true},
+		}}
 	}
 
 	var result Comment

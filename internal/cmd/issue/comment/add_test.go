@@ -28,6 +28,33 @@ func TestNewCmdAdd_BodyFileFlag(t *testing.T) {
 	})
 }
 
+func TestNewCmdAdd_InternalFlag(t *testing.T) {
+	cmd := NewCmdAdd(iostreams.Test())
+
+	f := cmd.Flags().Lookup("internal")
+	if f == nil {
+		t.Fatal("expected --internal flag to exist")
+	}
+	if f.DefValue != "false" {
+		t.Errorf("expected --internal to default to false, got %q", f.DefValue)
+	}
+}
+
+func TestNewCommentOptions_PassesInternal(t *testing.T) {
+	got := newCommentOptions(&AddOptions{
+		Internal:       true,
+		VisibilityType: "role",
+		VisibilityName: "Service Desk Team",
+	})
+
+	if !got.Internal {
+		t.Error("expected Internal to be passed through")
+	}
+	if got.VisibilityType != "role" || got.VisibilityName != "Service Desk Team" {
+		t.Errorf("expected visibility to be passed through, got %q/%q", got.VisibilityType, got.VisibilityName)
+	}
+}
+
 func TestNewCmdAdd_Validation(t *testing.T) {
 	tests := []struct {
 		name    string

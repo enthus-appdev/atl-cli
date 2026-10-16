@@ -138,6 +138,7 @@ atl --context prod jira issue comment list PROJ-1234                    # List c
 atl --context prod jira issue comment add PROJ-1234 --body "Comment"    # Add comment
 atl --context prod jira issue comment add PROJ-1234 --body-file msg.md  # Add from file (avoids shell escaping)
 atl --context prod jira issue comment add PROJ-1234 --reply-to 123 --body "Reply"
+atl --context prod jira issue comment add SD-1234 --body "Internal note" --internal  # JSM internal note
 atl --context prod jira issue comment edit PROJ-1234 --id 123 --body "Updated"
 atl --context prod jira issue comment edit PROJ-1234 --id 123 --body-file msg.md
 atl --context prod jira issue comment delete PROJ-1234 --id 123
@@ -149,6 +150,12 @@ original comment. For manually authored bodies, use Markdown links
 `[label](https://example.com)` and real mentions `@[Display Name]` or
 `@[id:accountId]`. Jira wiki links `[label|url]` remain literal, and plain
 `@Display Name` does not notify the user.
+
+**Jira Service Management:** comments are public replies to the customer by
+default. Pass `--internal` on `comment add` for an internal note; it is
+rejected on issues outside a Jira Service Management project. The
+`--visibility-type`/`--visibility-name` flags only restrict to a role or group;
+they do not make a comment a JSM internal note.
 
 ### Issue Links
 
