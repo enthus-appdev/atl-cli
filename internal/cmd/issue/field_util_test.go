@@ -212,6 +212,24 @@ func TestCoerceFieldValue_SelectStillWorks(t *testing.T) {
 	}
 }
 
+// TestCoerceFieldValue_RequestTypeStaysString covers the Service Management
+// Request Type field: Jira silently ignores its id when it is sent as a number.
+func TestCoerceFieldValue_RequestTypeStaysString(t *testing.T) {
+	field := &api.Field{
+		ID:   "customfield_10010",
+		Name: "Request Type",
+		Schema: &api.FieldSchema{
+			Type:   "sd-customerrequesttype",
+			Custom: "com.atlassian.servicedesk:vp-origin",
+		},
+	}
+
+	got := coerceFieldValue(field, "3")
+	if got != "3" {
+		t.Errorf("got %#v (%T), want the string \"3\"", got, got)
+	}
+}
+
 // TestCoerceFieldValue_RadioStillWorks verifies radiobutton fields are not regressed.
 func TestCoerceFieldValue_RadioStillWorks(t *testing.T) {
 	field := &api.Field{

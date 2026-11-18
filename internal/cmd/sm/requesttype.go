@@ -74,18 +74,22 @@ func runRequestTypeList(opts *RequestTypeListOptions) error {
 		return output.JSON(opts.IO.Out, types)
 	}
 
-	headers := []string{"ID", "Name", "Description"}
+	headers := []string{"ID", "Name", "Issue Type ID", "Description"}
+	output.SimpleTable(opts.IO.Out, headers, requestTypeRows(types))
+	return nil
+}
+
+// requestTypeRows builds the table rows for request types.
+func requestTypeRows(types []*api.RequestType) [][]string {
 	rows := make([][]string, 0, len(types))
 	for _, t := range types {
 		desc := t.Description
 		if len(desc) > 60 {
 			desc = desc[:57] + "..."
 		}
-		rows = append(rows, []string{t.ID, t.Name, desc})
+		rows = append(rows, []string{t.ID, t.Name, t.IssueTypeID, desc})
 	}
-
-	output.SimpleTable(opts.IO.Out, headers, rows)
-	return nil
+	return rows
 }
 
 // ── request-type fields ────────────────────────────────────────────

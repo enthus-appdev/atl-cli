@@ -52,12 +52,12 @@ func (s *SMService) GetServiceDesks(ctx context.Context) ([]*ServiceDesk, error)
 
 // RequestType represents a request type in a service desk.
 type RequestType struct {
-	ID          string `json:"id"`
-	Name        string `json:"name"`
-	Description string `json:"description"`
-	ServiceDesk *struct {
-		ID string `json:"id"`
-	} `json:"serviceDeskId,omitempty"`
+	ID            string `json:"id"`
+	Name          string `json:"name"`
+	Description   string `json:"description"`
+	IssueTypeID   string `json:"issueTypeId"`
+	ServiceDeskID string `json:"serviceDeskId"`
+	PortalID      string `json:"portalId"`
 }
 
 // RequestTypePage represents a paginated list of request types.

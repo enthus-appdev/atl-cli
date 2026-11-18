@@ -64,15 +64,18 @@ func TestGetServiceDesks(t *testing.T) {
 }
 
 func TestGetRequestTypes(t *testing.T) {
+	// Shaped like the real servicedeskapi response: the id fields are plain strings.
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(RequestTypePage{
-			Size: 2, Start: 0, Limit: 50, IsLastPage: true,
-			Values: []*RequestType{
-				{ID: "10", Name: "Incident", Description: "Report an incident"},
-				{ID: "26", Name: "Service Delivery", Description: "DL ticket creation"},
-			},
-		})
+		_, _ = w.Write([]byte(`{
+			"size": 2, "start": 0, "limit": 50, "isLastPage": true,
+			"values": [
+				{"id": "10", "name": "Incident", "description": "Report an incident",
+				 "issueTypeId": "10035", "serviceDeskId": "1", "portalId": "1", "groupIds": ["50"]},
+				{"id": "26", "name": "Service Delivery", "description": "DL ticket creation",
+				 "issueTypeId": "10036", "serviceDeskId": "1", "portalId": "1", "groupIds": []}
+			]
+		}`))
 	}))
 	defer server.Close()
 
@@ -89,6 +92,11 @@ func TestGetRequestTypes(t *testing.T) {
 	}
 	if result.Values[1].Name != "Service Delivery" {
 		t.Errorf("second type name = %q, want Service Delivery", result.Values[1].Name)
+	}
+	first := result.Values[0]
+	if first.IssueTypeID != "10035" || first.ServiceDeskID != "1" || first.PortalID != "1" {
+		t.Errorf("first type ids = issueType %q, serviceDesk %q, portal %q; want 10035, 1, 1",
+			first.IssueTypeID, first.ServiceDeskID, first.PortalID)
 	}
 }
 
