@@ -153,6 +153,10 @@ func ParseCustomField(ctx context.Context, jira *api.JiraService, raw string) (s
 // based on the field's schema.
 func coerceFieldValue(field *api.Field, value string) interface{} {
 	if field != nil && field.Schema != nil {
+		// Jira silently ignores a Service Management request type id sent as a number.
+		if field.Schema.Type == "sd-customerrequesttype" {
+			return value
+		}
 		customType := field.Schema.Custom
 		if strings.Contains(customType, "select") || strings.Contains(customType, "radiobuttons") {
 			return map[string]string{"value": value}
